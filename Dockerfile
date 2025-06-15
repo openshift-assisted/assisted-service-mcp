@@ -3,8 +3,6 @@ FROM registry.redhat.io/ubi9/python-311:9.6
 ENV APP_HOME=/opt/app-root/src
 WORKDIR ${APP_HOME}
 
-USER 0
-
 RUN pip install uv
 
 COPY pyproject.toml .
@@ -20,4 +18,4 @@ USER 1001
 
 EXPOSE 8000
 
-CMD ["uv", "run", "server.py"]
+CMD ["uv", "--cache-dir", "/tmp/uv-cache", "run", "server.py"]
