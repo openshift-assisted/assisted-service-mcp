@@ -18,7 +18,7 @@ class InventoryClient(object):
 
     def _get_access_token(self, offline_token: str) -> str:
         params = {
-            "client_id": "cloud-services",
+            "client_id": "ocm-cli",
             "grant_type": "refresh_token",
             "refresh_token": offline_token,
         }
