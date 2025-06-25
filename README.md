@@ -54,6 +54,9 @@ Configure the server in the client:
     }
 ```
 
+4. Ask about your clusters:
+![Example prompt asking about a cluster](images/cluster-prompt-example.png)
+
 ### Providing the Offline Token via Request Header
 
 If you do not set the `OFFLINE_TOKEN` environment variable, you can provide the token as a request header.
@@ -68,9 +71,6 @@ When configuring your MCP client, add the `OCM-Offline-Token` header:
       }
     }
 ```
-
-4. Ask about your clusters:
-![Example prompt asking about a cluster](images/cluster-prompt-example.png)
 
 ## Available Tools
 
@@ -135,3 +135,51 @@ The MCP server provides the following tools for interacting with the OpenShift A
 * **Create a cluster**: "Create a new cluster named 'my-cluster' with OpenShift 4.14 and base domain 'example.com'"
 * **Check cluster events**: "What events happened on cluster abc123?"
 * **Install a cluster**: "Start the installation for cluster abc123"
+
+## Authorization Options
+
+The server supports multiple authorization methods for accessing the Assisted Installer API. The
+method used depends on the environment variables and headers you provide. The following methods are
+checked in order of priority; the first one that succeeds will be used, and the rest will be
+ignored:
+
+### 1. Access token in the `Authorization` request header
+
+If the `Authorization` request header contains a bearer token, it will be passed directly to the
+Assisted Installer API. In this case, the OAuth flow will not be triggered, and any values provided
+in the `OFFLINE_TOKEN` environment variable or the `OCM-Offline-Token` request header will be
+ignored.
+
+### 2. OAuth flow
+
+If the `OAUTH_ENABLED` environment variable is set to `true`, the server will use a subset of the
+OAuth protocol that MCP clients (such as the one in VS Code) use for authentication. When you
+attempt to connect, the MCP client will open a browser window where you can enter your credentials.
+The client will then request an access token, which the server will use to authenticate requests to
+the Assisted Installer API.
+
+When using this authentication method, the `OFFLINE_TOKEN` environment variable and the
+`OCM-Offline-Token` header will be ignored.
+
+You can configure the OAuth authorization server and client identifier using the `OAUTH_URL` and
+`OAUTH_CLIENT` environment variables. The default values are:
+
+- `OAUTH_URL`: `https://sso.redhat.com/auth/realms/redhat-external`
+- `OAUTH_CLIENT`: `cloud-services`
+
+The `SELF_URL` environment variable specifies the base URL that the server uses to construct URLs
+referencing itself. For example, when OAuth is enabled, the server will generate the dynamic client
+registration URL by appending `/oauth/register` to this base URL. The default value is
+`http://localhost:8000`, but in production environments, it should be set to the actual URL of the
+server as accessible to clients. For instance, if the server is accessed through a reverse proxy
+using HTTPS and the host `my.host.com`, the value should be set to `https://my.host.com`.
+
+### 3. Offline token via environment variable
+
+If you set the `OFFLINE_TOKEN` environment variable, the server will use this offline token to
+request an access token, which will then be used to call the Assisted Installer API.
+
+### 4. Offline token via request header
+
+If the `OCM-Offline-Token` request header is set, the server will use it to request an access token,
+and will then use that access token to call the Assisted Installer API.

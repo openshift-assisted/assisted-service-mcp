@@ -1,11 +1,16 @@
-from mcp.server.fastmcp import FastMCP
 import json
 import os
+
+import fastmcp
+import fastmcp.server.dependencies
 import requests
+import uvicorn
+
+import oauth
 
 from service_client import InventoryClient
 
-mcp = FastMCP("AssistedService", host="0.0.0.0")
+mcp = fastmcp.FastMCP("AssistedService")
 
 def get_offline_token() -> str:
     """Retrieve the offline token from environment variables or request headers.
@@ -26,7 +31,8 @@ def get_offline_token() -> str:
     if token:
         return token
 
-    token = mcp.get_context().request_context.request.headers.get("OCM-Offline-Token")
+    headers = fastmcp.server.dependencies.get_http_headers()
+    token = headers.get("ocm-offline-token")
     if token:
         return token
 
@@ -46,13 +52,12 @@ def get_access_token() -> str:
         RuntimeError: If it isn't possible to obtain or generate the access token.
     """
     # First try to get the token from the authorization header:
-    request = mcp.get_context().request_context.request
-    if request is not None:
-        header = request.headers.get("Authorization")
-        if header is not None:
-            parts = header.split()
-            if len(parts) == 2 and parts[0].lower() == "bearer":
-                return parts[1]
+    headers = fastmcp.server.dependencies.get_http_headers()
+    header = headers.get("authorization")
+    if header is not None:
+        parts = header.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1]
 
     # Now try to get the offline token, and generate a new access token from it:
     params = {
@@ -300,4 +305,30 @@ def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     return InventoryClient(get_access_token()).update_host(host_id, infraenv_id, host_role=role).to_str()
 
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    # We create a Starlette application so that we can add middleware:
+    app = mcp.http_app(transport="sse")
+
+    # Add the OAuth middleware if enabled:
+    oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
+    if oauth_enabled:
+        self_url = os.getenv(
+            "SELF_URL",
+            "http://localhost:8000",
+        )
+        oauth_url = os.getenv(
+            "OAUTH_URL",
+            "https://sso.redhat.com/auth/realms/redhat-external",
+        )
+        oauth_client = os.getenv(
+            "OAUTH_CLIENT",
+            "cloud-services",
+        )
+        app.add_middleware(
+            oauth.Middleware,
+            self_url=self_url,
+            oauth_url=oauth_url,
+            oauth_client=oauth_client,
+        )
+
+    # Start the application
+    uvicorn.run(app, host="0.0.0.0", port=8000)
