@@ -54,6 +54,9 @@ Configure the server in the client:
     }
 ```
 
+4. Ask about your clusters:
+![Example prompt asking about a cluster](images/cluster-prompt-example.png)
+
 ### Providing the Offline Token via Request Header
 
 If you do not set the `OFFLINE_TOKEN` environment variable, you can provide the token as a request header.
@@ -69,8 +72,28 @@ When configuring your MCP client, add the `OCM-Offline-Token` header:
     }
 ```
 
-4. Ask about your clusters:
-![Example prompt asking about a cluster](images/cluster-prompt-example.png)
+### Enabling OAuth support
+
+The server can implement a subset of the OAuth protocol that MCP clients, such as the one in VS
+Code, use for authentication. To enable this feature, set the `OAUTH_ENABLED` environment variable
+to `true`. When you attempt to connect, the MCP client will open a browser window where you can
+enter your credentials. The client will then request an access token, which the server will use to
+authenticate requests to the Assisted Installer REST API.
+
+If you use this authentication method, you do not need to provide the `OFFLINE_TOKEN`.
+
+Additionally, you can configure the OAuth authorization server and client identifier using the
+`OAUTH_URL` and `OAUTH_CLIENT` environment variables. The default values are as follows:
+
+- `OAUTH_URL` - `https://sso.redhat.com/auth/realms/redhat-external`
+- `OAUTH_CLIENT` - `cloud-services`
+
+The `SELF_URL` environment variable specifies the base URL that the server uses to construct URLs
+referencing itself. For example, when OAuth is enabled, the server will generate the dynamic client
+registration URL by appending `/oauth/register` to this base URL. The default value is
+`http://localhost:8000`, but in production environments, it should be set to the actual URL of the
+server as accessible to clients. For instance, if the server is accessed through a reverse proxy
+using HTTPS and the host `my.host.com`, the value should be set to `https://my.host.com`.
 
 ## Available Tools
 
