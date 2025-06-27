@@ -1,11 +1,20 @@
-from mcp.server.fastmcp import FastMCP
 import json
 import os
+
+import fastmcp
+import fastmcp.server.dependencies
 import requests
+import starlette.middleware
+import starlette.middleware.base
+import starlette.middleware.cors
+import starlette.requests
+import starlette.responses
+import starlette.types
+import uvicorn
 
 from service_client import InventoryClient
 
-mcp = FastMCP("AssistedService", host="0.0.0.0")
+mcp = fastmcp.FastMCP("AssistedService")
 
 def get_offline_token() -> str:
     """Retrieve the offline token from environment variables or request headers.
@@ -26,7 +35,8 @@ def get_offline_token() -> str:
     if token:
         return token
 
-    token = mcp.get_context().request_context.request.headers.get("OCM-Offline-Token")
+    headers = fastmcp.server.dependencies.get_http_headers()
+    token = headers.get("OCM-Offline-Token")
     if token:
         return token
 
@@ -46,13 +56,12 @@ def get_access_token() -> str:
         RuntimeError: If it isn't possible to obtain or generate the access token.
     """
     # First try to get the token from the authorization header:
-    request = mcp.get_context().request_context.request
-    if request is not None:
-        header = request.headers.get("Authorization")
-        if header is not None:
-            parts = header.split()
-            if len(parts) == 2 and parts[0].lower() == "bearer":
-                return parts[1]
+    headers = fastmcp.server.dependencies.get_http_headers()
+    header = headers.get("authorization")
+    if header is not None:
+        parts = header.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1]
 
     # Now try to get the offline token, and generate a new access token from it:
     params = {
@@ -299,5 +308,162 @@ def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     """
     return InventoryClient(get_access_token()).update_host(host_id, infraenv_id, host_role=role).to_str()
 
+
+class OAuthMiddleware(starlette.middleware.base.BaseHTTPMiddleware):
+    """
+    This middleware implements the OAuth metadata and registration endpoints that MCP clients
+    will try to use when the server responds with a 401 status code.
+    """
+
+    def __init__(
+        self,
+        app: starlette.types.ASGIApp,
+        self_url: str,
+        oauth_url: str,
+        oauth_client: str,
+    ):
+        """
+        Creates a new OAuth middleware.
+
+        Args:
+            app (starlette.types.ASGIApp): The starlette application.
+            self_url (str): Base URL of the service, as seen by clients.
+            oauth_url (str): Base URL of the authorization server.
+            oauth_client (str): The client identifier.
+        """
+        super().__init__(app=app)
+        self._self_url = self_url
+        self._oauth_url = oauth_url
+        self._oauth_client = oauth_client
+
+    async def dispatch(
+        self,
+        request: starlette.requests.Request,
+        call_next: starlette.middleware.base.RequestResponseEndpoint,
+    ) -> starlette.responses.Response:
+        # The OAuth endpoints don't require authentication:
+        method = request.method
+        path = request.url.path
+        if method == "GET" and path == "/.well-known/oauth-protected-resource":
+            return await self.oauth_resource(request)
+        if method == "GET" and path == "/.well-known/oauth-authorization-server":
+            return await self.oauth_metadata(request)
+        if method == "POST" and path == "/oauth/register":
+            return await self.oauth_register(request)
+
+        # The rest of the endpoints do require authentication. Note that we are not validating the
+        # bearer token, just requiring the authorization header, so that the client will receive
+        # the 401 response code and trigger the OAuth flow.
+        auth = request.headers.get("authorization")
+        if auth is None:
+            resource_url = f"{self._self_url}/.well-known/oauth-protected-resource"
+            return starlette.responses.Response(
+                status_code=401,
+                headers={
+                    "WWW-Authenticate": f"Bearer resource_metadata=\"{resource_url}\"",
+                },
+            )
+
+        return await call_next(request)
+
+    async def oauth_resource(self, request: starlette.requests.Request) -> starlette.responses.Response:
+        """
+        This method implements the OAuth protected resource endpoint.
+        """
+        return starlette.responses.JSONResponse(
+            content={
+                "resource": self._self_url,
+                "authorization_servers": [
+                    self._self_url,
+                ],
+                "bearer_methods_supported": [
+                    "header",
+                ],
+                "scopes_supported": [
+                    "openid",
+                    "api.ocm",
+                ],
+            }
+        )
+
+    async def oauth_metadata(self, request: starlette.requests.Request) -> starlette.responses.Response:
+        """
+        This method implements the OAuth metadata endpoint. It gets the metadata from our real authorization
+        server, and replaces a few things that are needed to satisfy MCP clients.
+        """
+        # Get the metadata from the real authorization service:
+        response = requests.get(
+            url=f"{self._oauth_url}/.well-known/oauth-authorization-server",
+        )
+        response.raise_for_status()
+        body = response.json()
+
+        # The MCP clients will want to dynamically register the client, but we don't want that because our
+        # authorization server doesn't allow us to do it. So we replace the registration endpoint with our
+        # own, where we can return a fake response to make the MCP clients happy.
+        body["registration_endpoint"] = f"{self._self_url}/oauth/register"
+
+        # The MCP clients also try to request all the scopes listed in the metadata, but our authorization
+        # server returns a lot of scopes, and most of them will be rejected for our client. So we replace
+        # that large list with a much smaller list containing only the scopes that we need.
+        body["scopes_supported"] = [
+            "openid",
+            "api.ocm",
+        ]
+
+        # Return the modified metadata:
+        return starlette.responses.JSONResponse(
+            content=body,
+        )
+
+    async def oauth_register(self, request: starlette.requests.Request) -> starlette.responses.Response:
+        """
+        This method implements the OAuth dynamic client registration endpoint. It responds to all requests
+        with a fixed client identifier.
+        """
+        body = await request.json()
+        redirect_uris = body.get("redirect_uris", [])
+        return starlette.responses.JSONResponse(
+            content={
+                "client_id": self._oauth_client,
+                "redirect_uris": redirect_uris,
+            },
+        )
+
+
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    # We create a Starlette application so that we can add the OAuth and CORS middleware:
+    app = mcp.http_app(transport="sse")
+
+    # Add the OAuth middleware if enabled:
+    oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
+    if oauth_enabled:
+        self_url = os.getenv(
+            "SELF_URL",
+            "http://localhost:8000",
+        )
+        oauth_url = os.getenv(
+            "OAUTH_URL",
+            "https://sso.redhat.com/auth/realms/redhat-external",
+        )
+        oauth_client = os.getenv(
+            "OAUTH_CLIENT",
+            "cloud-services",
+        )
+        app.add_middleware(
+            OAuthMiddleware,
+            self_url=self_url,
+            oauth_url=oauth_url,
+            oauth_client=oauth_client,
+        )
+
+    # Add the CORS middleware:
+    app.add_middleware(
+        starlette.middleware.cors.CORSMiddleware,
+        allow_origins="*",
+        allow_methods="*",
+        allow_credentials=True,
+    )
+
+    # Start the application
+    uvicorn.run(app, host="0.0.0.0", port=8000)
