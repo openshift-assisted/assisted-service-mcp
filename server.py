@@ -66,7 +66,7 @@ def get_access_token() -> str:
     return response.json()["access_token"]
 
 @mcp.tool()
-def cluster_info(cluster_id: str) -> str:
+async def cluster_info(cluster_id: str) -> str:
     """Get comprehensive information about a specific assisted installer cluster.
 
     Retrieves detailed cluster information including configuration, status, hosts,
@@ -83,10 +83,12 @@ def cluster_info(cluster_id: str) -> str:
             - Network configuration (VIPs, subnets)
             - Host information and roles
     """
-    return InventoryClient(get_access_token()).get_cluster(cluster_id=cluster_id).to_str()
+    client = InventoryClient(get_access_token())
+    result = await client.get_cluster(cluster_id=cluster_id)
+    return result.to_str()
 
 @mcp.tool()
-def list_clusters() -> str:
+async def list_clusters() -> str:
     """List all assisted installer clusters for the current user.
 
     Retrieves a summary of all clusters associated with the current user's account.
@@ -101,12 +103,13 @@ def list_clusters() -> str:
             - openshift_version (str): The OpenShift version being installed
             - status (str): Current cluster status (e.g., 'ready', 'installing', 'error')
     """
-    clusters = InventoryClient(get_access_token()).list_clusters()
+    client = InventoryClient(get_access_token())
+    clusters = await client.list_clusters()
     resp = [{"name": cluster["name"], "id": cluster["id"], "openshift_version": cluster["openshift_version"], "status": cluster["status"]} for cluster in clusters]
     return json.dumps(resp)
 
 @mcp.tool()
-def cluster_events(cluster_id: str) -> str:
+async def cluster_events(cluster_id: str) -> str:
     """Get the events related to a cluster with the given cluster id.
 
     Retrieves chronological events related to cluster installation, configuration
@@ -120,10 +123,11 @@ def cluster_events(cluster_id: str) -> str:
         str: A JSON-formatted string containing cluster events with timestamps,
             event types, and descriptive messages about cluster activities.
     """
-    return InventoryClient(get_access_token()).get_events(cluster_id=cluster_id)
+    client = InventoryClient(get_access_token())
+    return await client.get_events(cluster_id=cluster_id)
 
 @mcp.tool()
-def host_events(cluster_id: str, host_id: str) -> str:
+async def host_events(cluster_id: str, host_id: str) -> str:
     """Get events specific to a particular host within a cluster.
 
     Retrieves events related to a specific host's installation progress, hardware
@@ -137,10 +141,11 @@ def host_events(cluster_id: str, host_id: str) -> str:
         str: A JSON-formatted string containing host-specific events including
             hardware validation results, installation steps, and error messages.
     """
-    return InventoryClient(get_access_token()).get_events(cluster_id=cluster_id, host_id=host_id)
+    client = InventoryClient(get_access_token())
+    return await client.get_events(cluster_id=cluster_id, host_id=host_id)
 
 @mcp.tool()
-def infraenv_info(infraenv_id: str) -> str:
+async def infraenv_info(infraenv_id: str) -> str:
     """Get detailed information about an infrastructure environment (InfraEnv).
 
     An InfraEnv contains the configuration and resources needed to boot and discover
@@ -158,10 +163,12 @@ def infraenv_info(infraenv_id: str) -> str:
             - Associated cluster information
             - Static network configuration if applicable
     """
-    return InventoryClient(get_access_token()).get_infra_env(infraenv_id).to_str()
+    client = InventoryClient(get_access_token())
+    result = await client.get_infra_env(infraenv_id)
+    return result.to_str()
 
 @mcp.tool()
-def create_cluster(name: str, version: str, base_domain: str, single_node: bool) -> str:
+async def create_cluster(name: str, version: str, base_domain: str, single_node: bool) -> str:
     """Create a new OpenShift cluster and associated infrastructure environment.
 
     Creates both a cluster definition and an InfraEnv for host discovery. The cluster
@@ -183,12 +190,12 @@ def create_cluster(name: str, version: str, base_domain: str, single_node: bool)
             - infraenv_id (str): The unique identifier of the created InfraEnv
     """
     client = InventoryClient(get_access_token())
-    cluster = client.create_cluster(name, version, single_node, base_dns_domain=base_domain)
-    infraenv = client.create_infra_env(name, cluster_id=cluster.id, openshift_version=cluster.openshift_version)
+    cluster = await client.create_cluster(name, version, single_node, base_dns_domain=base_domain)
+    infraenv = await client.create_infra_env(name, cluster_id=cluster.id, openshift_version=cluster.openshift_version)
     return json.dumps({'cluster_id': cluster.id, 'infraenv_id': infraenv.id})
 
 @mcp.tool()
-def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
+async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
     """Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
 
     Sets the API VIP (for cluster management) and Ingress VIP (for application traffic)
@@ -206,10 +213,12 @@ def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
         str: A formatted string containing the updated cluster configuration
             showing the newly set VIP addresses.
     """
-    return InventoryClient(get_access_token()).update_cluster(cluster_id, api_vip=api_vip, ingress_vip=ingress_vip).to_str()
+    client = InventoryClient(get_access_token())
+    result = await client.update_cluster(cluster_id, api_vip=api_vip, ingress_vip=ingress_vip)
+    return result.to_str()
 
 @mcp.tool()
-def install_cluster(cluster_id: str) -> str:
+async def install_cluster(cluster_id: str) -> str:
     """Trigger the installation process for a prepared cluster.
 
     Initiates the OpenShift installation on all discovered and validated hosts.
@@ -229,10 +238,12 @@ def install_cluster(cluster_id: str) -> str:
         - Network configuration is complete (VIPs set if required)
         - All cluster validations pass
     """
-    return InventoryClient(get_access_token()).install_cluster(cluster_id).to_str()
+    client = InventoryClient(get_access_token())
+    result = await client.install_cluster(cluster_id)
+    return result.to_str()
 
 @mcp.tool()
-def list_versions() -> str:
+async def list_versions() -> str:
     """List all available OpenShift versions for installation.
 
     Retrieves the complete list of OpenShift versions that can be installed
@@ -243,10 +254,12 @@ def list_versions() -> str:
         str: A JSON string containing available OpenShift versions with metadata
             including version numbers, release dates, and support status.
     """
-    return json.dumps(InventoryClient(get_access_token()).get_openshift_versions(True))
+    client = InventoryClient(get_access_token())
+    result = await client.get_openshift_versions(True)
+    return json.dumps(result)
 
 @mcp.tool()
-def list_operator_bundles() -> str:
+async def list_operator_bundles() -> str:
     """List available operator bundles for cluster installation.
 
     Retrieves operator bundles that can be optionally installed during cluster
@@ -257,10 +270,12 @@ def list_operator_bundles() -> str:
         str: A JSON string containing available operator bundles with metadata
             including bundle names, descriptions, and operator details.
     """
-    return json.dumps(InventoryClient(get_access_token()).get_operator_bundles())
+    client = InventoryClient(get_access_token())
+    result = await client.get_operator_bundles()
+    return json.dumps(result)
 
 @mcp.tool()
-def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
+async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
     """Add an operator bundle to be installed with the cluster.
 
     Configures the specified operator bundle to be automatically installed
@@ -276,10 +291,12 @@ def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
         str: A formatted string containing the updated cluster configuration
             showing the newly added operator bundle.
     """
-    return InventoryClient(get_access_token()).add_operator_bundle_to_cluster(cluster_id, bundle_name).to_str()
+    client = InventoryClient(get_access_token())
+    result = await client.add_operator_bundle_to_cluster(cluster_id, bundle_name)
+    return result.to_str()
 
 @mcp.tool()
-def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
+async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     """Assign a specific role to a discovered host in the cluster.
 
     Sets the role for a host that has been discovered through the InfraEnv boot process.
@@ -297,7 +314,9 @@ def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
         str: A formatted string containing the updated host configuration
             showing the newly assigned role.
     """
-    return InventoryClient(get_access_token()).update_host(host_id, infraenv_id, host_role=role).to_str()
+    client = InventoryClient(get_access_token())
+    result = await client.update_host(host_id, infraenv_id, host_role=role)
+    return result.to_str()
 
 if __name__ == "__main__":
     mcp.run(transport="sse")
