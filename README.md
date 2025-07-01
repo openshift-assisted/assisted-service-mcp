@@ -8,7 +8,7 @@ Try it out:
 
 1. Clone the repo:
 ```
-git clone git@github.com:carbonin/assisted-service-mcp.git
+git clone git@github.com:openshift-assisted/assisted-service-mcp.git
 ```
 
 2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
