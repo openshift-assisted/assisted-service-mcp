@@ -190,7 +190,8 @@ async def create_cluster(name: str, version: str, base_domain: str, single_node:
             - infraenv_id (str): The unique identifier of the created InfraEnv
     """
     client = InventoryClient(get_access_token())
-    cluster = await client.create_cluster(name, version, single_node, base_dns_domain=base_domain)
+    mcp_tags = {"created-by": "mcp"}
+    cluster = await client.create_cluster(name, version, single_node, base_dns_domain=base_domain, tags=mcp_tags)
     infraenv = await client.create_infra_env(name, cluster_id=cluster.id, openshift_version=cluster.openshift_version)
     return json.dumps({'cluster_id': cluster.id, 'infraenv_id': infraenv.id})
 
