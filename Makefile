@@ -11,7 +11,7 @@ push:
 
 .PHONY: run
 run:
-	podman run --rm -p 8000:8000 $(IMAGE_NAME):$(TAG)
+	podman run --rm -p 127.0.0.1:8000:8000 $(IMAGE_NAME):$(TAG)
 
 .PHONY: run-local
 run-local:

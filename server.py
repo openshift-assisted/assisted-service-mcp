@@ -12,6 +12,7 @@ import requests
 from mcp.server.fastmcp import FastMCP
 
 from service_client import InventoryClient
+from service_client.logger import log
 
 mcp = FastMCP("AssistedService", host="0.0.0.0")
 
@@ -32,16 +33,20 @@ def get_offline_token() -> str:
         RuntimeError: If no offline token is found in either environment variables
             or request headers.
     """
+    log.debug("Attempting to retrieve offline token")
     token = os.environ.get("OFFLINE_TOKEN")
     if token:
+        log.debug("Found offline token in environment variables")
         return token
 
     request = mcp.get_context().request_context.request
     if request is not None:
         token = request.headers.get("OCM-Offline-Token")
         if token:
+            log.debug("Found offline token in request headers")
             return token
 
+    log.error("No offline token found in environment or request headers")
     raise RuntimeError("No offline token found in environment or request headers")
 
 
@@ -59,6 +64,7 @@ def get_access_token() -> str:
     Raises:
         RuntimeError: If it isn't possible to obtain or generate the access token.
     """
+    log.debug("Attempting to retrieve access token")
     # First try to get the token from the authorization header:
     request = mcp.get_context().request_context.request
     if request is not None:
@@ -66,9 +72,11 @@ def get_access_token() -> str:
         if header is not None:
             parts = header.split()
             if len(parts) == 2 and parts[0].lower() == "bearer":
+                log.debug("Found access token in authorization header")
                 return parts[1]
 
     # Now try to get the offline token, and generate a new access token from it:
+    log.debug("Generating new access token from offline token")
     params = {
         "client_id": "cloud-services",
         "grant_type": "refresh_token",
@@ -80,6 +88,7 @@ def get_access_token() -> str:
     )
     response = requests.post(sso_url, data=params, timeout=30)
     response.raise_for_status()
+    log.debug("Successfully generated new access token")
     return response.json()["access_token"]
 
 
@@ -102,8 +111,10 @@ async def cluster_info(cluster_id: str) -> str:
             - Network configuration (VIPs, subnets)
             - Host information and roles
     """
+    log.info("Retrieving cluster information for cluster_id: %s", cluster_id)
     client = InventoryClient(get_access_token())
     result = await client.get_cluster(cluster_id=cluster_id)
+    log.info("Successfully retrieved cluster information for %s", cluster_id)
     return result.to_str()
 
 
@@ -124,6 +135,7 @@ async def list_clusters() -> str:
             - openshift_version (str): The OpenShift version being installed
             - status (str): Current cluster status (e.g., 'ready', 'installing', 'error')
     """
+    log.info("Retrieving list of all clusters")
     client = InventoryClient(get_access_token())
     clusters = await client.list_clusters()
     resp = [
@@ -135,6 +147,7 @@ async def list_clusters() -> str:
         }
         for cluster in clusters
     ]
+    log.info("Successfully retrieved %s clusters", len(resp))
     return json.dumps(resp)
 
 
@@ -154,8 +167,11 @@ async def cluster_events(cluster_id: str) -> str:
         str: A JSON-formatted string containing cluster events with timestamps,
             event types, and descriptive messages about cluster activities.
     """
+    log.info("Retrieving events for cluster_id: %s", cluster_id)
     client = InventoryClient(get_access_token())
-    return await client.get_events(cluster_id=cluster_id)
+    result = await client.get_events(cluster_id=cluster_id)
+    log.info("Successfully retrieved events for cluster %s", cluster_id)
+    return result
 
 
 @mcp.tool()
@@ -174,8 +190,13 @@ async def host_events(cluster_id: str, host_id: str) -> str:
         str: A JSON-formatted string containing host-specific events including
             hardware validation results, installation steps, and error messages.
     """
+    log.info("Retrieving events for host %s in cluster %s", host_id, cluster_id)
     client = InventoryClient(get_access_token())
-    return await client.get_events(cluster_id=cluster_id, host_id=host_id)
+    result = await client.get_events(cluster_id=cluster_id, host_id=host_id)
+    log.info(
+        "Successfully retrieved events for host %s in cluster %s", host_id, cluster_id
+    )
+    return result
 
 
 @mcp.tool()
@@ -198,8 +219,10 @@ async def infraenv_info(infraenv_id: str) -> str:
             - Associated cluster information
             - Static network configuration if applicable
     """
+    log.info("Retrieving InfraEnv information for infraenv_id: %s", infraenv_id)
     client = InventoryClient(get_access_token())
     result = await client.get_infra_env(infraenv_id)
+    log.info("Successfully retrieved InfraEnv information for %s", infraenv_id)
     return result.to_str()
 
 
@@ -228,12 +251,25 @@ async def create_cluster(
             - cluster_id (str): The unique identifier of the created cluster
             - infraenv_id (str): The unique identifier of the created InfraEnv
     """
+    log.info(
+        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s",
+        name,
+        version,
+        base_domain,
+        single_node,
+    )
     client = InventoryClient(get_access_token())
     cluster = await client.create_cluster(
         name, version, single_node, base_dns_domain=base_domain, tags="chatbot"
     )
+    log.info("Successfully created cluster %s with ID: %s", name, cluster.id)
     infraenv = await client.create_infra_env(
         name, cluster_id=cluster.id, openshift_version=cluster.openshift_version
+    )
+    log.info(
+        "Successfully created InfraEnv for cluster %s with ID: %s",
+        cluster.id,
+        infraenv.id,
     )
     return json.dumps({"cluster_id": cluster.id, "infraenv_id": infraenv.id})
 
@@ -258,10 +294,17 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
         str: A formatted string containing the updated cluster configuration
             showing the newly set VIP addresses.
     """
+    log.info(
+        "Setting VIPs for cluster %s: api_vip=%s, ingress_vip=%s",
+        cluster_id,
+        api_vip,
+        ingress_vip,
+    )
     client = InventoryClient(get_access_token())
     result = await client.update_cluster(
         cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
     )
+    log.info("Successfully set VIPs for cluster %s", cluster_id)
     return result.to_str()
 
 
@@ -287,8 +330,10 @@ async def install_cluster(cluster_id: str) -> str:
         - Network configuration is complete (VIPs set if required)
         - All cluster validations pass
     """
+    log.info("Initiating installation for cluster_id: %s", cluster_id)
     client = InventoryClient(get_access_token())
     result = await client.install_cluster(cluster_id)
+    log.info("Successfully triggered installation for cluster %s", cluster_id)
     return result.to_str()
 
 
@@ -305,8 +350,10 @@ async def list_versions() -> str:
         str: A JSON string containing available OpenShift versions with metadata
             including version numbers, release dates, and support status.
     """
+    log.info("Retrieving available OpenShift versions")
     client = InventoryClient(get_access_token())
     result = await client.get_openshift_versions(True)
+    log.info("Successfully retrieved OpenShift versions")
     return json.dumps(result)
 
 
@@ -323,8 +370,10 @@ async def list_operator_bundles() -> str:
         str: A JSON string containing available operator bundles with metadata
             including bundle names, descriptions, and operator details.
     """
+    log.info("Retrieving available operator bundles")
     client = InventoryClient(get_access_token())
     result = await client.get_operator_bundles()
+    log.info("Successfully retrieved %s operator bundles", len(result))
     return json.dumps(result)
 
 
@@ -346,8 +395,12 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
         str: A formatted string containing the updated cluster configuration
             showing the newly added operator bundle.
     """
+    log.info("Adding operator bundle '%s' to cluster %s", bundle_name, cluster_id)
     client = InventoryClient(get_access_token())
     result = await client.add_operator_bundle_to_cluster(cluster_id, bundle_name)
+    log.info(
+        "Successfully added operator bundle '%s' to cluster %s", bundle_name, cluster_id
+    )
     return result.to_str()
 
 
@@ -371,8 +424,10 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
         str: A formatted string containing the updated host configuration
             showing the newly assigned role.
     """
+    log.info("Setting role '%s' for host %s in InfraEnv %s", role, host_id, infraenv_id)
     client = InventoryClient(get_access_token())
     result = await client.update_host(host_id, infraenv_id, host_role=role)
+    log.info("Successfully set role '%s' for host %s", role, host_id)
     return result.to_str()
 
 

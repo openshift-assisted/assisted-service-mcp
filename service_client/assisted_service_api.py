@@ -12,7 +12,9 @@ from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import requests
+from requests.exceptions import RequestException
 from assisted_service_client import ApiClient, Configuration, api, models
+from assisted_service_client.rest import ApiException
 
 from service_client.logger import log
 
@@ -44,9 +46,16 @@ class InventoryClient:
             "https://api.openshift.com/api/accounts_mgmt/v1/access_token",
         )
         headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.post(url, headers=headers, timeout=30)
-        response.raise_for_status()
-        return response.text
+
+        try:
+            log.info("Fetching pull secret from %s", url)
+            response = requests.post(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            log.info("Successfully fetched pull secret")
+            return response.text
+        except RequestException as e:
+            log.error("Error while fetching pull secret from %s: %s", url, str(e))
+            raise
 
     def _get_client(self) -> ApiClient:
         configs = Configuration()
@@ -92,14 +101,33 @@ class InventoryClient:
         Returns:
             models.Cluster: The cluster object containing cluster information.
         """
-        return cast(
-            models.Cluster,
-            await asyncio.to_thread(
+        try:
+            log.info(
+                "Getting cluster %s (unregistered: %s)",
+                cluster_id,
+                get_unregistered_clusters,
+            )
+            result = await asyncio.to_thread(
                 self._installer_api().v2_get_cluster,
                 cluster_id=cluster_id,
                 get_unregistered_clusters=get_unregistered_clusters,
-            ),
-        )
+            )
+            log.info("Successfully retrieved cluster %s", cluster_id)
+            return cast(models.Cluster, result)
+        except ApiException as e:
+            log.error(
+                "API error while getting cluster %s: Status: %s, Reason: %s, Body: %s",
+                cluster_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while getting cluster %s: %s", cluster_id, str(e)
+            )
+            raise
 
     async def list_clusters(self) -> list:
         """
@@ -108,9 +136,22 @@ class InventoryClient:
         Returns:
             list: A list of cluster objects.
         """
-        return cast(
-            list, await asyncio.to_thread(self._installer_api().v2_list_clusters)
-        )
+        try:
+            log.info("Listing all clusters")
+            result = await asyncio.to_thread(self._installer_api().v2_list_clusters)
+            log.info("Successfully listed clusters")
+            return cast(list, result)
+        except ApiException as e:
+            log.error(
+                "API error while listing clusters: Status: %s, Reason: %s, Body: %s",
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error("Unexpected error while listing clusters: %s", str(e))
+            raise
 
     async def get_events(
         self,
@@ -135,23 +176,46 @@ class InventoryClient:
         """
         if categories is None:
             categories = ["user"]
-        log.info(
-            "Downloading events for cluster %s, host %s, infraenv %s, categories %s",
-            cluster_id,
-            host_id,
-            infra_env_id,
-            categories,
-        )
-        response = await asyncio.to_thread(
-            self._events_api().v2_list_events,
-            cluster_id=cluster_id,
-            host_id=host_id,
-            infra_env_id=infra_env_id,
-            categories=categories,
-            _preload_content=False,
-            **kwargs,
-        )
-        return cast(Any, response).data
+
+        try:
+            log.info(
+                "Getting events for cluster %s, host %s, infra_env %s, categories %s",
+                cluster_id,
+                host_id,
+                infra_env_id,
+                categories,
+            )
+            response = await asyncio.to_thread(
+                self._events_api().v2_list_events,
+                cluster_id=cluster_id,
+                host_id=host_id,
+                infra_env_id=infra_env_id,
+                categories=categories,
+                _preload_content=False,
+                **kwargs,
+            )
+            log.info("Successfully retrieved events")
+            return cast(Any, response).data
+        except ApiException as e:
+            log.error(
+                "API error while getting events (cluster: %s, host: %s, infra_env: %s): Status: %s, Reason: %s, Body: %s",
+                cluster_id,
+                host_id,
+                infra_env_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while getting events (cluster: %s, host: %s, infra_env: %s): %s",
+                cluster_id,
+                host_id,
+                infra_env_id,
+                str(e),
+            )
+            raise
 
     async def get_infra_env(self, infra_env_id: str) -> models.InfraEnv:
         """
@@ -163,12 +227,31 @@ class InventoryClient:
         Returns:
             models.InfraEnv: The infrastructure environment object.
         """
-        return cast(
-            models.InfraEnv,
-            await asyncio.to_thread(
+        try:
+            log.info("Getting infrastructure environment %s", infra_env_id)
+            result = await asyncio.to_thread(
                 self._installer_api().get_infra_env, infra_env_id=infra_env_id
-            ),
-        )
+            )
+            log.info(
+                "Successfully retrieved infrastructure environment %s", infra_env_id
+            )
+            return cast(models.InfraEnv, result)
+        except ApiException as e:
+            log.error(
+                "API error while getting infrastructure environment %s: Status: %s, Reason: %s, Body: %s",
+                infra_env_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while getting infrastructure environment %s: %s",
+                infra_env_id,
+                str(e),
+            )
+            raise
 
     async def create_cluster(
         self, name: str, version: str, single_node: bool, **cluster_params: Any
@@ -185,22 +268,41 @@ class InventoryClient:
         Returns:
             models.Cluster: The created cluster object.
         """
-        if single_node:
-            cluster_params["control_plane_count"] = 1
-            cluster_params["high_availability_mode"] = "None"
-            cluster_params["user_managed_networking"] = True
+        try:
+            if single_node:
+                cluster_params["control_plane_count"] = 1
+                cluster_params["high_availability_mode"] = "None"
+                cluster_params["user_managed_networking"] = True
 
-        params = models.ClusterCreateParams(
-            name=name,
-            openshift_version=version,
-            pull_secret=self.pull_secret,
-            **cluster_params,
-        )
-        log.info("Creating cluster with params %s", params.__dict__)
-        result = await asyncio.to_thread(
-            self._installer_api().v2_register_cluster, new_cluster_params=params
-        )
-        return cast(models.Cluster, result)
+            params = models.ClusterCreateParams(
+                name=name,
+                openshift_version=version,
+                pull_secret=self.pull_secret,
+                **cluster_params,
+            )
+            log.info(
+                "Creating cluster '%s' with version %s (single_node: %s)",
+                name,
+                version,
+                single_node,
+            )
+            result = await asyncio.to_thread(
+                self._installer_api().v2_register_cluster, new_cluster_params=params
+            )
+            log.info("Successfully created cluster '%s'", name)
+            return cast(models.Cluster, result)
+        except ApiException as e:
+            log.error(
+                "API error while creating cluster '%s': Status: %s, Reason: %s, Body: %s",
+                name,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error("Unexpected error while creating cluster '%s': %s", name, str(e))
+            raise
 
     async def create_infra_env(
         self, name: str, **infra_env_params: Any
@@ -215,14 +317,33 @@ class InventoryClient:
         Returns:
             models.InfraEnv: The created infrastructure environment object.
         """
-        infra_env = models.InfraEnvCreateParams(
-            name=name, pull_secret=self.pull_secret, **infra_env_params
-        )
-        log.info("Creating infra-env with params %s", infra_env.__dict__)
-        result = await asyncio.to_thread(
-            self._installer_api().register_infra_env, infraenv_create_params=infra_env
-        )
-        return cast(models.InfraEnv, result)
+        try:
+            infra_env = models.InfraEnvCreateParams(
+                name=name, pull_secret=self.pull_secret, **infra_env_params
+            )
+            log.info("Creating infrastructure environment '%s'", name)
+            result = await asyncio.to_thread(
+                self._installer_api().register_infra_env,
+                infraenv_create_params=infra_env,
+            )
+            log.info("Successfully created infrastructure environment '%s'", name)
+            return cast(models.InfraEnv, result)
+        except ApiException as e:
+            log.error(
+                "API error while creating infrastructure environment '%s': Status: %s, Reason: %s, Body: %s",
+                name,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while creating infrastructure environment '%s': %s",
+                name,
+                str(e),
+            )
+            raise
 
     async def update_cluster(
         self,
@@ -243,23 +364,37 @@ class InventoryClient:
         Returns:
             models.Cluster: The updated cluster object.
         """
-        params = models.V2ClusterUpdateParams(**update_params)
-        if api_vip != "":
-            params.api_vips = [models.ApiVip(cluster_id=cluster_id, ip=api_vip)]
-        if ingress_vip != "":
-            params.ingress_vips = [
-                models.IngressVip(cluster_id=cluster_id, ip=ingress_vip)
-            ]
+        try:
+            params = models.V2ClusterUpdateParams(**update_params)
+            if api_vip != "":
+                params.api_vips = [models.ApiVip(cluster_id=cluster_id, ip=api_vip)]
+            if ingress_vip != "":
+                params.ingress_vips = [
+                    models.IngressVip(cluster_id=cluster_id, ip=ingress_vip)
+                ]
 
-        log.info("Updating cluster %s with params %s", cluster_id, params)
-        return cast(
-            models.Cluster,
-            await asyncio.to_thread(
+            log.info("Updating cluster %s", cluster_id)
+            result = await asyncio.to_thread(
                 self._installer_api().v2_update_cluster,
                 cluster_id=cluster_id,
                 cluster_update_params=params,
-            ),
-        )
+            )
+            log.info("Successfully updated cluster %s", cluster_id)
+            return cast(models.Cluster, result)
+        except ApiException as e:
+            log.error(
+                "API error while updating cluster %s: Status: %s, Reason: %s, Body: %s",
+                cluster_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while updating cluster %s: %s", cluster_id, str(e)
+            )
+            raise
 
     async def install_cluster(self, cluster_id: str) -> models.Cluster:
         """
@@ -271,13 +406,27 @@ class InventoryClient:
         Returns:
             models.Cluster: The cluster object with updated installation status.
         """
-        log.info("Installing cluster %s", cluster_id)
-        return cast(
-            models.Cluster,
-            await asyncio.to_thread(
+        try:
+            log.info("Starting installation for cluster %s", cluster_id)
+            result = await asyncio.to_thread(
                 self._installer_api().v2_install_cluster, cluster_id=cluster_id
-            ),
-        )
+            )
+            log.info("Successfully started installation for cluster %s", cluster_id)
+            return cast(models.Cluster, result)
+        except ApiException as e:
+            log.error(
+                "API error while installing cluster %s: Status: %s, Reason: %s, Body: %s",
+                cluster_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while installing cluster %s: %s", cluster_id, str(e)
+            )
+            raise
 
     async def get_openshift_versions(
         self, only_latest: bool
@@ -291,13 +440,25 @@ class InventoryClient:
         Returns:
             models.OpenshiftVersions: Object containing available OpenShift versions.
         """
-        return cast(
-            models.OpenshiftVersions,
-            await asyncio.to_thread(
+        try:
+            log.info("Getting OpenShift versions (only_latest: %s)", only_latest)
+            result = await asyncio.to_thread(
                 self._versions_api().v2_list_supported_openshift_versions,
                 only_latest=only_latest,
-            ),
-        )
+            )
+            log.info("Successfully retrieved OpenShift versions")
+            return cast(models.OpenshiftVersions, result)
+        except ApiException as e:
+            log.error(
+                "API error while getting OpenShift versions: Status: %s, Reason: %s, Body: %s",
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error("Unexpected error while getting OpenShift versions: %s", str(e))
+            raise
 
     async def get_operator_bundles(self) -> list[dict[str, Any]]:
         """
@@ -306,10 +467,22 @@ class InventoryClient:
         Returns:
             list: A list of operator bundle dictionaries.
         """
-        bundles = cast(
-            list, await asyncio.to_thread(self._operators_api().v2_list_bundles)
-        )
-        return [bundle.to_dict() for bundle in bundles]
+        try:
+            log.info("Getting operator bundles")
+            bundles = await asyncio.to_thread(self._operators_api().v2_list_bundles)
+            log.info("Successfully retrieved operator bundles")
+            return [bundle.to_dict() for bundle in cast(list, bundles)]
+        except ApiException as e:
+            log.error(
+                "API error while getting operator bundles: Status: %s, Reason: %s, Body: %s",
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error("Unexpected error while getting operator bundles: %s", str(e))
+            raise
 
     async def add_operator_bundle_to_cluster(
         self, cluster_id: str, bundle_name: str
@@ -324,16 +497,44 @@ class InventoryClient:
         Returns:
             models.Cluster: The updated cluster object with the new operator.
         """
-        bundle = cast(
-            Any,
-            await asyncio.to_thread(self._operators_api().v2_get_bundle, bundle_name),
-        )
-        olm_operators = [
-            models.OperatorCreateParams(name=op_name) for op_name in bundle.operators
-        ]
-        return await self.update_cluster(
-            cluster_id=cluster_id, olm_operators=olm_operators
-        )
+        try:
+            log.info(
+                "Adding operator bundle '%s' to cluster %s", bundle_name, cluster_id
+            )
+            bundle = await asyncio.to_thread(
+                self._operators_api().v2_get_bundle, bundle_name
+            )
+            olm_operators = [
+                models.OperatorCreateParams(name=op_name)
+                for op_name in getattr(bundle, "operators", [])
+            ]
+            result = await self.update_cluster(
+                cluster_id=cluster_id, olm_operators=olm_operators
+            )
+            log.info(
+                "Successfully added operator bundle '%s' to cluster %s",
+                bundle_name,
+                cluster_id,
+            )
+            return result
+        except ApiException as e:
+            log.error(
+                "API error while adding operator bundle '%s' to cluster %s: Status: %s, Reason: %s, Body: %s",
+                bundle_name,
+                cluster_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while adding operator bundle '%s' to cluster %s: %s",
+                bundle_name,
+                cluster_id,
+                str(e),
+            )
+            raise
 
     async def update_host(
         self, host_id: str, infra_env_id: str, **update_params: Any
@@ -349,10 +550,37 @@ class InventoryClient:
         Returns:
             models.Host: The updated host object.
         """
-        params = models.HostUpdateParams(**update_params)
-        return cast(
-            models.Host,
-            await asyncio.to_thread(
+        try:
+            params = models.HostUpdateParams(**update_params)
+            log.info(
+                "Updating host %s in infrastructure environment %s",
+                host_id,
+                infra_env_id,
+            )
+            result = await asyncio.to_thread(
                 self._installer_api().v2_update_host, infra_env_id, host_id, params
-            ),
-        )
+            )
+            log.info(
+                "Successfully updated host %s in infrastructure environment %s",
+                host_id,
+                infra_env_id,
+            )
+            return cast(models.Host, result)
+        except ApiException as e:
+            log.error(
+                "API error while updating host %s in infrastructure environment %s: Status: %s, Reason: %s, Body: %s",
+                host_id,
+                infra_env_id,
+                e.status,
+                e.reason,
+                e.body,
+            )
+            raise
+        except Exception as e:
+            log.error(
+                "Unexpected error while updating host %s in infrastructure environment %s: %s",
+                host_id,
+                infra_env_id,
+                str(e),
+            )
+            raise
