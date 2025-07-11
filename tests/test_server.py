@@ -12,6 +12,13 @@ from requests.exceptions import RequestException
 
 from service_client import InventoryClient
 import server
+from tests.test_utils import (
+    create_test_cluster,
+    create_test_installing_cluster,
+    create_test_host,
+    create_test_infra_env,
+    create_test_presigned_url,
+)
 
 
 class TestTokenFunctions:
@@ -249,16 +256,15 @@ class TestMCPToolFunctions:
     ) -> None:
         """Test successful cluster_info function."""
         cluster_id = "test-cluster-id"
-        mock_cluster = Mock()
-        mock_cluster.to_str.return_value = "cluster-info-string"
-        mock_inventory_client.get_cluster.return_value = mock_cluster
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        mock_inventory_client.get_cluster.return_value = cluster
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
             result = await server.cluster_info(cluster_id)
 
-            assert result == "cluster-info-string"
+            assert result == cluster.to_str()
             mock_inventory_client.get_cluster.assert_called_once_with(
                 cluster_id=cluster_id
             )
@@ -438,14 +444,18 @@ class TestMCPToolFunctions:
         base_domain = "example.com"
         single_node = False
 
-        mock_cluster = Mock()
-        mock_cluster.id = "cluster-id"
-        mock_cluster.openshift_version = version
-        mock_infraenv = Mock()
-        mock_infraenv.id = "infraenv-id"
+        cluster = create_test_cluster(
+            cluster_id="cluster-id",
+            name=name,
+            openshift_version=version,
+        )
+        infraenv = create_test_infra_env(
+            infra_env_id="infraenv-id",
+            name=name,
+        )
 
-        mock_inventory_client.create_cluster.return_value = mock_cluster
-        mock_inventory_client.create_infra_env.return_value = mock_infraenv
+        mock_inventory_client.create_cluster.return_value = cluster
+        mock_inventory_client.create_infra_env.return_value = infraenv
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
@@ -453,7 +463,7 @@ class TestMCPToolFunctions:
             result = await server.create_cluster(
                 name, version, base_domain, single_node
             )
-            assert result == mock_cluster.id
+            assert result == cluster.id
 
             mock_inventory_client.create_cluster.assert_called_once_with(
                 name, version, single_node, base_dns_domain=base_domain, tags="chatbot"
@@ -473,16 +483,15 @@ class TestMCPToolFunctions:
         api_vip = "192.168.1.100"
         ingress_vip = "192.168.1.101"
 
-        mock_cluster = Mock()
-        mock_cluster.to_str.return_value = "updated-cluster-info"
-        mock_inventory_client.update_cluster.return_value = mock_cluster
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        mock_inventory_client.update_cluster.return_value = cluster
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
             result = await server.set_cluster_vips(cluster_id, api_vip, ingress_vip)
 
-            assert result == "updated-cluster-info"
+            assert result == cluster.to_str()
             mock_inventory_client.update_cluster.assert_called_once_with(
                 cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
             )
@@ -495,16 +504,15 @@ class TestMCPToolFunctions:
     ) -> None:
         """Test successful install_cluster function."""
         cluster_id = "test-cluster-id"
-        mock_cluster = Mock()
-        mock_cluster.to_str.return_value = "installing-cluster-info"
-        mock_inventory_client.install_cluster.return_value = mock_cluster
+        cluster = create_test_installing_cluster(cluster_id=cluster_id)
+        mock_inventory_client.install_cluster.return_value = cluster
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
             result = await server.install_cluster(cluster_id)
 
-            assert result == "installing-cluster-info"
+            assert result == cluster.to_str()
             mock_inventory_client.install_cluster.assert_called_once_with(cluster_id)
 
     @pytest.mark.asyncio
@@ -558,9 +566,8 @@ class TestMCPToolFunctions:
         cluster_id = "test-cluster-id"
         bundle_name = "test-bundle"
 
-        mock_cluster = Mock()
-        mock_cluster.to_str.return_value = "updated-cluster-with-bundle"
-        mock_inventory_client.add_operator_bundle_to_cluster.return_value = mock_cluster
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        mock_inventory_client.add_operator_bundle_to_cluster.return_value = cluster
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
@@ -569,7 +576,7 @@ class TestMCPToolFunctions:
                 cluster_id, bundle_name
             )
 
-            assert result == "updated-cluster-with-bundle"
+            assert result == cluster.to_str()
             mock_inventory_client.add_operator_bundle_to_cluster.assert_called_once_with(
                 cluster_id, bundle_name
             )
@@ -585,16 +592,15 @@ class TestMCPToolFunctions:
         infraenv_id = "test-infraenv-id"
         role = "master"
 
-        mock_host = Mock()
-        mock_host.to_str.return_value = "updated-host-info"
-        mock_inventory_client.update_host.return_value = mock_host
+        host = create_test_host(host_id=host_id, role=role)
+        mock_inventory_client.update_host.return_value = host
 
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
             result = await server.set_host_role(host_id, infraenv_id, role)
 
-            assert result == "updated-host-info"
+            assert result == host.to_str()
             mock_inventory_client.update_host.assert_called_once_with(
                 host_id, infraenv_id, host_role=role
             )
@@ -609,12 +615,9 @@ class TestMCPToolFunctions:
         cluster_id = "test-cluster-id"
         file_name = "kubeconfig"
 
-        # Mock the PresignedUrl model object
-        mock_presigned_url = Mock()
-        mock_presigned_url.url = "https://example.com/presigned-url"
-        mock_presigned_url.expires_at = "2023-12-31T23:59:59Z"
+        presigned_url = create_test_presigned_url()
         mock_inventory_client.get_presigned_for_cluster_credentials.return_value = (
-            mock_presigned_url
+            presigned_url
         )
 
         with patch.object(
@@ -640,12 +643,9 @@ class TestMCPToolFunctions:
         cluster_id = "test-cluster-id"
         file_name = "kubeconfig"
 
-        # Mock the PresignedUrl model object without expiration
-        mock_presigned_url = Mock()
-        mock_presigned_url.url = "https://example.com/presigned-url"
-        mock_presigned_url.expires_at = None
+        presigned_url = create_test_presigned_url(expires_at=None)
         mock_inventory_client.get_presigned_for_cluster_credentials.return_value = (
-            mock_presigned_url
+            presigned_url
         )
 
         with patch.object(
@@ -671,12 +671,11 @@ class TestMCPToolFunctions:
         cluster_id = "test-cluster-id"
         file_name = "kubeconfig"
 
-        # Mock the PresignedUrl model object with zero/default expiration date
-        mock_presigned_url = Mock()
-        mock_presigned_url.url = "https://example.com/presigned-url"
-        mock_presigned_url.expires_at = "0001-01-01 00:00:00+00:00"
+        presigned_url = create_test_presigned_url(
+            expires_at="0001-01-01 00:00:00+00:00",
+        )
         mock_inventory_client.get_presigned_for_cluster_credentials.return_value = (
-            mock_presigned_url
+            presigned_url
         )
 
         with patch.object(

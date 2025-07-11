@@ -11,6 +11,13 @@ from assisted_service_client.rest import ApiException
 from assisted_service_client import Configuration, models
 
 from service_client.assisted_service_api import InventoryClient
+from tests.test_utils import (
+    create_test_cluster,
+    create_test_installing_cluster,
+    create_test_host,
+    create_test_infra_env,
+    create_test_presigned_url,
+)
 
 
 class TestInventoryClient:  # pylint: disable=too-many-public-methods
@@ -140,17 +147,16 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     async def test_get_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster retrieval."""
         cluster_id = "test-cluster-id"
-        mock_cluster = Mock(spec=models.Cluster)
-        mock_cluster.id = cluster_id
+        cluster = create_test_cluster(cluster_id=cluster_id)
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_get_cluster.return_value = mock_cluster
+            mock_api.v2_get_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
             result = await client.get_cluster(cluster_id)
 
-            assert result == mock_cluster
+            assert result == cluster
             mock_api.v2_get_cluster.assert_called_once_with(
                 cluster_id=cluster_id, get_unregistered_clusters=False
             )
@@ -159,18 +165,18 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     async def test_get_cluster_with_unregistered(self, client: InventoryClient) -> None:
         """Test cluster retrieval with unregistered clusters."""
         cluster_id = "test-cluster-id"
-        mock_cluster = Mock(spec=models.Cluster)
+        cluster = create_test_cluster(cluster_id=cluster_id)
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_get_cluster.return_value = mock_cluster
+            mock_api.v2_get_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
             result = await client.get_cluster(
                 cluster_id, get_unregistered_clusters=True
             )
 
-            assert result == mock_cluster
+            assert result == cluster
             mock_api.v2_get_cluster.assert_called_once_with(
                 cluster_id=cluster_id, get_unregistered_clusters=True
             )
@@ -280,37 +286,43 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     async def test_get_infra_env_success(self, client: InventoryClient) -> None:
         """Test successful infrastructure environment retrieval."""
         infra_env_id = "test-infra-env-id"
-        mock_infra_env = Mock(spec=models.InfraEnv)
-        mock_infra_env.id = infra_env_id
+        infra_env = create_test_infra_env(
+            infra_env_id=infra_env_id,
+            name="test-infra-env",
+        )
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.get_infra_env.return_value = mock_infra_env
+            mock_api.get_infra_env.return_value = infra_env
             mock_installer_api.return_value = mock_api
 
             result = await client.get_infra_env(infra_env_id)
 
-            assert result == mock_infra_env
+            assert result == infra_env
             mock_api.get_infra_env.assert_called_once_with(infra_env_id=infra_env_id)
 
     @pytest.mark.asyncio
     async def test_list_infra_envs_success(self, client: InventoryClient) -> None:
         """Test successful infrastructure environments listing for a cluster."""
         cluster_id = "test-cluster-id"
-        mock_infra_env1 = Mock(spec=models.InfraEnv)
-        mock_infra_env1.id = "infra-env-1"
-        mock_infra_env2 = Mock(spec=models.InfraEnv)
-        mock_infra_env2.id = "infra-env-2"
-        mock_infra_envs = [mock_infra_env1, mock_infra_env2]
+        infra_env1 = create_test_infra_env(
+            infra_env_id="infra-env-1",
+            name="test-infra-env-1",
+        )
+        infra_env2 = create_test_infra_env(
+            infra_env_id="infra-env-2",
+            name="test-infra-env-2",
+        )
+        infra_envs = [infra_env1, infra_env2]
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.list_infra_envs.return_value = mock_infra_envs
+            mock_api.list_infra_envs.return_value = infra_envs
             mock_installer_api.return_value = mock_api
 
             result = await client.list_infra_envs(cluster_id)
 
-            assert result == mock_infra_envs
+            assert result == infra_envs
             assert len(result) == 2
             mock_api.list_infra_envs.assert_called_once_with(cluster_id=cluster_id)
 
@@ -338,19 +350,22 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         name = "test-cluster"
         version = "4.18.2"
         single_node = False
-        mock_cluster = Mock(spec=models.Cluster)
-        mock_cluster.name = name
+        cluster = create_test_cluster(
+            cluster_id="test-cluster-id",
+            name=name,
+            openshift_version=version,
+        )
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_register_cluster.return_value = mock_cluster
+            mock_api.v2_register_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
             result = await client.create_cluster(
                 name, version, single_node, base_dns_domain="example.com"
             )
 
-            assert result == mock_cluster
+            assert result == cluster
             mock_api.v2_register_cluster.assert_called_once()
             # Verify the cluster params
             _args, kwargs = mock_api.v2_register_cluster.call_args
@@ -365,16 +380,20 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         name = "test-sno-cluster"
         version = "4.18.2"
         single_node = True
-        mock_cluster = Mock(spec=models.Cluster)
+        cluster = create_test_cluster(
+            cluster_id="test-sno-cluster-id",
+            name=name,
+            openshift_version=version,
+        )
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_register_cluster.return_value = mock_cluster
+            mock_api.v2_register_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
             result = await client.create_cluster(name, version, single_node)
 
-            assert result == mock_cluster
+            assert result == cluster
             # Verify single node specific parameters have correct values
             _args, kwargs = mock_api.v2_register_cluster.call_args
             cluster_params = kwargs["new_cluster_params"]
@@ -386,17 +405,19 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     async def test_create_infra_env_success(self, client: InventoryClient) -> None:
         """Test successful infrastructure environment creation."""
         name = "test-infra-env"
-        mock_infra_env = Mock(spec=models.InfraEnv)
-        mock_infra_env.name = name
+        infra_env = create_test_infra_env(
+            infra_env_id="test-infra-env-id",
+            name=name,
+        )
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.register_infra_env.return_value = mock_infra_env
+            mock_api.register_infra_env.return_value = infra_env
             mock_installer_api.return_value = mock_api
 
             result = await client.create_infra_env(name, cluster_id="test-cluster-id")
 
-            assert result == mock_infra_env
+            assert result == infra_env
             mock_api.register_infra_env.assert_called_once()
             # Verify the infra env params
             _args, kwargs = mock_api.register_infra_env.call_args
@@ -410,18 +431,18 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         cluster_id = "test-cluster-id"
         api_vip = "192.168.1.100"
         ingress_vip = "192.168.1.101"
-        mock_cluster = Mock(spec=models.Cluster)
+        cluster = create_test_cluster(cluster_id=cluster_id)
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_update_cluster.return_value = mock_cluster
+            mock_api.v2_update_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
             result = await client.update_cluster(
                 cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
             )
 
-            assert result == mock_cluster
+            assert result == cluster
 
             # Verify the call was made with correct cluster_id
             mock_api.v2_update_cluster.assert_called_once()
@@ -447,16 +468,16 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     async def test_install_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster installation."""
         cluster_id = "test-cluster-id"
-        mock_cluster = Mock(spec=models.Cluster)
+        cluster = create_test_installing_cluster(cluster_id=cluster_id)
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_install_cluster.return_value = mock_cluster
+            mock_api.v2_install_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
             result = await client.install_cluster(cluster_id)
 
-            assert result == mock_cluster
+            assert result == cluster
             mock_api.v2_install_cluster.assert_called_once_with(cluster_id=cluster_id)
 
     @pytest.mark.asyncio
@@ -464,16 +485,16 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         self, client: InventoryClient
     ) -> None:
         """Test successful OpenShift versions retrieval."""
-        mock_versions = Mock(spec=models.OpenshiftVersions)
+        versions = models.OpenshiftVersions()
 
         with patch.object(client, "_versions_api") as mock_versions_api:
             mock_api = Mock()
-            mock_api.v2_list_supported_openshift_versions.return_value = mock_versions
+            mock_api.v2_list_supported_openshift_versions.return_value = versions
             mock_versions_api.return_value = mock_api
 
             result = await client.get_openshift_versions(only_latest=True)
 
-            assert result == mock_versions
+            assert result == versions
             mock_api.v2_list_supported_openshift_versions.assert_called_once_with(
                 only_latest=True
             )
@@ -508,20 +529,20 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         bundle_name = "test-bundle"
         mock_bundle = Mock()
         mock_bundle.operators = ["operator1", "operator2"]
-        mock_cluster = Mock(spec=models.Cluster)
+        cluster = create_test_cluster(cluster_id=cluster_id)
 
         with patch.object(client, "_operators_api") as mock_operators_api:
             with patch.object(client, "update_cluster") as mock_update_cluster:
                 mock_api = Mock()
                 mock_api.v2_get_bundle.return_value = mock_bundle
                 mock_operators_api.return_value = mock_api
-                mock_update_cluster.return_value = mock_cluster
+                mock_update_cluster.return_value = cluster
 
                 result = await client.add_operator_bundle_to_cluster(
                     cluster_id, bundle_name
                 )
 
-                assert result == mock_cluster
+                assert result == cluster
                 mock_api.v2_get_bundle.assert_called_once_with(bundle_name)
 
                 # Verify update_cluster was called with correct operators
@@ -543,18 +564,18 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         host_id = "test-host-id"
         infra_env_id = "test-infra-env-id"
         host_role = "master"
-        mock_host = Mock(spec=models.Host)
+        host = create_test_host(host_id=host_id, role=host_role)
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_update_host.return_value = mock_host
+            mock_api.v2_update_host.return_value = host
             mock_installer_api.return_value = mock_api
 
             result = await client.update_host(
                 host_id, infra_env_id, host_role=host_role
             )
 
-            assert result == mock_host
+            assert result == host
             mock_api.v2_update_host.assert_called_once()
 
             # Verify the call arguments
@@ -620,14 +641,14 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         file_types = ["kubeconfig", "kubeconfig-noingress", "kubeadmin-password"]
 
         for file_name in file_types:
-            mock_presigned_url = Mock(spec=models.PresignedUrl)
-            mock_presigned_url.url = f"https://example.com/presigned-url/{file_name}"
-            mock_presigned_url.expires_at = "2023-12-31T23:59:59Z"
+            presigned_url = create_test_presigned_url(
+                url=f"https://example.com/presigned-url/{file_name}",
+            )
 
             with patch.object(client, "_installer_api") as mock_installer_api:
                 mock_api = Mock()
                 mock_api.v2_get_presigned_for_cluster_credentials.return_value = (
-                    mock_presigned_url
+                    presigned_url
                 )
                 mock_installer_api.return_value = mock_api
 
@@ -635,7 +656,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
                     cluster_id, file_name
                 )
 
-                assert result == mock_presigned_url
+                assert result == presigned_url
                 mock_api.v2_get_presigned_for_cluster_credentials.assert_called_once_with(
                     cluster_id=cluster_id, file_name=file_name
                 )
@@ -647,14 +668,12 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         """Test presigned URL retrieval when only URL is returned (no expires_at)."""
         cluster_id = "test-cluster-id"
         file_name = "kubeconfig"
-        mock_presigned_url = Mock(spec=models.PresignedUrl)
-        mock_presigned_url.url = "https://example.com/presigned-url"
-        mock_presigned_url.expires_at = None
+        presigned_url = create_test_presigned_url(expires_at=None)
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
             mock_api.v2_get_presigned_for_cluster_credentials.return_value = (
-                mock_presigned_url
+                presigned_url
             )
             mock_installer_api.return_value = mock_api
 
@@ -662,7 +681,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
                 cluster_id, file_name
             )
 
-            assert result == mock_presigned_url
+            assert result == presigned_url
             mock_api.v2_get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id=cluster_id, file_name=file_name
             )
