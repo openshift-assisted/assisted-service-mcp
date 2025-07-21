@@ -33,6 +33,12 @@ REQUEST_LATENCY = Histogram(
 )
 
 
+def initiate_metrics() -> None:
+    """Initiate metrics."""
+    REQUEST_COUNT.labels(tool="").inc()
+    REQUEST_LATENCY.labels(tool="").observe(0)
+
+
 def track_tool_usage() -> Callable:
     """Decorate MCP tools with this decorator to track tool usage metrics."""
 
