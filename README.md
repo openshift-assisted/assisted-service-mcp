@@ -138,3 +138,19 @@ The MCP server provides the following tools for interacting with the OpenShift A
 * **Create a cluster**: "Create a new cluster named 'my-cluster' with OpenShift 4.14 and base domain 'example.com'"
 * **Check cluster events**: "What events happened on cluster abc123?"
 * **Install a cluster**: "Start the installation for cluster abc123"
+
+## Prometheus Metrics
+
+The MCP server exposes Prometheus metrics to monitor tool usage and performance. The metrics are available at `http://localhost:8000/metrics` when the server is running.
+
+### Available Metrics
+
+* **assisted_service_mcp_tool_request_count** - Number of tool requests.
+* **assisted_service_mcp_tool_request_duration_sum** - Total time to run the tool, in seconds.
+* **assisted_service_mcp_tool_request_duration_count** - Total number of tool requests measured.
+* **assisted_service_mcp_tool_request_duration_bucket** - Number of tool requests organized in buckets.
+
+### Metric Labels
+
+All metrics include the following label:
+* **tool** - The name of the tool, for example `cluster_info`, `list_clusters`, etc.
