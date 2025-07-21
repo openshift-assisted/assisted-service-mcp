@@ -7,7 +7,7 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 
 import json
 import os
-
+import asyncio
 
 import requests
 import uvicorn
@@ -15,7 +15,7 @@ from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
 
 
-from service_client import InventoryClient, metrics, track_tool_usage
+from service_client import InventoryClient, metrics, track_tool_usage, initiate_metrics
 from service_client.logger import log
 
 
@@ -544,7 +544,17 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     return result.to_str()
 
 
+def list_tools() -> list[str]:
+    """List all MCP tools."""
+
+    async def mcp_list_tools() -> list[str]:
+        return [t.name for t in await mcp.list_tools()]
+
+    return asyncio.run(mcp_list_tools())
+
+
 if __name__ == "__main__":
     app = mcp.sse_app()
+    initiate_metrics(list_tools())
     app.add_route("/metrics", metrics)
     uvicorn.run(app, host="0.0.0.0")
