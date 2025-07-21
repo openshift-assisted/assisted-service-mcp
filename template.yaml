@@ -98,6 +98,6 @@ objects:
       app: assisted-service-mcp
     ports:
       - protocol: TCP
+        name: assisted-service-mcp
         port: ${{SERVICE_PORT}}
         targetPort: ${{SERVICE_PORT}}
-
