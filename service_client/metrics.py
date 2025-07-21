@@ -33,10 +33,11 @@ REQUEST_LATENCY = Histogram(
 )
 
 
-def initiate_metrics() -> None:
+def initiate_metrics(tools: list[str]) -> None:
     """Initiate metrics."""
-    REQUEST_COUNT.labels(tool="").inc()
-    REQUEST_LATENCY.labels(tool="").observe(0)
+    for tool in tools:
+        REQUEST_COUNT.labels(tool=tool).inc()
+        REQUEST_LATENCY.labels(tool=tool).observe(0)
 
 
 def track_tool_usage() -> Callable:
