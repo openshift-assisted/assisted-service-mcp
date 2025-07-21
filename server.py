@@ -8,12 +8,16 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 import json
 import os
 
-import requests
-from mcp.server.fastmcp import FastMCP
-from assisted_service_client import models
 
-from service_client import InventoryClient
+import requests
+import uvicorn
+from assisted_service_client import models
+from mcp.server.fastmcp import FastMCP
+
+
+from service_client import InventoryClient, metrics, track_tool_usage
 from service_client.logger import log
+
 
 mcp = FastMCP("AssistedService", host="0.0.0.0")
 
@@ -115,6 +119,7 @@ def get_access_token() -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def cluster_info(cluster_id: str) -> str:
     """
     Get comprehensive information about a specific assisted installer cluster.
@@ -141,6 +146,7 @@ async def cluster_info(cluster_id: str) -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def list_clusters() -> str:
     """
     List all assisted installer clusters for the current user.
@@ -174,6 +180,7 @@ async def list_clusters() -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def cluster_events(cluster_id: str) -> str:
     """
     Get the events related to a cluster with the given cluster id.
@@ -197,6 +204,7 @@ async def cluster_events(cluster_id: str) -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def host_events(cluster_id: str, host_id: str) -> str:
     """
     Get events specific to a particular host within a cluster.
@@ -222,6 +230,7 @@ async def host_events(cluster_id: str, host_id: str) -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def cluster_iso_download_url(cluster_id: str) -> str:
     """
     Get ISO download URL(s) for a cluster.
@@ -278,6 +287,7 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def create_cluster(
     name: str, version: str, base_domain: str, single_node: bool
 ) -> str:
@@ -328,6 +338,7 @@ async def create_cluster(
 
 
 @mcp.tool()
+@track_tool_usage()
 async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
     """
     Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
@@ -362,6 +373,7 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
 
 
 @mcp.tool()
+@track_tool_usage()
 async def install_cluster(cluster_id: str) -> str:
     """
     Trigger the installation process for a prepared cluster.
@@ -391,6 +403,7 @@ async def install_cluster(cluster_id: str) -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def list_versions() -> str:
     """
     List all available OpenShift versions for installation.
@@ -411,6 +424,7 @@ async def list_versions() -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def list_operator_bundles() -> str:
     """
     List available operator bundles for cluster installation.
@@ -431,6 +445,7 @@ async def list_operator_bundles() -> str:
 
 
 @mcp.tool()
+@track_tool_usage()
 async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
     """
     Add an operator bundle to be installed with the cluster.
@@ -458,6 +473,7 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
 
 
 @mcp.tool()
+@track_tool_usage()
 async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> str:
     """
     Get presigned download URL for cluster credential files.
@@ -501,6 +517,7 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
 
 
 @mcp.tool()
+@track_tool_usage()
 async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     """
     Assign a specific role to a discovered host in the cluster.
@@ -528,4 +545,6 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    app = mcp.sse_app()
+    app.add_route("/metrics", metrics)
+    uvicorn.run(app, host="0.0.0.0")
