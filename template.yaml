@@ -13,6 +13,9 @@ parameters:
 - name: SSO_URL
   value: "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
   description: "URL for Red Hat Single Sign-On (SSO) OpenID Connect token endpoint"
+- name: TRANSPORT
+  value: "sse"
+  description: "MCP transport type. Valid values: 'http', 'streamable-http', 'sse'. Defaults to 'sse'."
 - name: PULL_SECRET_URL
   value: "https://api.openshift.com/api/accounts_mgmt/v1/access_token"
   description: "URL for accessing pull secrets via the accounts management API"
@@ -81,6 +84,8 @@ objects:
             value: ${INVENTORY_URL}
           - name: SSO_URL
             value: ${SSO_URL}
+          - name: TRANSPORT
+            value: ${TRANSPORT}
           - name: PULL_SECRET_URL
             value: ${PULL_SECRET_URL}
           - name: CLIENT_DEBUG
