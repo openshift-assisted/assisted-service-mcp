@@ -8,19 +8,18 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 import json
 import os
 import asyncio
-from typing import Literal, cast
 
 import requests
 import uvicorn
 from assisted_service_client import models
-from fastmcp import FastMCP
-from fastmcp.server.dependencies import get_http_headers
+from mcp.server.fastmcp import FastMCP
+
 
 from service_client import InventoryClient, metrics, track_tool_usage, initiate_metrics
 from service_client.logger import log
 
 
-mcp_server: FastMCP = FastMCP("AssistedService", host="0.0.0.0")
+mcp = FastMCP("AssistedService", host="0.0.0.0")
 
 
 def format_presigned_url(presigned_url: models.PresignedUrl) -> str:
@@ -66,11 +65,12 @@ def get_offline_token() -> str:
         log.debug("Found offline token in environment variables")
         return token
 
-    headers = get_http_headers()
-    token = headers.get("ocm-offline-token")
-    if token:
-        log.debug("Found offline token in request headers")
-        return token
+    request = mcp.get_context().request_context.request
+    if request is not None:
+        token = request.headers.get("OCM-Offline-Token")
+        if token:
+            log.debug("Found offline token in request headers")
+            return token
 
     log.error("No offline token found in environment or request headers")
     raise RuntimeError("No offline token found in environment or request headers")
@@ -92,13 +92,14 @@ def get_access_token() -> str:
     """
     log.debug("Attempting to retrieve access token")
     # First try to get the token from the authorization header:
-    headers = get_http_headers()
-    auth_header = headers.get("authorization")
-    if auth_header:
-        parts = auth_header.split()
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            log.debug("Found access token in authorization header")
-            return parts[1]
+    request = mcp.get_context().request_context.request
+    if request is not None:
+        header = request.headers.get("Authorization")
+        if header is not None:
+            parts = header.split()
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                log.debug("Found access token in authorization header")
+                return parts[1]
 
     # Now try to get the offline token, and generate a new access token from it:
     log.debug("Generating new access token from offline token")
@@ -117,7 +118,7 @@ def get_access_token() -> str:
     return response.json()["access_token"]
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def cluster_info(cluster_id: str) -> str:
     """
@@ -144,7 +145,7 @@ async def cluster_info(cluster_id: str) -> str:
     return result.to_str()
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def list_clusters() -> str:
     """
@@ -178,7 +179,7 @@ async def list_clusters() -> str:
     return json.dumps(resp)
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def cluster_events(cluster_id: str) -> str:
     """
@@ -202,7 +203,7 @@ async def cluster_events(cluster_id: str) -> str:
     return result
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def host_events(cluster_id: str, host_id: str) -> str:
     """
@@ -228,7 +229,7 @@ async def host_events(cluster_id: str, host_id: str) -> str:
     return result
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def cluster_iso_download_url(cluster_id: str) -> str:
     """
@@ -285,7 +286,7 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
     return "\n\n".join(iso_info)
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def create_cluster(
     name: str, version: str, base_domain: str, single_node: bool
@@ -336,7 +337,7 @@ async def create_cluster(
     return cluster.id
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
     """
@@ -371,7 +372,7 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
     return result.to_str()
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def install_cluster(cluster_id: str) -> str:
     """
@@ -401,7 +402,7 @@ async def install_cluster(cluster_id: str) -> str:
     return result.to_str()
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def list_versions() -> str:
     """
@@ -422,7 +423,7 @@ async def list_versions() -> str:
     return json.dumps(result)
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def list_operator_bundles() -> str:
     """
@@ -443,7 +444,7 @@ async def list_operator_bundles() -> str:
     return json.dumps(result)
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
     """
@@ -471,7 +472,7 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
     return result.to_str()
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> str:
     """
@@ -515,7 +516,7 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
     return format_presigned_url(result)
 
 
-@mcp_server.tool()
+@mcp.tool()
 @track_tool_usage()
 async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     """
@@ -545,20 +546,15 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
 
 def list_tools() -> list[str]:
     """List all MCP tools."""
-    return list(asyncio.run(mcp_server.get_tools()))
 
+    async def mcp_list_tools() -> list[str]:
+        return [t.name for t in await mcp.list_tools()]
 
-def get_transport() -> Literal["http", "streamable-http", "sse"]:
-    """Get the transport type from the environment."""
-    t = os.getenv("TRANSPORT", "sse")
-    if t not in ["http", "streamable-http", "sse"]:
-        t = "sse"  # fallback to default
-    return cast(Literal["http", "streamable-http", "sse"], t)
+    return asyncio.run(mcp_list_tools())
 
 
 if __name__ == "__main__":
-    transport = get_transport()
-    app = mcp_server.http_app(transport=transport)
+    app = mcp.sse_app()
     initiate_metrics(list_tools())
     app.add_route("/metrics", metrics)
     uvicorn.run(app, host="0.0.0.0")
