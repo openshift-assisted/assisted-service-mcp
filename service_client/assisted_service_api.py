@@ -129,12 +129,12 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while getting cluster %s: %s", cluster_id, str(e)
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def list_clusters(self) -> list:
         """
@@ -155,10 +155,10 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error("Unexpected error while listing clusters: %s", str(e))
-            raise
+            raise Exception("An internal error occurred")
 
     async def get_events(
         self,
@@ -213,7 +213,7 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while getting events (cluster: %s, host: %s, infra_env: %s): %s",
@@ -222,7 +222,7 @@ class InventoryClient:
                 infra_env_id,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def get_infra_env(self, infra_env_id: str) -> models.InfraEnv:
         """
@@ -251,14 +251,14 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while getting infrastructure environment %s: %s",
                 infra_env_id,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def list_infra_envs(self, cluster_id: str) -> list[dict[str, Any]]:
         """
@@ -288,14 +288,14 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while listing infrastructure environments for cluster %s: %s",
                 cluster_id,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def create_cluster(
         self, name: str, version: str, single_node: bool, **cluster_params: Any
@@ -343,10 +343,10 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error("Unexpected error while creating cluster '%s': %s", name, str(e))
-            raise
+            raise Exception("An internal error occurred")
 
     async def create_infra_env(
         self, name: str, **infra_env_params: Any
@@ -380,14 +380,14 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while creating infrastructure environment '%s': %s",
                 name,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def update_cluster(
         self,
@@ -433,12 +433,12 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while updating cluster %s: %s", cluster_id, str(e)
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def install_cluster(self, cluster_id: str) -> models.Cluster:
         """
@@ -465,12 +465,12 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while installing cluster %s: %s", cluster_id, str(e)
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def get_openshift_versions(
         self, only_latest: bool
@@ -499,10 +499,10 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error("Unexpected error while getting OpenShift versions: %s", str(e))
-            raise
+            raise Exception("An internal error occurred")
 
     async def get_operator_bundles(self) -> list[dict[str, Any]]:
         """
@@ -523,10 +523,10 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error("Unexpected error while getting operator bundles: %s", str(e))
-            raise
+            raise Exception("An internal error occurred")
 
     async def add_operator_bundle_to_cluster(
         self, cluster_id: str, bundle_name: str
@@ -570,7 +570,7 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while adding operator bundle '%s' to cluster %s: %s",
@@ -578,7 +578,7 @@ class InventoryClient:
                 cluster_id,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def update_host(
         self, host_id: str, infra_env_id: str, **update_params: Any
@@ -619,7 +619,7 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while updating host %s in infrastructure environment %s: %s",
@@ -627,7 +627,7 @@ class InventoryClient:
                 infra_env_id,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def get_presigned_for_cluster_credentials(
         self, cluster_id: str, file_name: str
@@ -669,7 +669,7 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while getting presigned URL for cluster %s credentials file %s: %s",
@@ -677,7 +677,7 @@ class InventoryClient:
                 file_name,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
 
     async def get_infra_env_download_url(
         self, infra_env_id: str
@@ -713,11 +713,11 @@ class InventoryClient:
                 e.reason,
                 e.body,
             )
-            raise
+            raise Exception(f"API error: Status {e.status}")
         except Exception as e:
             log.error(
                 "Unexpected error while getting presigned download URL for infrastructure environment %s: %s",
                 infra_env_id,
                 str(e),
             )
-            raise
+            raise Exception("An internal error occurred")
