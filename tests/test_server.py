@@ -2,6 +2,8 @@
 Unit tests for the server module.
 """
 
+# pylint: disable=too-many-lines
+
 import json
 import os
 from typing import Generator, Tuple
@@ -562,6 +564,55 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             )
 
     @pytest.mark.asyncio
+    async def test_create_cluster_with_ssh_key_success(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test successful create_cluster function with SSH public key."""
+        name = "test-cluster"
+        version = "4.18.2"
+        base_domain = "example.com"
+        single_node = False
+        ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC test@example.com"
+
+        cluster = create_test_cluster(
+            cluster_id="cluster-id",
+            name=name,
+            openshift_version=version,
+        )
+        infraenv = create_test_infra_env(
+            infra_env_id="infraenv-id",
+            name=name,
+        )
+
+        mock_inventory_client.create_cluster.return_value = cluster
+        mock_inventory_client.create_infra_env.return_value = infraenv
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.create_cluster(
+                name, version, base_domain, single_node, ssh_public_key
+            )
+            assert result == cluster.id
+
+            mock_inventory_client.create_cluster.assert_called_once_with(
+                name,
+                version,
+                single_node,
+                base_dns_domain=base_domain,
+                tags="chatbot",
+                ssh_public_key=ssh_public_key,
+            )
+            mock_inventory_client.create_infra_env.assert_called_once_with(
+                name,
+                cluster_id="cluster-id",
+                openshift_version=version,
+                ssh_authorized_key=ssh_public_key,
+            )
+
+    @pytest.mark.asyncio
     async def test_set_cluster_vips_success(
         self,
         mock_inventory_client: Mock,
@@ -779,4 +830,82 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             assert result == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
+            )
+
+    @pytest.mark.asyncio
+    async def test_set_cluster_ssh_key_success(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test successful set_cluster_ssh_key function with cluster and InfraEnvs updated."""
+        cluster_id = "test-cluster-id"
+        ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC test@example.com"
+
+        # Mock cluster update response
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        mock_inventory_client.update_cluster.return_value = cluster
+
+        # Mock InfraEnvs list
+        mock_infra_envs = [
+            {"id": "infraenv-id", "name": "infraenv"},
+        ]
+        mock_inventory_client.list_infra_envs.return_value = mock_infra_envs
+
+        # Mock successful InfraEnv updates
+        mock_inventory_client.update_infra_env.return_value = None
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.set_cluster_ssh_key(cluster_id, ssh_public_key)
+            assert result == cluster.to_str()
+
+            # Verify all expected calls were made
+            mock_inventory_client.update_cluster.assert_called_once_with(
+                cluster_id, ssh_public_key=ssh_public_key
+            )
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+            mock_inventory_client.update_infra_env.assert_called_once_with(
+                "infraenv-id", ssh_authorized_key=ssh_public_key
+            )
+
+    @pytest.mark.asyncio
+    async def test_set_cluster_ssh_key_infraenv_failure(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test set_cluster_ssh_key function when InfraEnv update fails."""
+        cluster_id = "test-cluster-id"
+        ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC test@example.com"
+
+        # Mock cluster update response
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        mock_inventory_client.update_cluster.return_value = cluster
+
+        # Mock InfraEnvs list
+        mock_infra_envs = [
+            {"id": "infraenv-id", "name": "infraenv"},
+        ]
+        mock_inventory_client.list_infra_envs.return_value = mock_infra_envs
+
+        # Mock all InfraEnv updates to fail
+        mock_inventory_client.update_infra_env.side_effect = Exception("Update failed")
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.set_cluster_ssh_key(cluster_id, ssh_public_key)
+            # Should return partial failure message
+            assert "Cluster key updated, but boot image key update failed" in result
+            assert cluster.to_str() in result
+
+            # Verify all expected calls were made
+            mock_inventory_client.update_cluster.assert_called_once_with(
+                cluster_id, ssh_public_key=ssh_public_key
+            )
+            mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
+            mock_inventory_client.update_infra_env.assert_called_once_with(
+                "infraenv-id", ssh_authorized_key=ssh_public_key
             )

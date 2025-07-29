@@ -8,6 +8,7 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 import json
 import os
 import asyncio
+from typing import Optional
 
 import requests
 import uvicorn
@@ -289,7 +290,11 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
 @mcp.tool()
 @track_tool_usage()
 async def create_cluster(
-    name: str, version: str, base_domain: str, single_node: bool
+    name: str,
+    version: str,
+    base_domain: str,
+    single_node: bool,
+    ssh_public_key: Optional[str] = None,
 ) -> str:
     """
     Create a new OpenShift cluster.
@@ -306,29 +311,44 @@ async def create_cluster(
         single_node (bool): Whether to create a single-node cluster. Set to True for
             edge deployments or resource-constrained environments. Set to False for
             production high-availability clusters with multiple control plane nodes.
+        ssh_public_key (str, optional): SSH public key for accessing cluster nodes.
+            Providing this key will allow ssh acces to the nodes during and after
+            cluster installation.
 
     Returns:
         str: A the created cluster's id
     """
     log.info(
-        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s",
+        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, ssh_key_provided=%s",
         name,
         version,
         base_domain,
         single_node,
+        ssh_public_key is not None,
     )
     client = InventoryClient(get_access_token())
-    cluster = await client.create_cluster(
-        name, version, single_node, base_dns_domain=base_domain, tags="chatbot"
-    )
+
+    # Prepare cluster parameters
+    cluster_params = {"base_dns_domain": base_domain, "tags": "chatbot"}
+    if ssh_public_key:
+        cluster_params["ssh_public_key"] = ssh_public_key
+
+    cluster = await client.create_cluster(name, version, single_node, **cluster_params)
     if cluster.id is None:
         log.error("Failed to create cluster %s: cluster ID is unset", name)
         return f"Failed to create cluster {name}: cluster ID is unset"
 
     log.info("Successfully created cluster %s with ID: %s", name, cluster.id)
-    infraenv = await client.create_infra_env(
-        name, cluster_id=cluster.id, openshift_version=cluster.openshift_version
-    )
+
+    # Prepare infra env parameters
+    infraenv_params = {
+        "cluster_id": cluster.id,
+        "openshift_version": cluster.openshift_version,
+    }
+    if ssh_public_key:
+        infraenv_params["ssh_authorized_key"] = ssh_public_key
+
+    infraenv = await client.create_infra_env(name, **infraenv_params)
     log.info(
         "Successfully created InfraEnv for cluster %s with ID: %s",
         cluster.id,
@@ -541,6 +561,61 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
     client = InventoryClient(get_access_token())
     result = await client.update_host(host_id, infraenv_id, host_role=role)
     log.info("Successfully set role '%s' for host %s", role, host_id)
+    return result.to_str()
+
+
+@mcp.tool()
+@track_tool_usage()
+async def set_cluster_ssh_key(cluster_id: str, ssh_public_key: str) -> str:
+    """
+    Set or update the SSH public key for a cluster.
+
+    This allows SSH access to cluster nodes during and after installation.
+    Only ISO images downloaded after the update will include the updated key.
+    Discovered hosts should be booted with a new ISO in order to get the new key.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to update.
+        ssh_public_key (str): The SSH public key to set for the cluster.
+            This should be a valid SSH public key in OpenSSH format
+            (e.g., 'ssh-rsa AAAAB3NzaC1yc2E... user@host').
+
+    Returns:
+        str: A formatted string containing the updated cluster configuration.
+    """
+    log.info("Setting SSH public key for cluster %s", cluster_id)
+    client = InventoryClient(get_access_token())
+
+    # Update the cluster with the new SSH public key
+    result = await client.update_cluster(cluster_id, ssh_public_key=ssh_public_key)
+    log.info("Successfully updated cluster %s with new SSH key", cluster_id)
+
+    # Get existing InfraEnvs and update them
+    infra_envs = await client.list_infra_envs(cluster_id)
+    log.info("Found %d InfraEnvs for cluster %s", len(infra_envs), cluster_id)
+
+    update_failed = False
+    for infra_env in infra_envs:
+        infra_env_id = infra_env.get("id")
+        if not infra_env_id:
+            log.warning("Skipping InfraEnv without ID: %s", infra_env)
+            continue
+
+        try:
+            await client.update_infra_env(
+                infra_env_id, ssh_authorized_key=ssh_public_key
+            )
+            log.info("Successfully updated InfraEnv %s with new SSH key", infra_env_id)
+        except Exception as e:
+            update_failed = True
+            log.error("Failed to update InfraEnv %s: %s", infra_env_id, str(e))
+
+    if update_failed:
+        return f"Cluster key updated, but boot image key update failed. New cluster: {result.to_str()}"
+
+    log.info(
+        "Successfully updated SSH key for cluster %s and its InfraEnvs", cluster_id
+    )
     return result.to_str()
 
 
