@@ -298,7 +298,12 @@ async def create_cluster(
     (multi-node) or single-node deployment.
 
     Args:
-        name (str): The name for the new cluster. Must be unique within your account.
+        name (str): The name for the new cluster. The cluster name must meet the
+            following requirements, refuse to accept cluster names that fail any of these:
+              - Be between 1 and 54 characters
+              - Use only lowercase alphanumeric characters or the hyphen (-)
+              - Start and end with a lowercase letter or number
+            Strictly adhere to these rules, check every cluster name carefully.
         version (str): The OpenShift version to install (e.g., "4.18.2", "4.17.1").
             Use list_versions() to see available versions.
         base_domain (str): The base DNS domain for the cluster (e.g., "example.com").
