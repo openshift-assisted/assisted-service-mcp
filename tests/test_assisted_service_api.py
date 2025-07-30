@@ -11,6 +11,7 @@ from assisted_service_client.rest import ApiException
 from assisted_service_client import Configuration, models
 
 from service_client.assisted_service_api import InventoryClient
+from service_client.exceptions import AssistedServiceAPIError
 from tests.test_utils import (
     create_test_cluster,
     create_test_installing_cluster,
@@ -202,11 +203,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             )
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ApiException) as exc_info:
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_cluster(cluster_id)
 
-            assert exc_info.value.status == 404
-            assert exc_info.value.reason == "Not Found"
+            assert "API error: Status 404" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_cluster_unexpected_exception(
@@ -220,8 +220,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             mock_api.v2_get_cluster.side_effect = ValueError("Unexpected error")
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ValueError):
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_cluster(cluster_id)
+
+            assert "An internal error occurred" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_list_clusters_success(self, client: InventoryClient) -> None:
@@ -347,11 +349,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             )
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ApiException) as exc_info:
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.list_infra_envs(cluster_id)
 
-            assert exc_info.value.status == 404
-            assert exc_info.value.reason == "Not Found"
+            assert "API error: Status 404" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_create_cluster_success(self, client: InventoryClient) -> None:
@@ -620,13 +621,12 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             )
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ApiException) as exc_info:
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_presigned_for_cluster_credentials(
                     cluster_id, file_name
                 )
 
-            assert exc_info.value.status == 404
-            assert exc_info.value.reason == "Not Found"
+            assert "API error: Status 404" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_presigned_for_cluster_credentials_unexpected_exception(
@@ -643,12 +643,12 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             )
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_presigned_for_cluster_credentials(
                     cluster_id, file_name
                 )
 
-            assert str(exc_info.value) == "Unexpected error"
+            assert "An internal error occurred" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_presigned_for_cluster_credentials_different_file_types(
@@ -741,11 +741,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             )
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ApiException) as exc_info:
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_infra_env_download_url(infra_env_id)
 
-            assert exc_info.value.status == 404
-            assert exc_info.value.reason == "Not Found"
+            assert "API error: Status 404" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_infra_env_download_url_unexpected_exception(
@@ -761,10 +760,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             )
             mock_installer_api.return_value = mock_api
 
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_infra_env_download_url(infra_env_id)
 
-            assert str(exc_info.value) == "Unexpected error"
+            assert "An internal error occurred" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_infra_env_download_url_no_expiration(
