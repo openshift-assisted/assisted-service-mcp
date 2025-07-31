@@ -61,6 +61,12 @@ Assign a specific role to a discovered host.
 - "Set host master-node-1 in my-cluster to be a master node"
 - "Assign worker role to host worker-node-2 in my-cluster"
 
+### `set_cluster_ssh_key`
+Set or update the SSH public key for a cluster to allow SSH access to nodes.
+
+**Example Prompts:**
+- "Set the SSH key for my-cluster to ssh-rsa AAAAB3NzaC1yc2E..."
+
 ## Downloads and Resources
 
 ### `cluster_iso_download_url`

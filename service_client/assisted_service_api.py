@@ -283,6 +283,30 @@ class InventoryClient:
         return cast(models.InfraEnv, result)
 
     @sanitize_exceptions
+    async def update_infra_env(
+        self, infra_env_id: str, **update_params: Any
+    ) -> models.InfraEnv:
+        """
+        Update infrastructure environment configuration.
+
+        Args:
+            infra_env_id: The unique identifier of the infrastructure environment to update.
+            **update_params: Infrastructure environment update parameters.
+
+        Returns:
+            models.InfraEnv: The updated infrastructure environment object.
+        """
+        params = models.InfraEnvUpdateParams(**update_params)
+        log.info("Updating infrastructure environment %s", infra_env_id)
+        result = await asyncio.to_thread(
+            self._installer_api().update_infra_env,
+            infra_env_id=infra_env_id,
+            infra_env_update_params=params,
+        )
+        log.info("Successfully updated infrastructure environment %s", infra_env_id)
+        return cast(models.InfraEnv, result)
+
+    @sanitize_exceptions
     async def update_cluster(
         self,
         cluster_id: str,

@@ -445,6 +445,53 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             assert infra_env_params.pull_secret == client.pull_secret
 
     @pytest.mark.asyncio
+    async def test_update_infra_env_success(self, client: InventoryClient) -> None:
+        """Test successful update_infra_env function."""
+        infra_env_id = "test-infra-env-id"
+        ssh_key = "ssh-rsa AAAAB3NzaC1yc2E test@example.com"
+
+        infra_env = create_test_infra_env(infra_env_id=infra_env_id)
+
+        with patch.object(
+            client, "_installer_api", return_value=Mock()
+        ) as mock_api_getter:
+            mock_api = mock_api_getter.return_value
+            mock_api.update_infra_env.return_value = infra_env
+
+            result = await client.update_infra_env(
+                infra_env_id, ssh_authorized_key=ssh_key
+            )
+
+            assert result == infra_env
+            mock_api.update_infra_env.assert_called_once()
+
+            # Verify the parameters passed to the API
+            _args, kwargs = mock_api.update_infra_env.call_args
+            assert kwargs["infra_env_id"] == infra_env_id
+            update_params = kwargs["infra_env_update_params"]
+            assert update_params.ssh_authorized_key == ssh_key
+
+    @pytest.mark.asyncio
+    async def test_update_infra_env_api_exception(
+        self, client: InventoryClient
+    ) -> None:
+        """Test update_infra_env function with API exception."""
+        infra_env_id = "test-infra-env-id"
+
+        with patch.object(
+            client, "_installer_api", return_value=Mock()
+        ) as mock_api_getter:
+            mock_api = mock_api_getter.return_value
+            mock_api.update_infra_env.side_effect = ApiException(
+                status=404, reason="Not Found"
+            )
+
+            with pytest.raises(AssistedServiceAPIError, match="API error: Status 404"):
+                await client.update_infra_env(
+                    infra_env_id, ssh_authorized_key="test-key"
+                )
+
+    @pytest.mark.asyncio
     async def test_update_cluster_success(self, client: InventoryClient) -> None:
         """Test successful cluster update."""
         cluster_id = "test-cluster-id"
