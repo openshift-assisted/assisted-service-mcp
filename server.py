@@ -289,12 +289,13 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def create_cluster(
+async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     name: str,
     version: str,
     base_domain: str,
     single_node: bool,
     ssh_public_key: Optional[str] = None,
+    cpu_architecture: Optional[str] = "x86_64",
 ) -> str:
     """
     Create a new OpenShift cluster.
@@ -319,22 +320,35 @@ async def create_cluster(
         ssh_public_key (str, optional): SSH public key for accessing cluster nodes.
             Providing this key will allow ssh acces to the nodes during and after
             cluster installation.
+        cpu_architecture (str, optional): The CPU architecture for the cluster.
+            Valid options are:
+              - 'x86_64': Intel/AMD 64-bit processors (default)
+              - 'aarch64': ARM 64-bit processors
+              - 'arm64': ARM 64-bit processors (alias for aarch64)
+              - 'ppc64le': IBM POWER little-endian 64-bit processors
+              - 's390x': IBM System z mainframe processors
+            Defaults to 'x86_64' if not specified.
 
     Returns:
-        str: A the created cluster's id
+        str: The created cluster's id
     """
     log.info(
-        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, ssh_key_provided=%s",
+        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, cpu_architecture=%s, ssh_key_provided=%s",
         name,
         version,
         base_domain,
         single_node,
+        cpu_architecture,
         ssh_public_key is not None,
     )
     client = InventoryClient(get_access_token())
 
     # Prepare cluster parameters
-    cluster_params = {"base_dns_domain": base_domain, "tags": "chatbot"}
+    cluster_params = {
+        "base_dns_domain": base_domain,
+        "tags": "chatbot",
+        "cpu_architecture": cpu_architecture,
+    }
     if ssh_public_key:
         cluster_params["ssh_public_key"] = ssh_public_key
 
@@ -349,6 +363,7 @@ async def create_cluster(
     infraenv_params = {
         "cluster_id": cluster.id,
         "openshift_version": cluster.openshift_version,
+        "cpu_architecture": cpu_architecture,
     }
     if ssh_public_key:
         infraenv_params["ssh_authorized_key"] = ssh_public_key
