@@ -20,7 +20,10 @@ from service_client import InventoryClient, metrics, track_tool_usage, initiate_
 from service_client.logger import log
 
 
-mcp = FastMCP("AssistedService", host="0.0.0.0")
+transport_type = os.environ.get("TRANSPORT", "sse").lower()
+use_stateless_http = transport_type == "streamable-http"
+
+mcp = FastMCP("AssistedService", host="0.0.0.0", stateless_http=use_stateless_http)
 
 
 def format_presigned_url(presigned_url: models.PresignedUrl) -> str:
@@ -649,7 +652,13 @@ def list_tools() -> list[str]:
 
 
 if __name__ == "__main__":
-    app = mcp.sse_app()
+    if transport_type == "streamable-http":
+        app = mcp.streamable_http_app()
+        log.info("Using StreamableHTTP transport (stateless)")
+    else:
+        app = mcp.sse_app()
+        log.info("Using SSE transport (stateful)")
+
     initiate_metrics(list_tools())
     app.add_route("/metrics", metrics)
     uvicorn.run(app, host="0.0.0.0")
