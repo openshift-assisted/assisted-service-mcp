@@ -8,7 +8,7 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 import json
 import os
 import asyncio
-from typing import Optional
+from typing import Optional, Any
 
 import requests
 import uvicorn
@@ -26,7 +26,7 @@ use_stateless_http = transport_type == "streamable-http"
 mcp = FastMCP("AssistedService", host="0.0.0.0", stateless_http=use_stateless_http)
 
 
-def format_presigned_url(presigned_url: models.PresignedUrl) -> str:
+def format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
     r"""
     Format a presigned URL object into a readable string.
 
@@ -34,17 +34,26 @@ def format_presigned_url(presigned_url: models.PresignedUrl) -> str:
         presigned_url: A PresignedUrl object with url and optional expires_at attributes.
 
     Returns:
-        str: A formatted string containing the URL and optional expiration time.
-            Format: "URL: <url>\nExpires at: <expiration>" (if expiration exists)
+        dict: A dict containing URL and optional expiration time.
+            Format:
+                {
+                    url: <url>
+                    expires_at: <expiration> (if expiration exists)
+                }
     """
-    response_parts = [f"URL: {presigned_url.url}"]
+    presigned_url_dict = {
+        "url": presigned_url.url,
+    }
+
     # Only include expiration time if it's a meaningful date (not a zero/default value)
     if presigned_url.expires_at and not str(presigned_url.expires_at).startswith(
         "0001-01-01"
     ):
-        response_parts.append(f"Expires at: {presigned_url.expires_at}")
+        presigned_url_dict["expires_at"] = presigned_url.expires_at.isoformat().replace(
+            "+00:00", "Z"
+        )
 
-    return "\n".join(response_parts)
+    return presigned_url_dict
 
 
 def get_offline_token() -> str:
@@ -243,11 +252,12 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
         cluster_id (str): The unique identifier of the cluster.
 
     Returns:
-        str: A formatted string containing ISO download URLs and optional
+        dict: A JSON containing ISO download URLs and optional
             expiration times. Each ISO's information is formatted as:
-            - URL: <download-url>
-            - Expires at: <expiration-timestamp> (if available)
-            Multiple ISOs are separated by blank lines.
+            [{
+                url: <download-url>
+                expires_at: <expiration-timestamp> (if available)
+            }]
     """
     log.info("Retrieving InfraEnv ISO URLs for cluster_id: %s", cluster_id)
     client = InventoryClient(get_access_token())
@@ -287,7 +297,7 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
         return "No ISO download URLs found for this cluster."
 
     log.info("Returning %d ISO URLs for cluster %s", len(iso_info), cluster_id)
-    return "\n\n".join(iso_info)
+    return json.dumps(iso_info)
 
 
 @mcp.tool()
@@ -537,10 +547,12 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
             - "kubeadmin-password": The kubeadmin user password file
 
     Returns:
-        str: A formatted string containing the presigned URL and optional
+        str: A JSON containing the presigned URL and optional
             expiration time. The response format is:
-            - URL: <presigned-download-url>
-            - Expires at: <expiration-timestamp> (if available)
+            {
+                url: <presigned-download-url>
+                expires_at: <expiration-timestamp> (if available)
+            }
     """
     log.info(
         "Getting presigned URL for cluster %s credentials file %s",
@@ -556,7 +568,7 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
         result,
     )
 
-    return format_presigned_url(result)
+    return json.dumps(format_presigned_url(result))
 
 
 @mcp.tool()
