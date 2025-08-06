@@ -40,6 +40,9 @@ parameters:
 - name: CPU_REQUEST
   value: "50m"
   description: "Initial CPU request for the container (in millicores)"
+- name: TRANSPORT
+  value: "sse"
+  description: "MCP Server transport type, can be sse or streamable-http"
 
 apiVersion: template.openshift.io/v1
 kind: Template
@@ -87,6 +90,8 @@ objects:
             value: ${CLIENT_DEBUG}
           - name: LOGGING_LEVEL
             value: ${LOGGING_LEVEL}
+          - name: TRANSPORT
+            value: ${TRANSPORT}
 - apiVersion: v1
   kind: Service
   metadata:
