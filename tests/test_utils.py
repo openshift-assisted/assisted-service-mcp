@@ -2,6 +2,7 @@
 Test utilities for creating test objects.
 """
 
+from datetime import datetime
 from typing import Optional
 from assisted_service_client import models
 
@@ -84,7 +85,12 @@ def create_test_presigned_url(
     expires_at: Optional[str] = "2023-12-31T23:59:59Z",
 ) -> models.PresignedUrl:
     """Create a test presigned URL object with default values."""
+
+    date: datetime | None = None
+    if expires_at is not None:
+        date = datetime.fromisoformat(expires_at)
+
     return models.PresignedUrl(
         url=url,
-        expires_at=expires_at,
+        expires_at=date,
     )

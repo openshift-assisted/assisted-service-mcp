@@ -371,7 +371,14 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         ):
             result = await server.cluster_iso_download_url(cluster_id)
 
-            expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image\nExpires at: 2023-12-31T23:59:59Z"
+            expected_result = json.dumps(
+                [
+                    {
+                        "url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image",
+                        "expires_at": "2023-12-31T23:59:59Z",
+                    }
+                ]
+            )
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
@@ -425,11 +432,17 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         ):
             result = await server.cluster_iso_download_url(cluster_id)
 
-            expected_result = (
-                "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image\n"
-                "Expires at: 2023-12-31T23:59:59Z\n\n"
-                "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image\n"
-                "Expires at: 2024-01-15T12:00:00Z"
+            expected_result = json.dumps(
+                [
+                    {
+                        "url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-1/downloads/image",
+                        "expires_at": "2023-12-31T23:59:59Z",
+                    },
+                    {
+                        "url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id-2/downloads/image",
+                        "expires_at": "2024-01-15T12:00:00Z",
+                    },
+                ]
             )
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
@@ -465,7 +478,13 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         ):
             result = await server.cluster_iso_download_url(cluster_id)
 
-            expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+            expected_result = json.dumps(
+                [
+                    {
+                        "url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+                    }
+                ]
+            )
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
@@ -498,7 +517,13 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             result = await server.cluster_iso_download_url(cluster_id)
 
             # Should not include expiration time since it's a zero/default value
-            expected_result = "URL: https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+            expected_result = json.dumps(
+                [
+                    {
+                        "url": "https://api.openshift.com/api/assisted-install/v2/infra-envs/test-id/downloads/image"
+                    }
+                ]
+            )
             assert result == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
@@ -826,7 +851,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                 cluster_id, file_name
             )
 
-            expected_result = "URL: https://example.com/presigned-url\nExpires at: 2023-12-31T23:59:59Z"
+            expected_result = json.dumps(
+                {
+                    "url": "https://example.com/presigned-url",
+                    "expires_at": "2023-12-31T23:59:59Z",
+                }
+            )
             assert result == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
@@ -854,7 +884,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                 cluster_id, file_name
             )
 
-            expected_result = "URL: https://example.com/presigned-url"
+            expected_result = json.dumps({"url": "https://example.com/presigned-url"})
             assert result == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
@@ -885,7 +915,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             )
 
             # Should not include expiration time since it's a zero/default value
-            expected_result = "URL: https://example.com/presigned-url"
+            expected_result = json.dumps({"url": "https://example.com/presigned-url"})
             assert result == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
