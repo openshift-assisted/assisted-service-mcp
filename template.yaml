@@ -41,7 +41,7 @@ parameters:
   value: "50m"
   description: "Initial CPU request for the container (in millicores)"
 - name: TRANSPORT
-  value: "sse"
+  value: "streamable-http"
   description: "MCP Server transport type, can be sse or streamable-http"
 
 apiVersion: template.openshift.io/v1
