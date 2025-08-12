@@ -73,6 +73,7 @@ objects:
         labels:
           app: assisted-service-mcp
       spec:
+        serviceAccountName: assisted-service-mcp
         containers:
         - name: assisted-service-mcp
           image: ${IMAGE}:${IMAGE_TAG}
