@@ -482,9 +482,8 @@ async def list_operator_bundles() -> str:
     """
     List available operator bundles for cluster installation.
 
-    Retrieves operator bundles that can be optionally installed during cluster
-    deployment. These include Red Hat and certified partner operators for
-    various functionalities like storage, networking, and monitoring.
+    Retrieves details about operator bundles that can be optionally installed
+    during cluster deployment.
 
     Returns:
         str: A JSON string containing available operator bundles with metadata
@@ -509,8 +508,8 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
 
     Args:
         cluster_id (str): The unique identifier of the cluster to configure.
-        bundle_name (str): The name of the operator bundle to add. Use
-            list_operator_bundles() to see available bundle names.
+        bundle_name (str): The name of the operator bundle to add.
+            The available operator bundle names are "virtualization" and "openshift-ai"
 
     Returns:
         str: A formatted string containing the updated cluster configuration
