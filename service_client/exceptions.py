@@ -46,7 +46,7 @@ def sanitize_exceptions(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitabl
             )
             raise AssistedServiceAPIError(f"API error: Status {e.status}") from e
         except Exception as e:
-            log.error("Unexpected error during %s: %s", operation_name, str(e))
+            log.exception("Unexpected error during %s: %s", operation_name, str(e))
             raise AssistedServiceAPIError("An internal error occurred") from e
 
     return wrapper

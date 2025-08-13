@@ -32,9 +32,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     @pytest.fixture
     def client(self, mock_access_token: str) -> InventoryClient:
         """Create a test client instance."""
-        with patch.object(
-            InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
-        ):
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.text = "mock-pull-secret"
+            mock_post.return_value = mock_response
             return InventoryClient(mock_access_token)
 
     @pytest.fixture
@@ -42,14 +43,16 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         """Mock API client for testing."""
         return Mock()
 
-    def test_init_with_access_token(self, mock_access_token: str) -> None:
+    async def test_init_with_access_token(self, mock_access_token: str) -> None:
         """Test client initialization with access token."""
-        with patch.object(
-            InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
-        ):
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.text = "test-pull-secret"
+            mock_post.return_value = mock_response
+
             client = InventoryClient(mock_access_token)
             assert client.access_token == mock_access_token
-            assert client.pull_secret == "test-pull-secret"
+            assert await client.get_pull_secret() == "test-pull-secret"
             assert (
                 client.inventory_url
                 == "https://api.openshift.com/api/assisted-install/v2"
@@ -62,15 +65,17 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         with patch.dict(
             os.environ, {"INVENTORY_URL": test_url, "CLIENT_DEBUG": "true"}
         ):
-            with patch.object(
-                InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
-            ):
+            with patch("requests.post") as mock_post:
+                mock_response = Mock()
+                mock_response.text = "test-pull-secret"
+                mock_post.return_value = mock_response
+
                 client = InventoryClient(mock_access_token)
                 assert client.inventory_url == test_url
                 assert client.client_debug is True
 
     @patch("requests.post")
-    def test_get_pull_secret_success(
+    async def test_get_pull_secret_success(
         self, mock_post: Mock, mock_access_token: str
     ) -> None:
         """Test successful pull secret retrieval."""
@@ -81,7 +86,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         client = InventoryClient(mock_access_token)
 
         # Access the pull_secret property to trigger lazy loading
-        pull_secret = client.pull_secret
+        pull_secret = await client.get_pull_secret()
 
         mock_post.assert_called_once_with(
             "https://api.openshift.com/api/accounts_mgmt/v1/access_token",
@@ -91,7 +96,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         assert pull_secret == "pull-secret-content"
 
     @patch("requests.post")
-    def test_get_pull_secret_failure(
+    async def test_get_pull_secret_failure(
         self, mock_post: Mock, mock_access_token: str
     ) -> None:
         """Test pull secret retrieval failure."""
@@ -101,10 +106,10 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
 
         # Exception should be raised when accessing pull_secret property
         with pytest.raises(RequestException):
-            _ = client.pull_secret
+            _ = await client.get_pull_secret()
 
     @patch("requests.post")
-    def test_get_pull_secret_with_custom_url(
+    async def test_get_pull_secret_with_custom_url(
         self, mock_post: Mock, mock_access_token: str
     ) -> None:
         """Test pull secret retrieval with custom URL."""
@@ -117,7 +122,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             client = InventoryClient(mock_access_token)
 
             # Access the pull_secret property to trigger lazy loading
-            _ = client.pull_secret
+            _ = await client.get_pull_secret()
 
             mock_post.assert_called_once_with(
                 custom_url,
@@ -368,8 +373,13 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
 
         with (
             patch.object(client, "_installer_api") as mock_installer_api,
-            patch.object(client, "_get_pull_secret", return_value="mock-pull-secret"),
+            patch("requests.post") as mock_post,
         ):
+            # Mock pull secret HTTP response
+            mock_response = Mock()
+            mock_response.text = "mock-pull-secret"
+            mock_post.return_value = mock_response
+
             mock_api = Mock()
             mock_api.v2_register_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
@@ -401,8 +411,13 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
 
         with (
             patch.object(client, "_installer_api") as mock_installer_api,
-            patch.object(client, "_get_pull_secret", return_value="mock-pull-secret"),
+            patch("requests.post") as mock_post,
         ):
+            # Mock pull secret HTTP response
+            mock_response = Mock()
+            mock_response.text = "mock-pull-secret"
+            mock_post.return_value = mock_response
+
             mock_api = Mock()
             mock_api.v2_register_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
@@ -428,8 +443,13 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
 
         with (
             patch.object(client, "_installer_api") as mock_installer_api,
-            patch.object(client, "_get_pull_secret", return_value="mock-pull-secret"),
+            patch("requests.post") as mock_post,
         ):
+            # Mock pull secret HTTP response
+            mock_response = Mock()
+            mock_response.text = "mock-pull-secret"
+            mock_post.return_value = mock_response
+
             mock_api = Mock()
             mock_api.register_infra_env.return_value = infra_env
             mock_installer_api.return_value = mock_api
@@ -442,7 +462,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             _args, kwargs = mock_api.register_infra_env.call_args
             infra_env_params = kwargs["infraenv_create_params"]
             assert infra_env_params.name == name
-            assert infra_env_params.pull_secret == client.pull_secret
+            assert infra_env_params.pull_secret == "mock-pull-secret"
 
     @pytest.mark.asyncio
     async def test_update_infra_env_success(self, client: InventoryClient) -> None:

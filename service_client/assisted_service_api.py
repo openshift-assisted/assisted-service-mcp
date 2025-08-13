@@ -40,14 +40,11 @@ class InventoryClient:
         )
         self.client_debug = os.environ.get("CLIENT_DEBUG", "False").lower() == "true"
 
-    @property
-    def pull_secret(self) -> str:
+    async def get_pull_secret(self) -> str:
         """Lazy-load the pull secret when first accessed."""
-        if self._pull_secret is None:
-            self._pull_secret = self._get_pull_secret()
-        return self._pull_secret
+        if self._pull_secret is not None:
+            return self._pull_secret
 
-    def _get_pull_secret(self) -> str:
         url = os.environ.get(
             "PULL_SECRET_URL",
             "https://api.openshift.com/api/accounts_mgmt/v1/access_token",
@@ -56,10 +53,13 @@ class InventoryClient:
 
         try:
             log.info("Fetching pull secret from %s", url)
-            response = requests.post(url, headers=headers, timeout=30)
+            response = await asyncio.to_thread(
+                requests.post, url, headers=headers, timeout=30
+            )
             response.raise_for_status()
             log.info("Successfully fetched pull secret")
-            return response.text
+            self._pull_secret = response.text
+            return self._pull_secret
         except RequestException as e:
             log.error("Error while fetching pull secret from %s: %s", url, str(e))
             raise
@@ -242,7 +242,7 @@ class InventoryClient:
         params = models.ClusterCreateParams(
             name=name,
             openshift_version=version,
-            pull_secret=self.pull_secret,
+            pull_secret=await self.get_pull_secret(),
             **cluster_params,
         )
         log.info(
@@ -272,7 +272,7 @@ class InventoryClient:
             models.InfraEnv: The created infrastructure environment object.
         """
         infra_env = models.InfraEnvCreateParams(
-            name=name, pull_secret=self.pull_secret, **infra_env_params
+            name=name, pull_secret=await self.get_pull_secret(), **infra_env_params
         )
         log.info("Creating infrastructure environment '%s'", name)
         result = await asyncio.to_thread(

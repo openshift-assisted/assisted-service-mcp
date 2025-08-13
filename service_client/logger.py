@@ -11,6 +11,9 @@ import logging
 import os
 import re
 import sys
+import atexit
+import queue
+from logging.handlers import QueueHandler, QueueListener
 
 
 class SensitiveFormatter(logging.Formatter):
@@ -87,33 +90,18 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("asyncio").setLevel(logging.ERROR)
 
 
-def add_log_file_handler(logger: logging.Logger, filename: str) -> logging.FileHandler:
-    """
-    Add a file handler to the logger with sensitive information filtering.
-
-    Args:
-        logger: The logger instance to add the handler to.
-        filename: The path to the log file.
-
-    Returns:
-        logging.FileHandler: The created file handler.
-    """
+def _create_file_handler(filename: str) -> logging.FileHandler:
+    """Create a file handler with sensitive formatting."""
     fh = logging.FileHandler(filename)
     fh.setFormatter(SensitiveFormatter())
-    logger.addHandler(fh)
     return fh
 
 
-def add_stream_handler(logger: logging.Logger) -> None:
-    """
-    Add a stream handler to the logger with sensitive information filtering.
-
-    Args:
-        logger: The logger instance to add the handler to.
-    """
+def _create_stream_handler() -> logging.StreamHandler:
+    """Create a stream handler to stderr with sensitive formatting."""
     ch = logging.StreamHandler(sys.stderr)
     ch.setFormatter(SensitiveFormatter())
-    logger.addHandler(ch)
+    return ch
 
 
 logger_name = os.environ.get("LOGGER_NAME", "")
@@ -129,9 +117,36 @@ log.setLevel(get_logging_level())
 # Check if we should log to file (default: True, set to False in containers)
 log_to_file = os.environ.get("LOG_TO_FILE", "true").lower() == "true"
 
-if log_to_file:
-    add_log_file_handler(log, "assisted-service-mcp.log")
-    add_log_file_handler(urllib3_logger, "assisted-service-mcp.log")
+# Configure non-blocking logging via a Queue
+_log_queue: queue.Queue[logging.LogRecord] = queue.Queue()
 
-add_stream_handler(log)
-add_stream_handler(urllib3_logger)
+_handlers: list[logging.Handler] = []
+if log_to_file:
+    _handlers.append(_create_file_handler("assisted-service-mcp.log"))
+_handlers.append(_create_stream_handler())
+
+# Start a single listener that will process records on a background thread
+_queue_listener = QueueListener(_log_queue, *_handlers, respect_handler_level=True)
+_queue_listener.start()
+
+# Attach QueueHandler to our loggers
+_queue_handler = QueueHandler(_log_queue)
+
+# Avoid duplicate propagation if root logger is used
+log.handlers = [_queue_handler] if _queue_handler not in log.handlers else []
+log.propagate = False
+
+urllib3_logger.handlers = (
+    [_queue_handler] if _queue_handler not in urllib3_logger.handlers else []
+)
+urllib3_logger.propagate = False
+
+
+def _stop_queue_listener() -> None:
+    try:
+        _queue_listener.stop()
+    except Exception:  # noqa: BLE001 - best effort stop at exit
+        pass
+
+
+atexit.register(_stop_queue_listener)
