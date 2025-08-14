@@ -29,16 +29,16 @@ parameters:
   value: "8000"
   description: "Port number on which the MCP service listens"
 - name: MEMORY_LIMIT
-  value: "128Mi"
+  value: "512Mi"
   description: "Maximum memory allocation for the container"
 - name: CPU_LIMIT
-  value: "100m"
+  value: "1000m"
   description: "Maximum CPU allocation for the container (in millicores)"
 - name: MEMORY_REQUEST
-  value: "64Mi"
+  value: "128Mi"
   description: "Initial memory request for the container"
 - name: CPU_REQUEST
-  value: "50m"
+  value: "100m"
   description: "Initial CPU request for the container (in millicores)"
 - name: TRANSPORT
   value: "streamable-http"
