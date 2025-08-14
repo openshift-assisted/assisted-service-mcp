@@ -21,6 +21,10 @@ run-local:
 test:
 	uv run --group test pytest
 
+.PHONY: deploy-template
+deploy-template:
+	scripts/deploy_from_template.sh
+
 test-coverage:
 	uv run --group test pytest --cov=service_client --cov=server --cov-report=html --cov-report=term-missing
 
