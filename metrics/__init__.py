@@ -6,4 +6,4 @@ This module provides metrics functionality for tracking tool usage and performan
 
 from .metrics import initiate_metrics, metrics, track_tool_usage
 
-__all__ = ["initiate_metrics", "metrics", "track_tool_usage"] 
+__all__ = ["initiate_metrics", "metrics", "track_tool_usage"]

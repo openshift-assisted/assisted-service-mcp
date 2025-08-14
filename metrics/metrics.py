@@ -29,7 +29,15 @@ REQUEST_LATENCY = Histogram(
     "assisted_service_mcp_tool_request_duration",
     "Request latency",
     ["tool"],
-    buckets=(0.1, 1.0, 10.0, 30.0, float("inf")),
+    buckets=(0.05, 0.1, 0.5, 1.0, 5.0, 10.0, float("inf")),
+)
+
+# Define histogram for API call latency
+API_CALL_LATENCY = Histogram(
+    "assisted_service_api_call_duration_seconds",
+    "Duration of API calls to Assisted Service",
+    ["api_method"],
+    buckets=(0.05, 0.1, 0.5, 1.0, 5.0, 10.0, float("inf")),
 )
 
 
