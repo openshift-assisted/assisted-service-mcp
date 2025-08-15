@@ -16,8 +16,9 @@ from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
 
 
-from service_client import InventoryClient, metrics, track_tool_usage, initiate_metrics
+from service_client import InventoryClient
 from service_client.logger import log
+from metrics import metrics, track_tool_usage, initiate_metrics
 
 
 transport_type = os.environ.get("TRANSPORT", "sse").lower()

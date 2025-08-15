@@ -7,6 +7,5 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 
 from .assisted_service_api import InventoryClient
 from .logger import log
-from .metrics import initiate_metrics, metrics, track_tool_usage
 
-__all__ = ["InventoryClient", "log", "metrics", "track_tool_usage", "initiate_metrics"]
+__all__ = ["InventoryClient", "log"]

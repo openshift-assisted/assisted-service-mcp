@@ -8,7 +8,7 @@ environments, and host management.
 
 import os
 import asyncio
-from typing import Any, Optional, cast
+from typing import Any, Optional, cast, Callable, TypeVar
 from urllib.parse import urlparse
 
 import requests
@@ -17,6 +17,9 @@ from assisted_service_client import ApiClient, Configuration, api, models
 
 from service_client.logger import log
 from service_client.exceptions import sanitize_exceptions
+from metrics.metrics import API_CALL_LATENCY
+
+T = TypeVar("T")
 
 
 class InventoryClient:
@@ -39,6 +42,23 @@ class InventoryClient:
             "INVENTORY_URL", "https://api.openshift.com/api/assisted-install/v2"
         )
         self.client_debug = os.environ.get("CLIENT_DEBUG", "False").lower() == "true"
+
+    async def _api_call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """
+        Execute API call with latency tracking.
+
+        Args:
+            func: The API function to call
+            *args: Positional arguments for the API function
+            **kwargs: Keyword arguments for the API function
+
+        Returns:
+            The result of the API function call
+        """
+        api_method_name = getattr(func, "__name__", "unknown_api_method")
+        with API_CALL_LATENCY.labels(api_method=api_method_name).time():
+            result = await asyncio.to_thread(func, *args, **kwargs)
+        return result
 
     @property
     def pull_secret(self) -> str:
@@ -114,7 +134,7 @@ class InventoryClient:
             cluster_id,
             get_unregistered_clusters,
         )
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().v2_get_cluster,
             cluster_id=cluster_id,
             get_unregistered_clusters=get_unregistered_clusters,
@@ -131,7 +151,7 @@ class InventoryClient:
             list: A list of cluster objects.
         """
         log.info("Listing all clusters")
-        result = await asyncio.to_thread(self._installer_api().v2_list_clusters)
+        result = await self._api_call(self._installer_api().v2_list_clusters)
         log.info("Successfully listed clusters")
         return cast(list, result)
 
@@ -167,7 +187,7 @@ class InventoryClient:
             infra_env_id,
             categories,
         )
-        response = await asyncio.to_thread(
+        response = await self._api_call(
             self._events_api().v2_list_events,
             cluster_id=cluster_id,
             host_id=host_id,
@@ -191,7 +211,7 @@ class InventoryClient:
             models.InfraEnv: The infrastructure environment object.
         """
         log.info("Getting infrastructure environment %s", infra_env_id)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().get_infra_env, infra_env_id=infra_env_id
         )
         log.info("Successfully retrieved infrastructure environment %s", infra_env_id)
@@ -209,7 +229,7 @@ class InventoryClient:
             list[dict[str, Any]]: A list of infrastructure environment dictionaries for the cluster.
         """
         log.info("Listing infrastructure environments for cluster %s", cluster_id)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().list_infra_envs, cluster_id=cluster_id
         )
         log.info(
@@ -251,7 +271,7 @@ class InventoryClient:
             version,
             single_node,
         )
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().v2_register_cluster, new_cluster_params=params
         )
         log.info("Successfully created cluster '%s'", name)
@@ -275,7 +295,7 @@ class InventoryClient:
             name=name, pull_secret=self.pull_secret, **infra_env_params
         )
         log.info("Creating infrastructure environment '%s'", name)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().register_infra_env,
             infraenv_create_params=infra_env,
         )
@@ -298,7 +318,7 @@ class InventoryClient:
         """
         params = models.InfraEnvUpdateParams(**update_params)
         log.info("Updating infrastructure environment %s", infra_env_id)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().update_infra_env,
             infra_env_id=infra_env_id,
             infra_env_update_params=params,
@@ -335,7 +355,7 @@ class InventoryClient:
             ]
 
         log.info("Updating cluster %s", cluster_id)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().v2_update_cluster,
             cluster_id=cluster_id,
             cluster_update_params=params,
@@ -355,7 +375,7 @@ class InventoryClient:
             models.Cluster: The cluster object with updated installation status.
         """
         log.info("Starting installation for cluster %s", cluster_id)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().v2_install_cluster, cluster_id=cluster_id
         )
         log.info("Successfully started installation for cluster %s", cluster_id)
@@ -375,7 +395,7 @@ class InventoryClient:
             models.OpenshiftVersions: Object containing available OpenShift versions.
         """
         log.info("Getting OpenShift versions (only_latest: %s)", only_latest)
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._versions_api().v2_list_supported_openshift_versions,
             only_latest=only_latest,
         )
@@ -391,7 +411,7 @@ class InventoryClient:
             list: A list of operator bundle dictionaries.
         """
         log.info("Getting operator bundles")
-        bundles = await asyncio.to_thread(self._operators_api().v2_list_bundles)
+        bundles = await self._api_call(self._operators_api().v2_list_bundles)
         log.info("Successfully retrieved operator bundles")
         return [bundle.to_dict() for bundle in cast(list, bundles)]
 
@@ -410,9 +430,7 @@ class InventoryClient:
             models.Cluster: The updated cluster object with the new operator.
         """
         log.info("Adding operator bundle '%s' to cluster %s", bundle_name, cluster_id)
-        bundle = await asyncio.to_thread(
-            self._operators_api().v2_get_bundle, bundle_name
-        )
+        bundle = await self._api_call(self._operators_api().v2_get_bundle, bundle_name)
         olm_operators = [
             models.OperatorCreateParams(name=op_name)
             for op_name in getattr(bundle, "operators", [])
@@ -448,7 +466,7 @@ class InventoryClient:
             host_id,
             infra_env_id,
         )
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().v2_update_host, infra_env_id, host_id, params
         )
         log.info(
@@ -478,7 +496,7 @@ class InventoryClient:
             cluster_id,
             file_name,
         )
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().v2_get_presigned_for_cluster_credentials,
             cluster_id=cluster_id,
             file_name=file_name,
@@ -507,7 +525,7 @@ class InventoryClient:
             "Getting presigned download URL for infrastructure environment %s",
             infra_env_id,
         )
-        result = await asyncio.to_thread(
+        result = await self._api_call(
             self._installer_api().get_infra_env_download_url,
             infra_env_id=infra_env_id,
         )
