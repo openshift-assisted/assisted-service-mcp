@@ -15,7 +15,6 @@ import uvicorn
 from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
 
-
 from service_client import InventoryClient, metrics, track_tool_usage, initiate_metrics
 from service_client.logger import log
 
@@ -89,7 +88,7 @@ def get_offline_token() -> str:
     raise RuntimeError("No offline token found in environment or request headers")
 
 
-def get_access_token() -> str:
+async def get_access_token() -> str:
     """
     Retrieve the access token.
 
@@ -125,7 +124,7 @@ def get_access_token() -> str:
         "SSO_URL",
         "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
     )
-    response = requests.post(sso_url, data=params, timeout=30)
+    response = await asyncio.to_thread(requests.post, sso_url, data=params, timeout=30)
     response.raise_for_status()
     log.debug("Successfully generated new access token")
     return response.json()["access_token"]
@@ -152,7 +151,7 @@ async def cluster_info(cluster_id: str) -> str:
             - Host information and roles
     """
     log.info("Retrieving cluster information for cluster_id: %s", cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
     return result.to_str()
@@ -177,7 +176,7 @@ async def list_clusters() -> str:
             - status (str): Current cluster status (e.g., 'ready', 'installing', 'error')
     """
     log.info("Retrieving list of all clusters")
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     clusters = await client.list_clusters()
     resp = [
         {
@@ -210,7 +209,7 @@ async def cluster_events(cluster_id: str) -> str:
             event types, and descriptive messages about cluster activities.
     """
     log.info("Retrieving events for cluster_id: %s", cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.get_events(cluster_id=cluster_id)
     log.info("Successfully retrieved events for cluster %s", cluster_id)
     return result
@@ -234,7 +233,7 @@ async def host_events(cluster_id: str, host_id: str) -> str:
             hardware validation results, installation steps, and error messages.
     """
     log.info("Retrieving events for host %s in cluster %s", host_id, cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.get_events(cluster_id=cluster_id, host_id=host_id)
     log.info(
         "Successfully retrieved events for host %s in cluster %s", host_id, cluster_id
@@ -260,7 +259,7 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
             }]
     """
     log.info("Retrieving InfraEnv ISO URLs for cluster_id: %s", cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     infra_envs = await client.list_infra_envs(cluster_id)
 
     if not infra_envs:
@@ -354,7 +353,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         cpu_architecture,
         ssh_public_key is not None,
     )
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
 
     # Prepare cluster parameters
     cluster_params = {
@@ -417,7 +416,7 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
         api_vip,
         ingress_vip,
     )
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.update_cluster(
         cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
     )
@@ -449,7 +448,7 @@ async def install_cluster(cluster_id: str) -> str:
         - All cluster validations pass
     """
     log.info("Initiating installation for cluster_id: %s", cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.install_cluster(cluster_id)
     log.info("Successfully triggered installation for cluster %s", cluster_id)
     return result.to_str()
@@ -470,7 +469,7 @@ async def list_versions() -> str:
             including version numbers, release dates, and support status.
     """
     log.info("Retrieving available OpenShift versions")
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.get_openshift_versions(True)
     log.info("Successfully retrieved OpenShift versions")
     return json.dumps(result)
@@ -490,7 +489,7 @@ async def list_operator_bundles() -> str:
             including bundle names, descriptions, and operator details.
     """
     log.info("Retrieving available operator bundles")
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.get_operator_bundles()
     log.info("Successfully retrieved %s operator bundles", len(result))
     return json.dumps(result)
@@ -516,7 +515,7 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
             showing the newly added operator bundle.
     """
     log.info("Adding operator bundle '%s' to cluster %s", bundle_name, cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.add_operator_bundle_to_cluster(cluster_id, bundle_name)
     log.info(
         "Successfully added operator bundle '%s' to cluster %s", bundle_name, cluster_id
@@ -558,7 +557,7 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
         cluster_id,
         file_name,
     )
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.get_presigned_for_cluster_credentials(cluster_id, file_name)
     log.info(
         "Successfully retrieved presigned URL for cluster %s credentials file %s - %s",
@@ -592,7 +591,7 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
             showing the newly assigned role.
     """
     log.info("Setting role '%s' for host %s in InfraEnv %s", role, host_id, infraenv_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
     result = await client.update_host(host_id, infraenv_id, host_role=role)
     log.info("Successfully set role '%s' for host %s", role, host_id)
     return result.to_str()
@@ -618,7 +617,7 @@ async def set_cluster_ssh_key(cluster_id: str, ssh_public_key: str) -> str:
         str: A formatted string containing the updated cluster configuration.
     """
     log.info("Setting SSH public key for cluster %s", cluster_id)
-    client = InventoryClient(get_access_token())
+    client = InventoryClient(await get_access_token())
 
     # Update the cluster with the new SSH public key
     result = await client.update_cluster(cluster_id, ssh_public_key=ssh_public_key)

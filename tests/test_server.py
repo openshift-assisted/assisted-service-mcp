@@ -100,7 +100,7 @@ class TestTokenFunctions:
                     server.get_offline_token()
                 assert "No offline token found" in str(exc_info.value)
 
-    def test_get_access_token_from_authorization_header(
+    async def test_get_access_token_from_authorization_header(
         self, mock_mcp_get_context: Tuple[Mock, Mock]
     ) -> None:
         """Test retrieving access token from Authorization header."""
@@ -108,11 +108,11 @@ class TestTokenFunctions:
         test_token = "test-access-token"
         mock_request.headers.get.return_value = f"Bearer {test_token}"
 
-        result = server.get_access_token()
+        result = await server.get_access_token()
         assert result == test_token
         mock_request.headers.get.assert_called_once_with("Authorization")
 
-    def test_get_access_token_invalid_authorization_header(
+    async def test_get_access_token_invalid_authorization_header(
         self, mock_mcp_get_context: Tuple[Mock, Mock]
     ) -> None:
         """Test access token retrieval with invalid Authorization header."""
@@ -125,10 +125,10 @@ class TestTokenFunctions:
                 mock_response.json.return_value = {"access_token": "new-token"}
                 mock_post.return_value = mock_response
 
-                result = server.get_access_token()
+                result = await server.get_access_token()
                 assert result == "new-token"
 
-    def test_get_access_token_no_authorization_header(
+    async def test_get_access_token_no_authorization_header(
         self, mock_mcp_get_context: Tuple[Mock, Mock]
     ) -> None:
         """Test access token retrieval without Authorization header."""
@@ -141,11 +141,11 @@ class TestTokenFunctions:
                 mock_response.json.return_value = {"access_token": "new-token"}
                 mock_post.return_value = mock_response
 
-                result = server.get_access_token()
+                result = await server.get_access_token()
                 assert result == "new-token"
 
     @patch("requests.post")
-    def test_get_access_token_generate_from_offline_token(
+    async def test_get_access_token_generate_from_offline_token(
         self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
     ) -> None:
         """Test generating access token from offline token."""
@@ -160,7 +160,7 @@ class TestTokenFunctions:
         mock_post.return_value = mock_response
 
         with patch.object(server, "get_offline_token", return_value=offline_token):
-            result = server.get_access_token()
+            result = await server.get_access_token()
 
             assert result == access_token
             mock_post.assert_called_once_with(
@@ -174,7 +174,7 @@ class TestTokenFunctions:
             )
 
     @patch("requests.post")
-    def test_get_access_token_custom_sso_url(
+    async def test_get_access_token_custom_sso_url(
         self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
     ) -> None:
         """Test access token generation with custom SSO URL."""
@@ -191,7 +191,7 @@ class TestTokenFunctions:
 
         with patch.dict(os.environ, {"SSO_URL": custom_sso_url}):
             with patch.object(server, "get_offline_token", return_value=offline_token):
-                result = server.get_access_token()
+                result = await server.get_access_token()
 
                 assert result == access_token
                 mock_post.assert_called_once_with(
@@ -205,7 +205,7 @@ class TestTokenFunctions:
                 )
 
     @patch("requests.post")
-    def test_get_access_token_request_failure(
+    async def test_get_access_token_request_failure(
         self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
     ) -> None:
         """Test access token generation request failure."""
@@ -216,9 +216,9 @@ class TestTokenFunctions:
 
         with patch.object(server, "get_offline_token", return_value="offline-token"):
             with pytest.raises(RequestException):
-                server.get_access_token()
+                await server.get_access_token()
 
-    def test_get_access_token_no_request_context(self) -> None:
+    async def test_get_access_token_no_request_context(self) -> None:
         """Test access token retrieval when no request context is available."""
         mock_context = Mock()
         mock_context.request_context.request = None
@@ -232,7 +232,7 @@ class TestTokenFunctions:
                     mock_response.json.return_value = {"access_token": "new-token"}
                     mock_post.return_value = mock_response
 
-                    result = server.get_access_token()
+                    result = await server.get_access_token()
                     assert result == "new-token"
 
 
