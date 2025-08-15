@@ -49,6 +49,14 @@ kind: Template
 metadata:
   name: assisted-service-mcp
 objects:
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: assisted-service-mcp
+    labels:
+      app: assisted-service-mcp
+  imagePullSecrets:
+  - name: quay.io
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -65,6 +73,7 @@ objects:
         labels:
           app: assisted-service-mcp
       spec:
+        serviceAccountName: assisted-service-mcp
         containers:
         - name: assisted-service-mcp
           image: ${IMAGE}:${IMAGE_TAG}
