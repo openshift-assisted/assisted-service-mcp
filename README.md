@@ -97,6 +97,10 @@ The MCP server provides the following tools for interacting with the OpenShift A
   * `cluster_id`: Cluster ID (string, required)
   * `api_vip`: API virtual IP address (string, required)
   * `ingress_vip`: Ingress virtual IP address (string, required)
+  
+  Notes:
+  * Use only for multi-node clusters with user-managed networking disabled. Single-node clusters and clusters with user-managed networking do not require VIPs.
+  * Ensure hosts are discovered first (after booting with the Discovery ISO) so that matching subnets are known; attempting to set VIPs earlier can result in errors such as `No suitable matching CIDR found for VIP`.
 
 ### Events and Monitoring
 

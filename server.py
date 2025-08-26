@@ -396,6 +396,13 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
     for the specified cluster. These VIPs must be available IP addresses within the
     cluster's network subnet.
 
+    Preconditions:
+      - Hosts must be discovered for the cluster so that subnets are known. Attempting to
+        set VIPs before any hosts are discovered typically fails with errors such as
+        "No suitable matching CIDR found for VIP".
+      - Only applicable to multi-node clusters with user-managed networking disabled. Single-node
+        clusters (SNO) and clusters with user-managed networking do not require setting VIPs.
+
     Args:
         cluster_id (str): The unique identifier of the cluster to configure.
         api_vip (str): The IP address for the cluster API endpoint. This is where

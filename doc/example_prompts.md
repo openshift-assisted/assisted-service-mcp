@@ -44,6 +44,10 @@ Create a new OpenShift cluster.
 ### `set_cluster_vips`
 Configure virtual IP addresses for cluster API and ingress.
 
+Notes:
+- Only applicable for multi-node clusters with user-managed networking disabled.
+- Run this after hosts have been discovered (post-ISO boot). Attempting it too early may fail due to unknown subnets.
+
 **Example Prompts:**
 - "Set the API VIP to 192.168.1.100 and ingress VIP to 192.168.1.101 for my-cluster"
 - "Configure cluster my-cluster with API VIP 10.0.0.10 and ingress VIP 10.0.0.11"
