@@ -26,6 +26,8 @@ def sanitize_exceptions(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitabl
     Decorate a function to sanitize exceptions from API calls.
 
     The operation name for logging is automatically derived from the function name.
+    For 4xx status codes, the response body is included in the exception message
+    to provide more detailed error information.
 
     Returns:
         Decorated function that catches and sanitizes exceptions
@@ -44,7 +46,11 @@ def sanitize_exceptions(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitabl
                 e.reason,
                 e.body,
             )
-            raise AssistedServiceAPIError(f"API error: Status {e.status}") from e
+
+            error_msg = f"API error: Status {e.status}"
+            if e.status and 400 <= e.status <= 499 and e.body:
+                error_msg += f", Details: {e.body}"
+            raise AssistedServiceAPIError(error_msg) from e
         except Exception as e:
             log.error("Unexpected error during %s: %s", operation_name, str(e))
             raise AssistedServiceAPIError("An internal error occurred") from e
