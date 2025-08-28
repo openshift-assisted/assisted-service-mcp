@@ -193,20 +193,32 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
 
     @pytest.mark.asyncio
     async def test_get_cluster_api_exception(self, client: InventoryClient) -> None:
-        """Test cluster retrieval API exception handling."""
+        """Test cluster retrieval API exception handling with 4xx error body details."""
         cluster_id = "test-cluster-id"
 
         with patch.object(client, "_installer_api") as mock_installer_api:
             mock_api = Mock()
-            mock_api.v2_get_cluster.side_effect = ApiException(
-                status=404, reason="Not Found"
+            # Create a mock HTTP response with body data
+            mock_http_resp = Mock()
+            mock_http_resp.status = 404
+            mock_http_resp.reason = "Not Found"
+            mock_http_resp.data = (
+                '{"message": "Cluster not found", "code": "CLUSTER_NOT_FOUND"}'
             )
+            mock_http_resp.getheaders.return_value = {}
+
+            mock_api.v2_get_cluster.side_effect = ApiException(http_resp=mock_http_resp)
             mock_installer_api.return_value = mock_api
 
             with pytest.raises(AssistedServiceAPIError) as exc_info:
                 await client.get_cluster(cluster_id)
 
-            assert "API error: Status 404" in str(exc_info.value)
+            error_message = str(exc_info.value)
+            assert "API error: Status 404" in error_message
+            assert (
+                'Details: {"message": "Cluster not found", "code": "CLUSTER_NOT_FOUND"}'
+                in error_message
+            )
 
     @pytest.mark.asyncio
     async def test_get_cluster_unexpected_exception(
