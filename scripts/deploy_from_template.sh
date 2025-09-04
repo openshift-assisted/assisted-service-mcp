@@ -17,7 +17,7 @@ else
     TAG="latest"
 fi
 
-oc process -p IMAGE=$IMAGE -p IMAGE_TAG=$TAG -f template.yaml --local | oc apply -n $NAMESPACE -f -
+oc process -p IMAGE=$IMAGE -p IMAGE_TAG=$TAG -p INVENTORY_URL="https://api.stage.openshift.com/api/assisted-install/v2" -f template.yaml --local | oc apply -n $NAMESPACE -f -
 
 sleep 5
 if ! oc rollout status  -n $NAMESPACE deployment/assisted-service-mcp --timeout=300s; then
