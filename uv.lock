@@ -26,7 +26,7 @@ wheels = [
 
 [[package]]
 name = "assisted-service-client"
-version = "2.45.0.post9"
+version = "2.45.0.post10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -34,9 +34,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/67/87aaddc99db556f782c39e7a80721cac3243680125062e9eccd0c6ef1724/assisted_service_client-2.45.0.post9.tar.gz", hash = "sha256:d5c012cf1c76ed045103c4719b5f3e9b27458b6e4f26b38895e0cce830146b45", size = 164427, upload-time = "2025-09-04T21:56:43.632Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/03/c78a721fe3965b77608abcf4f2f217b725232dd8a4c66b738d524d71b1ec/assisted_service_client-2.45.0.post10.tar.gz", hash = "sha256:1e9a301cce3ad8b525799cac116e82f5621ea249ae4f14567ebf5973c9a5dda2", size = 164431, upload-time = "2025-09-06T03:38:27.183Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/4e/986616311e0d82344e1bf246a1fd5c765cb539f49d1769c9c8a42b54e035/assisted_service_client-2.45.0.post9-py3-none-any.whl", hash = "sha256:3e4556b2d68c88e233e9dc0e2f8f255a391567145ab8cc9da302990d0c9b7799", size = 454766, upload-time = "2025-09-04T21:56:38.174Z" },
+    { url = "https://files.pythonhosted.org/packages/72/e2/a002820c9e968d022ef17137667764dd1db2dbe04a09fb1f524d6fca51fd/assisted_service_client-2.45.0.post10-py3-none-any.whl", hash = "sha256:f687eb0620a61e93015996e0ac99ccc6d55259049b9cd57b18c26cc430a57dab", size = 454776, upload-time = "2025-09-06T03:38:21.836Z" },
 ]
 
 [[package]]
