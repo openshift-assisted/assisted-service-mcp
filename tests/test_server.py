@@ -819,6 +819,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         host = create_test_host(host_id=host_id, role=role)
         mock_inventory_client.update_host.return_value = host
 
+        # Mock InfraEnvs list
+        mock_infra_envs = [
+            {"id": infraenv_id, "name": "infraenv"},
+        ]
+        mock_inventory_client.list_infra_envs.return_value = mock_infra_envs
+
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
