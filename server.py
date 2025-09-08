@@ -15,10 +15,13 @@ import uvicorn
 from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
 
-
+from metrics import metrics, track_tool_usage, initiate_metrics
 from service_client import InventoryClient
 from service_client.logger import log
-from metrics import metrics, track_tool_usage, initiate_metrics
+from service_client.static_net import (
+    add_or_update_static_host_config,
+    remove_static_host_config,
+)
 
 
 transport_type = os.environ.get("TRANSPORT", "sse").lower()
@@ -384,6 +387,92 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         infraenv.id,
     )
     return cluster.id
+
+
+@mcp.tool()
+@track_tool_usage()
+async def update_static_network_config_for_host(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    cluster_id: str,
+    dns_server: str,
+    mac_address: str,
+    ip_address: str,
+    subnet_prefix_len: int,
+    gateway_address: str,
+) -> str:
+    """
+    Add or update static networking configuration for a single host.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster
+        dns_server (str): The DNS server to use for host resolution
+        mac_address (str): The MAC address of the main interface on the host
+        ip_address (str): The IP address to assign to the host with the given MAC address
+        subnet_prefix_len (int): The length of the subnet prefix, between 0 and 32
+        gateway_address (str): The IP address of the gateway for the default network route
+    """
+    client = InventoryClient(get_access_token())
+    infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
+    infra_env = await client.get_infra_env(infra_env_id)
+
+    static_network_config = add_or_update_static_host_config(
+        existing_static_network_config=infra_env.static_network_config,
+        dns_server=dns_server,
+        mac_address=mac_address,
+        ip_address=ip_address,
+        gateway_address=gateway_address,
+        subnet_prefix_len=subnet_prefix_len,
+    )
+
+    result = await client.update_infra_env(
+        infra_env_id, static_network_config=static_network_config
+    )
+    return result.to_str()
+
+
+@mcp.tool()
+@track_tool_usage()
+async def delete_static_network_config_for_host(
+    cluster_id: str, mac_address: str
+) -> str:
+    """
+    Delete static networking configuration for a single host by MAC address.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster
+        mac_address (str): The MAC address associated with this host
+    """
+    client = InventoryClient(get_access_token())
+    infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
+    infra_env = await client.get_infra_env(infra_env_id)
+
+    static_network_config = remove_static_host_config(
+        existing_static_network_config=infra_env.static_network_config,
+        mac_address=mac_address,
+    )
+    result = await client.update_infra_env(
+        infra_env_id, static_network_config=static_network_config
+    )
+    return result.to_str()
+
+
+@mcp.tool()
+@track_tool_usage()
+async def list_infra_envs(cluster_id: str) -> str:
+    """
+    List all of the infra_envs associated with the given cluster_id.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to configure.
+
+    Returns:
+        str: A JSON-formatted list of infra environments, including static network
+        config
+    """
+    client = InventoryClient(get_access_token())
+    infra_envs = await client.list_infra_envs(cluster_id)
+    log.info("Found %d InfraEnvs for cluster %s", len(infra_envs), cluster_id)
+
+    return json.dumps(infra_envs)
 
 
 @mcp.tool()
