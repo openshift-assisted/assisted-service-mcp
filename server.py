@@ -10,16 +10,23 @@ import os
 import asyncio
 from typing import Any, Annotated
 
+from jinja2 import TemplateError
 import requests
 import uvicorn
 from pydantic import Field
 from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
 
-
+from metrics import metrics, track_tool_usage, initiate_metrics
 from service_client import InventoryClient
 from service_client.logger import log
-from metrics import metrics, track_tool_usage, initiate_metrics
+from static_net import (
+    NMStateTemplateParams,
+    add_or_replace_static_host_config_yaml,
+    generate_nmstate_from_template,
+    remove_static_host_config_by_index,
+    validate_and_parse_nmstate,
+)
 
 
 transport_type = os.environ.get("TRANSPORT", "sse").lower()
@@ -439,6 +446,120 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         infraenv.id,
     )
     return cluster.id
+
+
+@mcp.tool()
+@track_tool_usage()
+async def validate_nmstate_yaml(nmstate_yaml: str) -> str:
+    """
+    Validate an nmstate yaml document.
+
+    The yaml should always be validated before submitted to the cluster.
+    """
+    validate_and_parse_nmstate(nmstate_yaml)
+    return "YAML is valid"
+
+
+@mcp.tool(
+    description=f"""
+    Generate an initial nmstate yaml.
+
+    You should call this after gathering information from the user to generate the initial nmstate
+    yaml. Then you can tweak it as needed. Do not generate nmstate yaml from scratch without calling
+    this tool.
+
+    Returns: the generated nmstate yaml
+
+    Input param schema:
+    {NMStateTemplateParams.model_json_schema()}
+"""
+)
+@track_tool_usage()
+async def generate_nmstate_yaml(params: NMStateTemplateParams) -> str:
+    """
+    Generate an initial nmstate yaml.
+
+    See the mcp.tool description for more details (we have to use it since we dynamically generate
+    the input schema for the params).
+    """
+    log.info("Generate nmstate yaml with params: %s", params.model_dump_json(indent=2))
+    try:
+        generated = generate_nmstate_from_template(params)
+        log.debug("Generated yaml: %s", generated)
+        return generated
+    except TemplateError as e:
+        log.error("Failed to render nmstate template", exc_info=e)
+        return "ERROR: Failed to generate nmstate yaml"
+    except Exception as e:
+        log.error("Exception generating nmstate yaml", exc_info=e)
+        return "ERROR: Unknown error"
+
+
+@mcp.tool()
+@track_tool_usage()
+async def alter_static_network_config_nmstate_for_host(
+    cluster_id: str, index: int | None, new_nmstate_yaml: str | None
+) -> str:
+    """
+    Add, replace, or delete the nmstate yaml for a single host.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster
+        index (int | None): The index of the host in the existing static config to replace, or None to append a new host to the end of the config.
+        new_nmstate_yaml (str): The new nmstate YAML for a host. Leave this None to delete the config at the given index.
+
+    Returns: the updated infra env with the new static network config
+    """
+    client = InventoryClient(get_access_token())
+    infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
+    infra_env = await client.get_infra_env(infra_env_id)
+
+    if new_nmstate_yaml is None:
+        if index is None:
+            raise ValueError("index cannot be null when removing a host yaml")
+        if not infra_env.static_network_config:
+            raise ValueError(
+                "cannot remove host yaml with empty existing static network config"
+            )
+        static_network_config = remove_static_host_config_by_index(
+            existing_static_network_config=infra_env.static_network_config, index=index
+        )
+    else:
+        static_network_config = add_or_replace_static_host_config_yaml(
+            existing_static_network_config=infra_env.static_network_config,
+            index=index,
+            new_nmstate_yaml=new_nmstate_yaml,
+        )
+
+    result = await client.update_infra_env(
+        infra_env_id, static_network_config=static_network_config
+    )
+    return result.to_str()
+
+
+@mcp.tool()
+@track_tool_usage()
+async def list_static_network_config(cluster_id: str) -> str:
+    """
+    List all of the host static network config associated with the given cluster_id.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to configure.
+
+    Returns:
+        str: A JSON-formatted list of static network config or an error string
+    """
+    client = InventoryClient(get_access_token())
+    infra_envs = await client.list_infra_envs(cluster_id)
+    log.info("Found %d InfraEnvs for cluster %s", len(infra_envs), cluster_id)
+
+    if len(infra_envs) != 1:
+        log.warning(
+            "cluster %s has %d infra_envs, expected 1", cluster_id, len(infra_envs)
+        )
+        return "ERROR: this cluster doesn't have exactly 1 infra env, cannot manage static network config"
+
+    return json.dumps(infra_envs[0].get("static_network_config", []))
 
 
 @mcp.tool()
