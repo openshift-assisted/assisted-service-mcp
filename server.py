@@ -566,18 +566,55 @@ async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> s
     return json.dumps(format_presigned_url(result))
 
 
+async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) -> str:
+    """
+    Get the InfraEnv ID for a cluster (expecting a single InfraEnv).
+
+    This is shared code used by both set_host_role and set_cluster_ssh_key.
+
+    Args:
+        client: The InventoryClient instance.
+        cluster_id: The cluster ID to get InfraEnv ID for.
+
+    Returns:
+        str: The InfraEnv ID (first valid one if multiple exist).
+
+    Raises:
+        ValueError: If no InfraEnv is found or InfraEnv doesn't have a valid ID.
+    """
+    log.info("Getting InfraEnv for cluster %s", cluster_id)
+    infra_envs = await client.list_infra_envs(cluster_id)
+
+    if not infra_envs:
+        raise ValueError(f"No InfraEnv found for cluster {cluster_id}")
+
+    if len(infra_envs) > 1:
+        log.warning(
+            "Found %d InfraEnvs for cluster %s, using the first valid one",
+            len(infra_envs),
+            cluster_id,
+        )
+
+    infra_env_id = infra_envs[0].get("id")
+    if not infra_env_id:
+        raise ValueError(f"No InfraEnv with valid ID found for cluster {cluster_id}")
+
+    log.info("Using InfraEnv %s for cluster %s", infra_env_id, cluster_id)
+    return infra_env_id
+
+
 @mcp.tool()
 @track_tool_usage()
-async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
+async def set_host_role(host_id: str, cluster_id: str, role: str) -> str:
     """
     Assign a specific role to a discovered host in the cluster.
 
-    Sets the role for a host that has been discovered through the InfraEnv boot process.
+    Sets the role for a host that has been discovered through the cluster's hosts boot process.
     The role determines the host's function in the OpenShift cluster.
 
     Args:
         host_id (str): The unique identifier of the host to configure.
-        infraenv_id (str): The unique identifier of the InfraEnv containing the host.
+        cluster_id (str): The unique identifier of the cluster containing the host.
         role (str): The role to assign to the host. Valid options are:
             - 'auto-assign': Let the installer automatically determine the role
             - 'master': Control plane node (API server, etcd, scheduler)
@@ -587,10 +624,20 @@ async def set_host_role(host_id: str, infraenv_id: str, role: str) -> str:
         str: A formatted string containing the updated host configuration
             showing the newly assigned role.
     """
-    log.info("Setting role '%s' for host %s in InfraEnv %s", role, host_id, infraenv_id)
+    log.info("Setting role '%s' for host %s in cluster %s", role, host_id, cluster_id)
     client = InventoryClient(get_access_token())
-    result = await client.update_host(host_id, infraenv_id, host_role=role)
-    log.info("Successfully set role '%s' for host %s", role, host_id)
+
+    # Get the InfraEnv ID for the cluster
+    infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
+
+    # Update the host with the specified role
+    result = await client.update_host(host_id, infra_env_id, host_role=role)
+    log.info(
+        "Successfully set role '%s' for host %s in cluster %s",
+        role,
+        host_id,
+        cluster_id,
+    )
     return result.to_str()
 
 
@@ -620,27 +667,18 @@ async def set_cluster_ssh_key(cluster_id: str, ssh_public_key: str) -> str:
     result = await client.update_cluster(cluster_id, ssh_public_key=ssh_public_key)
     log.info("Successfully updated cluster %s with new SSH key", cluster_id)
 
-    # Get existing InfraEnvs and update them
-    infra_envs = await client.list_infra_envs(cluster_id)
-    log.info("Found %d InfraEnvs for cluster %s", len(infra_envs), cluster_id)
+    # Get the InfraEnv ID and update it
+    try:
+        infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
+    except ValueError as e:
+        log.error("Failed to get InfraEnv ID: %s", str(e))
+        return f"Cluster key updated, but failed to get InfraEnv ID: {str(e)}. New cluster: {result.to_str()}"
 
-    update_failed = False
-    for infra_env in infra_envs:
-        infra_env_id = infra_env.get("id")
-        if not infra_env_id:
-            log.warning("Skipping InfraEnv without ID: %s", infra_env)
-            continue
-
-        try:
-            await client.update_infra_env(
-                infra_env_id, ssh_authorized_key=ssh_public_key
-            )
-            log.info("Successfully updated InfraEnv %s with new SSH key", infra_env_id)
-        except Exception as e:
-            update_failed = True
-            log.error("Failed to update InfraEnv %s: %s", infra_env_id, str(e))
-
-    if update_failed:
+    try:
+        await client.update_infra_env(infra_env_id, ssh_authorized_key=ssh_public_key)
+        log.info("Successfully updated InfraEnv %s with new SSH key", infra_env_id)
+    except Exception as e:
+        log.error("Failed to update InfraEnv %s: %s", infra_env_id, str(e))
         return f"Cluster key updated, but boot image key update failed. New cluster: {result.to_str()}"
 
     log.info(
