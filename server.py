@@ -8,10 +8,11 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 import json
 import os
 import asyncio
-from typing import Optional, Any
+from typing import Any, Annotated
 
 import requests
 import uvicorn
+from pydantic import Field
 from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
 
@@ -134,7 +135,14 @@ def get_access_token() -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def cluster_info(cluster_id: str) -> str:
+async def cluster_info(
+    cluster_id: Annotated[
+        str,
+        Field(
+            description="The unique identifier of the cluster to retrieve information for. This is typically a UUID string."
+        ),
+    ],
+) -> str:
     """
     Get comprehensive information about a specific assisted installer cluster.
 
@@ -195,7 +203,12 @@ async def list_clusters() -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def cluster_events(cluster_id: str) -> str:
+async def cluster_events(
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to get events for."),
+    ],
+) -> str:
     """
     Get the events related to a cluster with the given cluster id.
 
@@ -219,7 +232,18 @@ async def cluster_events(cluster_id: str) -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def host_events(cluster_id: str, host_id: str) -> str:
+async def host_events(
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster containing the host."),
+    ],
+    host_id: Annotated[
+        str,
+        Field(
+            description="The unique identifier of the specific host to get events for."
+        ),
+    ],
+) -> str:
     """
     Get events specific to a particular host within a cluster.
 
@@ -245,7 +269,14 @@ async def host_events(cluster_id: str, host_id: str) -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def cluster_iso_download_url(cluster_id: str) -> str:
+async def cluster_iso_download_url(
+    cluster_id: Annotated[
+        str,
+        Field(
+            description="The unique identifier of the cluster, whose ISO image URL has to be retrieved."
+        ),
+    ],
+) -> str:
     """
     Get ISO download URL(s) for a cluster.
 
@@ -304,12 +335,36 @@ async def cluster_iso_download_url(cluster_id: str) -> str:
 @mcp.tool()
 @track_tool_usage()
 async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    name: str,
-    version: str,
-    base_domain: str,
-    single_node: bool,
-    ssh_public_key: Optional[str] = None,
-    cpu_architecture: Optional[str] = "x86_64",
+    name: Annotated[str, Field(description="The name of the new cluster.")],
+    version: Annotated[
+        str,
+        Field(
+            description="The OpenShift version to install (e.g., '4.18.2', '4.17.1')."
+        ),
+    ],
+    base_domain: Annotated[
+        str,
+        Field(
+            description="The base DNS domain for the cluster (e.g., 'example.com'). The cluster will be accessible at api.<name>.<base_domain>."
+        ),
+    ],
+    single_node: Annotated[
+        bool,
+        Field(
+            description="Whether to create a single-node cluster.Set to True for edge deployments or resource-constrained environments. Set to False for  production high-availability clusters with multiple control plane nodes."
+        ),
+    ],
+    ssh_public_key: Annotated[
+        str | None,
+        Field(default=None, description="SSH public key for accessing cluster nodes."),
+    ] = None,
+    cpu_architecture: Annotated[
+        str,
+        Field(
+            default="x86_64",
+            description="The CPU architecture for the cluster. Defaults to 'x86_64' if not specified. Valid options are: x86_64, aarch64, arm64, ppc64le, s390x.",
+        ),
+    ] = "x86_64",
 ) -> str:
     """
     Create a new OpenShift cluster.
@@ -388,7 +443,23 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
 
 @mcp.tool()
 @track_tool_usage()
-async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> str:
+async def set_cluster_vips(
+    cluster_id: Annotated[
+        str, Field(description="The unique identifier of the cluster to configure.")
+    ],
+    api_vip: Annotated[
+        str,
+        Field(
+            description="The IP address for the cluster API endpoint. This is where kubectl and other management tools will connect."
+        ),
+    ],
+    ingress_vip: Annotated[
+        str,
+        Field(
+            description="The IP address for ingress traffic to applications running in the cluster."
+        ),
+    ],
+) -> str:
     """
     Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
 
@@ -423,7 +494,11 @@ async def set_cluster_vips(cluster_id: str, api_vip: str, ingress_vip: str) -> s
 
 @mcp.tool()
 @track_tool_usage()
-async def install_cluster(cluster_id: str) -> str:
+async def install_cluster(
+    cluster_id: Annotated[
+        str, Field(description="The unique identifier of the cluster to install.")
+    ],
+) -> str:
     """
     Trigger the installation process for a prepared cluster.
 
@@ -494,7 +569,17 @@ async def list_operator_bundles() -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> str:
+async def add_operator_bundle_to_cluster(
+    cluster_id: Annotated[
+        str, Field(description="The unique identifier of the cluster to configure.")
+    ],
+    bundle_name: Annotated[
+        str,
+        Field(
+            description="The name of the operator bundle to add. The available operator bundle names are 'virtualization' and 'openshift-ai'"
+        ),
+    ],
+) -> str:
     """
     Add an operator bundle to be installed with the cluster.
 
@@ -522,7 +607,20 @@ async def add_operator_bundle_to_cluster(cluster_id: str, bundle_name: str) -> s
 
 @mcp.tool()
 @track_tool_usage()
-async def cluster_credentials_download_url(cluster_id: str, file_name: str) -> str:
+async def cluster_credentials_download_url(
+    cluster_id: Annotated[
+        str,
+        Field(
+            description="The unique identifier of the cluster to get credentials for."
+        ),
+    ],
+    file_name: Annotated[
+        str,
+        Field(
+            description="The type of credential file to download. Valid options are: kubeconfig (Standard kubeconfig file for cluster access), kubeconfig-noingress (Kubeconfig without ingress configuration), kubeadmin-password (The kubeadmin user password file)."
+        ),
+    ],
+) -> str:
     """
     Get presigned download URL for cluster credential files.
 
@@ -605,7 +703,21 @@ async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) ->
 
 @mcp.tool()
 @track_tool_usage()
-async def set_host_role(host_id: str, cluster_id: str, role: str) -> str:
+async def set_host_role(
+    host_id: Annotated[
+        str, Field(description="The unique identifier of the host to configure.")
+    ],
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster containing the host."),
+    ],
+    role: Annotated[
+        str,
+        Field(
+            description="The role to assign to the host. Valid options are: auto-assign (Let the installer automatically determine the role), master (Control plane node - API server, etcd, scheduler), worker (Compute node for running application workloads)."
+        ),
+    ],
+) -> str:
     """
     Assign a specific role to a discovered host in the cluster.
 
@@ -643,7 +755,17 @@ async def set_host_role(host_id: str, cluster_id: str, role: str) -> str:
 
 @mcp.tool()
 @track_tool_usage()
-async def set_cluster_ssh_key(cluster_id: str, ssh_public_key: str) -> str:
+async def set_cluster_ssh_key(
+    cluster_id: Annotated[
+        str, Field(description="The unique identifier of the cluster to update.")
+    ],
+    ssh_public_key: Annotated[
+        str,
+        Field(
+            description="The SSH public key to set for the cluster. This should be a valid SSH public key in OpenSSH format."
+        ),
+    ],
+) -> str:
     """
     Set or update the SSH public key for a cluster.
 
