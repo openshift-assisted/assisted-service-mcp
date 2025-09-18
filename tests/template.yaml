@@ -1,0 +1,66 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: assisted-service-mcp-eval-test
+objects:
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: assisted-service-mcp-eval-test-${JOB_ID}
+    labels:
+      app: assisted-service-mcp-eval-test
+  spec:
+    template:
+      metadata:
+        labels:
+          app: assisted-service-mcp-eval-test
+      spec:
+        restartPolicy: Never
+        containers:
+        - name: assisted-service-mcp-eval-test
+          image: ${IMAGE_NAME}
+          command: [ "/opt/app-root/src/test/prow/entrypoint.sh" ]
+          imagePullPolicy: Always
+          env:
+          - name: CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                key: ${SSL_CLIENT_ID}
+                name: ${SSL_CLIENT_SECRET_NAME}
+          - name: CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: ${SSL_CLIENT_SECRET_KEY}
+                name: ${SSL_CLIENT_SECRET_NAME}
+          - name: GEMINI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                key: ${GEMINI_API_SECRET_KEY_NAME}
+                name: ${GEMINI_API_SECRET_NAME}
+          - name: AGENT_URL
+            value: ${AGENT_URL}
+          - name: AGENT_PORT
+            value: ${AGENT_PORT}
+          - name: UNIQUE_ID
+            value: ${JOB_ID}
+
+parameters:
+- name: JOB_ID
+  generate: expression
+  from: "[0-9a-f]{7}"
+- name: IMAGE_NAME
+  required: true
+- name: SSL_CLIENT_SECRET_NAME
+  value: assisted-chat-ssl-ci
+- name: SSL_CLIENT_ID
+  value: client_id
+- name: SSL_CLIENT_SECRET_KEY
+  value: client_secret
+- name: AGENT_URL
+  value: http://assisted-chat
+- name: AGENT_PORT
+  value: "8090"
+- name: GEMINI_API_SECRET_NAME
+  value: gemini
+- name: GEMINI_API_SECRET_KEY_NAME
+  value: api_key
