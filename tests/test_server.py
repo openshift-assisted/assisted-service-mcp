@@ -588,6 +588,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                 base_dns_domain=base_domain,
                 tags="chatbot",
                 cpu_architecture="x86_64",
+                platform="baremetal",
             )
             mock_inventory_client.create_infra_env.assert_called_once_with(
                 name,
@@ -636,8 +637,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                 single_node,
                 base_dns_domain=base_domain,
                 tags="chatbot",
-                cpu_architecture="x86_64",
                 ssh_public_key=ssh_public_key,
+                cpu_architecture="x86_64",
+                platform="baremetal",
             )
             mock_inventory_client.create_infra_env.assert_called_once_with(
                 name,
@@ -677,7 +679,13 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             server, "InventoryClient", return_value=mock_inventory_client
         ):
             result = await server.create_cluster(
-                name, version, base_domain, single_node, None, cpu_architecture
+                name,
+                version,
+                base_domain,
+                single_node,
+                None,
+                cpu_architecture,
+                None,
             )
             assert result == cluster.id
 
@@ -688,6 +696,64 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                 base_dns_domain=base_domain,
                 tags="chatbot",
                 cpu_architecture=cpu_architecture,
+                platform="baremetal",
+            )
+            mock_inventory_client.create_infra_env.assert_called_once_with(
+                name,
+                cluster_id="cluster-id",
+                openshift_version=version,
+                cpu_architecture=cpu_architecture,
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_cluster_with_platform_success(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test successful create_cluster function with specific platform."""
+        name = "test-cluster"
+        version = "4.18.2"
+        base_domain = "example.com"
+        single_node = False
+        cpu_architecture = "x86_64"
+        platform = "nutanix"
+
+        cluster = create_test_cluster(
+            cluster_id="cluster-id",
+            name=name,
+            openshift_version=version,
+        )
+        infraenv = create_test_infra_env(
+            infra_env_id="infraenv-id",
+            name=name,
+        )
+
+        mock_inventory_client.create_cluster.return_value = cluster
+        mock_inventory_client.create_infra_env.return_value = infraenv
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.create_cluster(
+                name,
+                version,
+                base_domain,
+                single_node,
+                None,
+                cpu_architecture,
+                platform,
+            )
+            assert result == cluster.id
+
+            mock_inventory_client.create_cluster.assert_called_once_with(
+                name,
+                version,
+                single_node,
+                base_dns_domain=base_domain,
+                tags="chatbot",
+                cpu_architecture=cpu_architecture,
+                platform=platform,
             )
             mock_inventory_client.create_infra_env.assert_called_once_with(
                 name,
@@ -718,6 +784,29 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
             assert result == cluster.to_str()
             mock_inventory_client.update_cluster.assert_called_once_with(
                 cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
+            )
+
+    @pytest.mark.asyncio
+    async def test_set_cluster_platform_success(
+        self,
+        mock_inventory_client: Mock,
+        mock_get_access_token: None,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test successful set_cluster_platform function."""
+        cluster_id = "test-cluster-id"
+        platform = "vsphere"
+
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        mock_inventory_client.update_cluster.return_value = cluster
+
+        with patch.object(
+            server, "InventoryClient", return_value=mock_inventory_client
+        ):
+            result = await server.set_cluster_platform(cluster_id, platform)
+
+            assert result == cluster.to_str()
+            mock_inventory_client.update_cluster.assert_called_once_with(
+                cluster_id, platform=platform
             )
 
     @pytest.mark.asyncio

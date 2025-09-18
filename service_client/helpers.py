@@ -1,0 +1,35 @@
+"""Helper functions for the service client."""
+
+from typing import cast
+from assisted_service_client import models
+
+
+class Helpers:
+    """Helpers contains functions that can be used by the service client."""
+
+    @staticmethod
+    def get_platform_model(platform: str) -> models.Platform:
+        """
+        Get the platform object from a platform type string.
+
+        Args:
+            platform (str): The platform type string
+
+        Returns:
+            models.Platform: The platform object
+
+        Raises:
+            ValueError: If the platform is invalid.
+        """
+        if platform is None or platform == "":
+            return models.Platform(type=cast(models.PlatformType, "baremetal"))
+        if platform in ["oci"]:
+            return models.Platform(
+                type=cast(models.PlatformType, "external"),
+                external=models.PlatformExternal(
+                    platform_name="oci", cloud_controller_manager="External"
+                ),
+            )
+        if platform not in ["baremetal", "vsphere", "nutanix", "none"]:
+            raise ValueError(f"Invalid platform {platform}")
+        return models.Platform(type=cast(models.PlatformType, platform))
