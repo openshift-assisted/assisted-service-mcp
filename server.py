@@ -365,7 +365,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
             description="The CPU architecture for the cluster. Defaults to 'x86_64' if not specified. Valid options are: x86_64, aarch64, arm64, ppc64le, s390x.",
         ),
     ] = "x86_64",
-) -> str:
+) -> Annotated[str, Field(description="A unique identifier for the cluster. This ID is required to perform any further operations on the cluster.")]:
     """
     Create a new OpenShift cluster.
 
