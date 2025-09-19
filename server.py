@@ -503,6 +503,11 @@ async def alter_static_network_config_nmstate_for_host(
     """
     Add, replace, or delete the nmstate yaml for a single host.
 
+    To add a new host, set index to None and the given config will be appended to the end of the
+    static network configs for the given cluster.
+
+    To remove a host's config at a particular index, set new_nmstate_yaml to None.
+
     Args:
         cluster_id (str): The unique identifier of the cluster
         index (int | None): The index of the host in the existing static config to replace, or None to append a new host to the end of the config.
