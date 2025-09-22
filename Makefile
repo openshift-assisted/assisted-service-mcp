@@ -17,6 +17,10 @@ run:
 run-local:
 	uv run server.py
 
+.PHONY: run-mock-assisted
+run-mock-assisted:
+	cd integration_test/mock_server && go run mock_server.go
+
 .PHONY: test test-coverage test-verbose install-test-deps
 test:
 	uv run --group test pytest
