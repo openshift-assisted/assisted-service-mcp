@@ -347,6 +347,7 @@ class TestGenerateNmstateFromTemplate:
                     next_hop_address="192.168.1.1",
                     next_hop_interface="eth0",
                     table_id=254,
+                    metric=50,
                 )
             ],
             ethernet_ifaces=[
@@ -363,6 +364,7 @@ class TestGenerateNmstateFromTemplate:
         assert "next-hop-address: 192.168.1.1" in result
         assert "next-hop-interface: eth0" in result
         assert "table-id: 254" in result
+        assert "metric: 50" in result
 
         # Verify the generated YAML is valid
         yaml.safe_load(result)

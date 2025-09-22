@@ -5,6 +5,7 @@ from ipaddress import IPv4Address
 
 from pydantic import BaseModel, Field
 from jinja2 import Template
+import yaml
 
 
 class RouteParams(BaseModel):
@@ -22,6 +23,7 @@ class RouteParams(BaseModel):
     table_id: int | None = Field(
         254, description="The routing table id to add this route to"
     )
+    metric: int | None = Field(None, description="The route metric value")
 
 
 class IPV4AddressWithSubnet(BaseModel):
@@ -116,7 +118,8 @@ class NMStateTemplateParams(BaseModel):
 
 def generate_nmstate_from_template(params: NMStateTemplateParams) -> str:
     """Generate the nmstate yaml based on the params"""
-    return NMSTATE_TEMPLATE.render(params)
+    # Go through a serialization loop to standardize indentation and whitespace.
+    return yaml.dump(yaml.safe_load(NMSTATE_TEMPLATE.render(params)))
 
 
 NMSTATE_TEMPLATE = Template(
@@ -144,6 +147,9 @@ routes:
       next-hop-interface: {{r.next_hop_interface}}
       {% if r.table_id is not none %}
       table-id: {{r.table_id}}
+      {% endif %}
+      {% if r.metric is not none %}
+      metric: {{r.metric}}
       {% endif %}
   {% endfor %}
 {% endif %}
