@@ -2,13 +2,14 @@
 Unit tests for the server module.
 """
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,unused-argument
 
 import json
 import os
-from typing import Generator, Tuple
+from typing import Any, Generator, cast
 from unittest.mock import Mock, patch, call
 
+from mcp.types import TextContent
 import pytest
 from requests.exceptions import RequestException
 
@@ -27,14 +28,12 @@ class TestTokenFunctions:
     """Test cases for token handling functions."""
 
     @pytest.fixture
-    def mock_mcp_get_context(self) -> Generator[Tuple[Mock, Mock], None, None]:
+    def mock_mcp_get_http_headers(self) -> Generator[dict[str, Any], None, None]:
         """Mock MCP context for testing."""
-        mock_context = Mock()
-        mock_request = Mock()
-        mock_context.request_context.request = mock_request
+        headers: dict[str, Any] = {}
 
-        with patch.object(server.mcp, "get_context", return_value=mock_context):
-            yield mock_context, mock_request
+        with patch.object(server, "get_http_headers", return_value=headers):
+            yield headers
 
     def test_get_offline_token_from_environment(self) -> None:
         """Test retrieving offline token from environment variables."""
@@ -44,15 +43,14 @@ class TestTokenFunctions:
             assert result == test_token
 
     def test_get_offline_token_environment_takes_precedence(
-        self, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test that environment token takes precedence over request header token."""
-        _mock_context, mock_request = mock_mcp_get_context
         env_token = "environment-token"
         header_token = "header-token"
 
         # Set up both environment and header tokens
-        mock_request.headers.get.return_value = header_token
+        mock_mcp_get_http_headers["ocm-offline-token"] = header_token
 
         with patch.dict(os.environ, {"OFFLINE_TOKEN": env_token}):
             result = server.get_offline_token()
@@ -60,64 +58,42 @@ class TestTokenFunctions:
             # Should return the environment token, not the header token
             assert result == env_token
 
-            # Should not even check the request headers since env token was found
-            mock_request.headers.get.assert_not_called()
-
     def test_get_offline_token_from_headers(
-        self, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test retrieving offline token from request headers."""
-        _mock_context, mock_request = mock_mcp_get_context
         test_token = "test-offline-token-header"
-        mock_request.headers.get.return_value = test_token
+        mock_mcp_get_http_headers["ocm-offline-token"] = test_token
 
         # Ensure environment variable is not set
         with patch.dict(os.environ, {}, clear=True):
             result = server.get_offline_token()
             assert result == test_token
-            mock_request.headers.get.assert_called_once_with("OCM-Offline-Token")
 
     def test_get_offline_token_not_found(
-        self, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test error when offline token is not found."""
-        _mock_context, mock_request = mock_mcp_get_context
-        mock_request.headers.get.return_value = None
-
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(RuntimeError) as exc_info:
                 server.get_offline_token()
             assert "No offline token found" in str(exc_info.value)
 
-    def test_get_offline_token_no_request(self) -> None:
-        """Test offline token retrieval when no request is available."""
-        mock_context = Mock()
-        mock_context.request_context.request = None
-
-        with patch.object(server.mcp, "get_context", return_value=mock_context):
-            with patch.dict(os.environ, {}, clear=True):
-                with pytest.raises(RuntimeError) as exc_info:
-                    server.get_offline_token()
-                assert "No offline token found" in str(exc_info.value)
-
     def test_get_access_token_from_authorization_header(
-        self, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test retrieving access token from Authorization header."""
-        _mock_context, mock_request = mock_mcp_get_context
         test_token = "test-access-token"
-        mock_request.headers.get.return_value = f"Bearer {test_token}"
+        mock_mcp_get_http_headers["authorization"] = f"Bearer {test_token}"
 
         result = server.get_access_token()
         assert result == test_token
-        mock_request.headers.get.assert_called_once_with("Authorization")
 
     def test_get_access_token_invalid_authorization_header(
-        self, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test access token retrieval with invalid Authorization header."""
-        _mock_context, mock_request = mock_mcp_get_context
-        mock_request.headers.get.return_value = "Invalid header format"
+        mock_mcp_get_http_headers["authorization"] = "Invalid header format"
 
         with patch.object(server, "get_offline_token", return_value="offline-token"):
             with patch("requests.post") as mock_post:
@@ -129,12 +105,9 @@ class TestTokenFunctions:
                 assert result == "new-token"
 
     def test_get_access_token_no_authorization_header(
-        self, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test access token retrieval without Authorization header."""
-        _mock_context, mock_request = mock_mcp_get_context
-        mock_request.headers.get.return_value = None
-
         with patch.object(server, "get_offline_token", return_value="offline-token"):
             with patch("requests.post") as mock_post:
                 mock_response = Mock()
@@ -146,12 +119,9 @@ class TestTokenFunctions:
 
     @patch("requests.post")
     def test_get_access_token_generate_from_offline_token(
-        self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_post: Mock, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test generating access token from offline token."""
-        _mock_context, mock_request = mock_mcp_get_context
-        mock_request.headers.get.return_value = None
-
         offline_token = "test-offline-token"
         access_token = "generated-access-token"
 
@@ -175,12 +145,9 @@ class TestTokenFunctions:
 
     @patch("requests.post")
     def test_get_access_token_custom_sso_url(
-        self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_post: Mock, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test access token generation with custom SSO URL."""
-        _mock_context, mock_request = mock_mcp_get_context
-        mock_request.headers.get.return_value = None
-
         custom_sso_url = "https://custom-sso.example.com/token"
         offline_token = "test-offline-token"
         access_token = "generated-access-token"
@@ -206,34 +173,27 @@ class TestTokenFunctions:
 
     @patch("requests.post")
     def test_get_access_token_request_failure(
-        self, mock_post: Mock, mock_mcp_get_context: Tuple[Mock, Mock]
+        self, mock_post: Mock, mock_mcp_get_http_headers: dict[str, Any]
     ) -> None:
         """Test access token generation request failure."""
-        _mock_context, mock_request = mock_mcp_get_context
-        mock_request.headers.get.return_value = None
-
         mock_post.side_effect = RequestException("Network error")
 
         with patch.object(server, "get_offline_token", return_value="offline-token"):
             with pytest.raises(RequestException):
                 server.get_access_token()
 
-    def test_get_access_token_no_request_context(self) -> None:
+    def test_get_access_token_no_request_context(
+        self, mock_mcp_get_http_headers: dict[str, Any]
+    ) -> None:
         """Test access token retrieval when no request context is available."""
-        mock_context = Mock()
-        mock_context.request_context.request = None
+        with patch.object(server, "get_offline_token", return_value="offline-token"):
+            with patch("requests.post") as mock_post:
+                mock_response = Mock()
+                mock_response.json.return_value = {"access_token": "new-token"}
+                mock_post.return_value = mock_response
 
-        with patch.object(server.mcp, "get_context", return_value=mock_context):
-            with patch.object(
-                server, "get_offline_token", return_value="offline-token"
-            ):
-                with patch("requests.post") as mock_post:
-                    mock_response = Mock()
-                    mock_response.json.return_value = {"access_token": "new-token"}
-                    mock_post.return_value = mock_response
-
-                    result = server.get_access_token()
-                    assert result == "new-token"
+                result = server.get_access_token()
+                assert result == "new-token"
 
 
 class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
@@ -264,9 +224,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_info(cluster_id)
+            result = await server.cluster_info.run({"cluster_id": cluster_id})
 
-            assert result == cluster.to_str()
+            assert cast(TextContent, result.content[0]).text == cluster.to_str()
             mock_inventory_client.get_cluster.assert_called_once_with(
                 cluster_id=cluster_id
             )
@@ -297,10 +257,10 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.list_clusters()
+            result = await server.list_clusters.run({})
 
             expected_result = json.dumps(mock_clusters)
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.list_clusters.assert_called_once()
 
     @pytest.mark.asyncio
@@ -317,9 +277,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_events(cluster_id)
+            result = await server.cluster_events.run({"cluster_id": cluster_id})
 
-            assert result == mock_events
+            assert cast(TextContent, result.content[0]).text == mock_events
             mock_inventory_client.get_events.assert_called_once_with(
                 cluster_id=cluster_id
             )
@@ -339,9 +299,11 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.host_events(cluster_id, host_id)
+            result = await server.host_events.run(
+                {"cluster_id": cluster_id, "host_id": host_id}
+            )
 
-            assert result == mock_events
+            assert cast(TextContent, result.content[0]).text == mock_events
             mock_inventory_client.get_events.assert_called_once_with(
                 cluster_id=cluster_id, host_id=host_id
             )
@@ -369,7 +331,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_iso_download_url(cluster_id)
+            result = await server.cluster_iso_download_url.run(
+                {"cluster_id": cluster_id}
+            )
 
             expected_result = json.dumps(
                 [
@@ -379,7 +343,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                     }
                 ]
             )
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
                 "test-infraenv-id"
@@ -430,7 +394,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_iso_download_url(cluster_id)
+            result = await server.cluster_iso_download_url.run(
+                {"cluster_id": cluster_id}
+            )
 
             expected_result = json.dumps(
                 [
@@ -444,7 +410,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                     },
                 ]
             )
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_has_calls(
                 [
@@ -476,7 +442,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_iso_download_url(cluster_id)
+            result = await server.cluster_iso_download_url.run(
+                {"cluster_id": cluster_id}
+            )
 
             expected_result = json.dumps(
                 [
@@ -485,7 +453,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                     }
                 ]
             )
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
                 "test-infraenv-id"
@@ -514,7 +482,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_iso_download_url(cluster_id)
+            result = await server.cluster_iso_download_url.run(
+                {"cluster_id": cluster_id}
+            )
 
             # Should not include expiration time since it's a zero/default value
             expected_result = json.dumps(
@@ -524,7 +494,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                     }
                 ]
             )
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
             mock_inventory_client.get_infra_env_download_url.assert_called_once_with(
                 "test-infraenv-id"
@@ -543,9 +513,14 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_iso_download_url(cluster_id)
+            result = await server.cluster_iso_download_url.run(
+                {"cluster_id": cluster_id}
+            )
 
-            assert result == "No ISO download URLs found for this cluster."
+            assert (
+                cast(TextContent, result.content[0]).text
+                == "No ISO download URLs found for this cluster."
+            )
             mock_inventory_client.list_infra_envs.assert_called_once_with(cluster_id)
 
     @pytest.mark.asyncio
@@ -576,10 +551,15 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.create_cluster(
-                name, version, base_domain, single_node
+            result = await server.create_cluster.run(
+                {
+                    "name": name,
+                    "version": version,
+                    "base_domain": base_domain,
+                    "single_node": single_node,
+                }
             )
-            assert result == cluster.id
+            assert cast(TextContent, result.content[0]).text == cluster.id
 
             mock_inventory_client.create_cluster.assert_called_once_with(
                 name,
@@ -625,10 +605,16 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.create_cluster(
-                name, version, base_domain, single_node, ssh_public_key
+            result = await server.create_cluster.run(
+                {
+                    "name": name,
+                    "version": version,
+                    "base_domain": base_domain,
+                    "single_node": single_node,
+                    "ssh_public_key": ssh_public_key,
+                }
             )
-            assert result == cluster.id
+            assert cast(TextContent, result.content[0]).text == cluster.id
 
             mock_inventory_client.create_cluster.assert_called_once_with(
                 name,
@@ -676,10 +662,17 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.create_cluster(
-                name, version, base_domain, single_node, None, cpu_architecture
+            result = await server.create_cluster.run(
+                {
+                    "name": name,
+                    "version": version,
+                    "base_domain": base_domain,
+                    "single_node": single_node,
+                    "ssh_public_key": None,
+                    "cpu_architecture": cpu_architecture,
+                }
             )
-            assert result == cluster.id
+            assert cast(TextContent, result.content[0]).text == cluster.id
 
             mock_inventory_client.create_cluster.assert_called_once_with(
                 name,
@@ -713,9 +706,15 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.set_cluster_vips(cluster_id, api_vip, ingress_vip)
+            result = await server.set_cluster_vips.run(
+                {
+                    "cluster_id": cluster_id,
+                    "api_vip": api_vip,
+                    "ingress_vip": ingress_vip,
+                }
+            )
 
-            assert result == cluster.to_str()
+            assert cast(TextContent, result.content[0]).text == cluster.to_str()
             mock_inventory_client.update_cluster.assert_called_once_with(
                 cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
             )
@@ -734,9 +733,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.install_cluster(cluster_id)
+            result = await server.install_cluster.run({"cluster_id": cluster_id})
 
-            assert result == cluster.to_str()
+            assert cast(TextContent, result.content[0]).text == cluster.to_str()
             mock_inventory_client.install_cluster.assert_called_once_with(cluster_id)
 
     @pytest.mark.asyncio
@@ -752,10 +751,10 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.list_versions()
+            result = await server.list_versions.run({})
 
             expected_result = json.dumps(mock_versions)
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.get_openshift_versions.assert_called_once_with(True)
 
     @pytest.mark.asyncio
@@ -774,10 +773,10 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.list_operator_bundles()
+            result = await server.list_operator_bundles.run({})
 
             expected_result = json.dumps(mock_bundles)
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.get_operator_bundles.assert_called_once()
 
     @pytest.mark.asyncio
@@ -796,11 +795,11 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.add_operator_bundle_to_cluster(
-                cluster_id, bundle_name
+            result = await server.add_operator_bundle_to_cluster.run(
+                {"cluster_id": cluster_id, "bundle_name": bundle_name}
             )
 
-            assert result == cluster.to_str()
+            assert cast(TextContent, result.content[0]).text == cluster.to_str()
             mock_inventory_client.add_operator_bundle_to_cluster.assert_called_once_with(
                 cluster_id, bundle_name
             )
@@ -828,9 +827,11 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.set_host_role(host_id, infraenv_id, role)
+            result = await server.set_host_role.run(
+                {"host_id": host_id, "cluster_id": infraenv_id, "role": role}
+            )
 
-            assert result == host.to_str()
+            assert cast(TextContent, result.content[0]).text == host.to_str()
             mock_inventory_client.update_host.assert_called_once_with(
                 host_id, infraenv_id, host_role=role
             )
@@ -853,8 +854,8 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_credentials_download_url(
-                cluster_id, file_name
+            result = await server.cluster_credentials_download_url.run(
+                {"cluster_id": cluster_id, "file_name": file_name}
             )
 
             expected_result = json.dumps(
@@ -863,7 +864,7 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                     "expires_at": "2023-12-31T23:59:59Z",
                 }
             )
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
             )
@@ -886,12 +887,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_credentials_download_url(
-                cluster_id, file_name
+            result = await server.cluster_credentials_download_url.run(
+                {"cluster_id": cluster_id, "file_name": file_name}
             )
 
             expected_result = json.dumps({"url": "https://example.com/presigned-url"})
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
             )
@@ -916,13 +917,13 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.cluster_credentials_download_url(
-                cluster_id, file_name
+            result = await server.cluster_credentials_download_url.run(
+                {"cluster_id": cluster_id, "file_name": file_name}
             )
 
             # Should not include expiration time since it's a zero/default value
             expected_result = json.dumps({"url": "https://example.com/presigned-url"})
-            assert result == expected_result
+            assert cast(TextContent, result.content[0]).text == expected_result
             mock_inventory_client.get_presigned_for_cluster_credentials.assert_called_once_with(
                 cluster_id, file_name
             )
@@ -953,8 +954,10 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.set_cluster_ssh_key(cluster_id, ssh_public_key)
-            assert result == cluster.to_str()
+            result = await server.set_cluster_ssh_key.run(
+                {"cluster_id": cluster_id, "ssh_public_key": ssh_public_key}
+            )
+            assert cast(TextContent, result.content[0]).text == cluster.to_str()
 
             # Verify all expected calls were made
             mock_inventory_client.update_cluster.assert_called_once_with(
@@ -991,10 +994,15 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         with patch.object(
             server, "InventoryClient", return_value=mock_inventory_client
         ):
-            result = await server.set_cluster_ssh_key(cluster_id, ssh_public_key)
+            result = await server.set_cluster_ssh_key.run(
+                {"cluster_id": cluster_id, "ssh_public_key": ssh_public_key}
+            )
             # Should return partial failure message
-            assert "Cluster key updated, but boot image key update failed" in result
-            assert cluster.to_str() in result
+            assert (
+                "Cluster key updated, but boot image key update failed"
+                in cast(TextContent, result.content[0]).text
+            )
+            assert cluster.to_str() in cast(TextContent, result.content[0]).text
 
             # Verify all expected calls were made
             mock_inventory_client.update_cluster.assert_called_once_with(
