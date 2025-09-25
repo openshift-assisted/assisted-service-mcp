@@ -17,6 +17,7 @@ from assisted_service_client import ApiClient, Configuration, api, models
 
 from service_client.logger import log
 from service_client.exceptions import sanitize_exceptions
+from service_client.helpers import Helpers
 from metrics.metrics import API_CALL_LATENCY
 
 T = TypeVar("T")
@@ -259,6 +260,9 @@ class InventoryClient:
             cluster_params["high_availability_mode"] = "None"
             cluster_params["user_managed_networking"] = True
 
+        platform = Helpers.get_platform_model(cluster_params.get("platform"))
+        cluster_params["platform"] = platform
+
         params = models.ClusterCreateParams(
             name=name,
             openshift_version=version,
@@ -346,6 +350,10 @@ class InventoryClient:
         Returns:
             models.Cluster: The updated cluster object.
         """
+        if "platform" in update_params:
+            platform = Helpers.get_platform_model(update_params["platform"])
+            update_params["platform"] = platform
+
         params = models.V2ClusterUpdateParams(**update_params)
         if api_vip != "":
             params.api_vips = [models.ApiVip(cluster_id=cluster_id, ip=api_vip)]

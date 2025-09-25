@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """
 MCP server for Red Hat Assisted Service API.
 
@@ -19,6 +20,7 @@ from mcp.server.fastmcp import FastMCP
 
 from metrics import metrics, track_tool_usage, initiate_metrics
 from service_client import InventoryClient
+from service_client.helpers import Helpers
 from service_client.logger import log
 from static_net import (
     NMStateTemplateParams,
@@ -372,6 +374,13 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
             description="The CPU architecture for the cluster. Defaults to 'x86_64' if not specified. Valid options are: x86_64, aarch64, arm64, ppc64le, s390x.",
         ),
     ] = "x86_64",
+    platform: Annotated[
+        Helpers.VALID_PLATFORMS | None,
+        Field(
+            default=None,
+            description="The platform of the cluster. Defaults to 'baremetal' if not specified and single_node is false, or 'none' if not specified and single_node is true. Valid options: baremetal, vsphere, oci, nutanix, none.",
+        ),
+    ] = None,
 ) -> str:
     """
     Create a new OpenShift cluster.
@@ -399,19 +408,39 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
               - 'ppc64le': IBM POWER little-endian 64-bit processors
               - 's390x': IBM System z mainframe processors
             Defaults to 'x86_64' if not specified.
-
+        platform (str, optional): The platform of the cluster.
+            Valid options for multi-node clusters are:
+              - 'baremetal': Bare metal platform
+              - 'vsphere': VMware vSphere platform
+              - 'oci': Oracle Cloud Infrastructure platform
+              - 'nutanix': Nutanix platform
+              - 'none': No platform
+            Valid options for single-node clusters are:
+              - 'none': No platform
+            Defaults to 'baremetal' if not specified and single_node is false or none if not specified and single_node is true.
     Returns:
         str: The created cluster's id
     """
     log.info(
-        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, cpu_architecture=%s, ssh_key_provided=%s",
+        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, cpu_architecture=%s, ssh_key_provided=%s, platform=%s",
         name,
         version,
         base_domain,
         single_node,
         cpu_architecture,
         ssh_public_key is not None,
+        platform,
     )
+
+    if platform:
+        # Check for invalid combination: single_node = true and platform is specified and not "none"
+        if single_node is True and platform != "none":
+            return "Platform must be set to 'none' for single-node clusters"
+    else:
+        platform = "baremetal"
+        if single_node is True:
+            platform = "none"
+
     client = InventoryClient(get_access_token())
 
     # Prepare cluster parameters
@@ -419,6 +448,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         "base_dns_domain": base_domain,
         "tags": "chatbot",
         "cpu_architecture": cpu_architecture,
+        "platform": platform,
     }
     if ssh_public_key:
         cluster_params["ssh_public_key"] = ssh_public_key
@@ -589,6 +619,9 @@ async def set_cluster_vips(
     """
     Configure the virtual IP addresses (VIPs) for cluster API and ingress traffic.
 
+    VIPs are only required for clusters in the following platforms: baremetal, vsphere, nutanix.
+    Do not set VIPs for clusters in the following platforms: none, oci.
+
     Sets the API VIP (for cluster management) and Ingress VIP (for application traffic)
     for the specified cluster. These VIPs must be available IP addresses within the
     cluster's network subnet.
@@ -615,6 +648,47 @@ async def set_cluster_vips(
         cluster_id, api_vip=api_vip, ingress_vip=ingress_vip
     )
     log.info("Successfully set VIPs for cluster %s", cluster_id)
+    return result.to_str()
+
+
+@mcp.tool()
+@track_tool_usage()
+async def set_cluster_platform(
+    cluster_id: Annotated[
+        str, Field(description="The unique identifier of the cluster to configure.")
+    ],
+    platform: Annotated[
+        Helpers.VALID_PLATFORMS,
+        Field(
+            description="The platform for the cluster. Valid options are: baremetal, vsphere, oci, nutanix, or none."
+        ),
+    ],
+) -> str:
+    """
+    Set the platform for a cluster.
+
+    Args:
+        cluster_id (str): The unique identifier of the cluster to configure.
+        platform (str): The platform for the cluster.
+            Valid options are:
+              - 'baremetal': Bare metal platform
+              - 'vsphere': VMware vSphere platform
+              - 'oci': Oracle Cloud Infrastructure platform
+              - 'nutanix': Nutanix platform
+              - 'none': No platform
+
+    Returns:
+        str: A formatted string containing the updated cluster configuration
+            showing the newly set platform.
+    """
+    log.info(
+        "Setting platform for cluster %s: platform=%s",
+        cluster_id,
+        platform,
+    )
+    client = InventoryClient(get_access_token())
+    result = await client.update_cluster(cluster_id, platform=platform)
+    log.info("Successfully set platform for cluster %s", cluster_id)
     return result.to_str()
 
 

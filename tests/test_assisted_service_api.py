@@ -387,7 +387,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             mock_installer_api.return_value = mock_api
 
             result = await client.create_cluster(
-                name, version, single_node, base_dns_domain="example.com"
+                name, version, single_node, base_dns_domain="example.com", platform=""
             )
 
             assert result == cluster
@@ -419,7 +419,9 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             mock_api.v2_register_cluster.return_value = cluster
             mock_installer_api.return_value = mock_api
 
-            result = await client.create_cluster(name, version, single_node)
+            result = await client.create_cluster(
+                name, version, single_node, platform="none"
+            )
 
             assert result == cluster
             # Verify single node specific parameters have correct values
@@ -428,6 +430,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             assert cluster_params.control_plane_count == 1
             assert cluster_params.high_availability_mode == "None"
             assert cluster_params.user_managed_networking is True
+            assert cluster_params.platform.type == "none"
 
     @pytest.mark.asyncio
     async def test_create_infra_env_success(self, client: InventoryClient) -> None:
@@ -635,6 +638,54 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
                 # Check that each operator from the bundle was included
                 operator_names = [op.name for op in olm_operators]
                 assert set(operator_names) == {"operator1", "operator2"}
+
+    @pytest.mark.asyncio
+    async def test_update_cluster_platform_success(
+        self, client: InventoryClient
+    ) -> None:
+        """Test successful cluster platform update."""
+        cluster_id = "test-cluster-id"
+        platform = "vsphere"
+        cluster = create_test_cluster(cluster_id=cluster_id)
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.v2_update_cluster.return_value = cluster
+            mock_installer_api.return_value = mock_api
+
+            result = await client.update_cluster(cluster_id, platform=platform)
+
+            assert result == cluster
+
+            # Verify the call was made with correct cluster_id
+            mock_api.v2_update_cluster.assert_called_once()
+            _args, kwargs = mock_api.v2_update_cluster.call_args
+            assert kwargs["cluster_id"] == cluster_id
+
+            # Verify the cluster_update_params contain platform
+            cluster_params = kwargs["cluster_update_params"]
+            assert cluster_params.platform is not None
+
+            # Check platform was set correctly
+            platform_obj = cluster_params.platform
+            assert platform_obj.type == platform
+            assert platform_obj.external is None
+
+    @pytest.mark.asyncio
+    async def test_update_cluster_platform_sets_umn_when_required(
+        self, client: InventoryClient
+    ) -> None:
+        cluster_id = "test-cluster-id"
+        cluster = create_test_cluster(cluster_id=cluster_id)
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.v2_update_cluster.return_value = cluster
+            mock_installer_api.return_value = mock_api
+            result = await client.update_cluster(cluster_id, platform="none")
+            assert result == cluster
+            _args, kwargs = mock_api.v2_update_cluster.call_args
+            params = kwargs["cluster_update_params"]
+            assert params.platform.type == "none"
 
     @pytest.mark.asyncio
     async def test_update_host_success(self, client: InventoryClient) -> None:
