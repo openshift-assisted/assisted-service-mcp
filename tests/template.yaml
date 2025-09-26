@@ -43,6 +43,8 @@ objects:
             value: ${AGENT_PORT}
           - name: UNIQUE_ID
             value: ${JOB_ID}
+          - name: OCM_BASE_URL
+            value: ${OCM_BASE_URL}
 
 parameters:
 - name: JOB_ID
@@ -64,3 +66,5 @@ parameters:
   value: gemini
 - name: GEMINI_API_SECRET_KEY_NAME
   value: api_key
+- name: OCM_BASE_URL
+  value: https://api.stage.openshift.com
