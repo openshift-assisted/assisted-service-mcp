@@ -6,6 +6,7 @@ Unit tests for the server module.
 
 import json
 import os
+from copy import deepcopy
 from typing import Generator, Tuple
 from unittest.mock import Mock, patch, call
 
@@ -291,6 +292,12 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
                 "openshift_version": "4.17.1",
                 "status": "installing",
             },
+            {
+                "name": "cluster3",
+                "id": "id3",
+                # Missing openshift version
+                "status": "installing",
+            },
         ]
         mock_inventory_client.list_clusters.return_value = mock_clusters
 
@@ -299,8 +306,9 @@ class TestMCPToolFunctions:  # pylint: disable=too-many-public-methods
         ):
             result = await server.list_clusters()
 
-            expected_result = json.dumps(mock_clusters)
-            assert result == expected_result
+            expected_clusters = deepcopy(mock_clusters)
+            expected_clusters[2]["openshift_version"] = "Unknown"
+            assert json.loads(result) == expected_clusters
             mock_inventory_client.list_clusters.assert_called_once()
 
     @pytest.mark.asyncio
