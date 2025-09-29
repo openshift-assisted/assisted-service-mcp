@@ -201,7 +201,7 @@ async def list_clusters() -> str:
         {
             "name": cluster["name"],
             "id": cluster["id"],
-            "openshift_version": cluster["openshift_version"],
+            "openshift_version": cluster.get("openshift_version", "Unknown"),
             "status": cluster["status"],
         }
         for cluster in clusters
