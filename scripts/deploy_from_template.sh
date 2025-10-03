@@ -23,6 +23,9 @@ oc process -p IMAGE=$IMAGE \
            -p PULL_SECRET_URL="https://api.stage.openshift.com/api/accounts_mgmt/v1/access_token" \
            -f template.yaml --local | oc apply -n $NAMESPACE -f -
 
+
+
+
 sleep 5
 if ! oc rollout status  -n $NAMESPACE deployment/assisted-service-mcp --timeout=300s; then
     echo "Deploying assisted-chat-mcp failed, the logs of the pods are in artifacts/eval-test/gather-extra/artifacts/pods/ directory."
