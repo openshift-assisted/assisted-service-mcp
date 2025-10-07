@@ -1,8 +1,8 @@
 """Authentication utilities for Assisted Service MCP Server."""
 
-import os
 import requests
 from service_client.logger import log
+from assisted_service_mcp.src.settings import settings
 
 
 def get_offline_token(mcp) -> str:
@@ -25,7 +25,7 @@ def get_offline_token(mcp) -> str:
             or request headers.
     """
     log.debug("Attempting to retrieve offline token")
-    token = os.environ.get("OFFLINE_TOKEN")
+    token = settings.OFFLINE_TOKEN
     if token:
         log.debug("Found offline token in environment variables")
         return token
@@ -85,10 +85,7 @@ def get_access_token(mcp, offline_token_func=None) -> str:
         "grant_type": "refresh_token",
         "refresh_token": offline_token,
     }
-    sso_url = os.environ.get(
-        "SSO_URL",
-        "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
-    )
+    sso_url = settings.SSO_URL
     response = requests.post(sso_url, data=params, timeout=30)
     response.raise_for_status()
     log.debug("Successfully generated new access token")

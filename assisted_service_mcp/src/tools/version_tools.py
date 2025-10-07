@@ -11,23 +11,24 @@ from service_client.logger import log
 
 @track_tool_usage()
 async def list_versions(mcp, get_access_token_func) -> str:
-    """List all available OpenShift versions for installation with comprehensive metadata.
+    """List all available OpenShift versions for installation.
 
-    TOOL_NAME=list_versions
-    DISPLAY_NAME=OpenShift Version List
-    USECASE=Retrieve available OpenShift versions that can be installed using the assisted installer
-    INSTRUCTIONS=1. Call function without parameters, 2. Receive list of available versions
-    INPUT_DESCRIPTION=No parameters required
-    OUTPUT_DESCRIPTION=JSON string with available OpenShift versions including version numbers, release dates, and support status
-    EXAMPLES=list_versions()
-    PREREQUISITES=Valid OCM offline token for authentication
-    RELATED_TOOLS=create_cluster (uses version from this list), list_operator_bundles
+    Retrieves the complete list of OpenShift versions that can be installed using the
+    assisted installer service, including GA releases and pre-release candidates. Use
+    this before creating a cluster to see which versions are available.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - list_versions()
+        - Check available versions before creating a new cluster
+        - See if a specific OpenShift version is available
+        - Find the latest stable release
 
-    Retrieves the complete list of OpenShift versions that can be installed
-    using the assisted installer service, including release versions and
-    pre-release candidates.
+    Prerequisites:
+        - Valid OCM offline token for authentication
+
+    Related tools:
+        - create_cluster - Uses version from this list
+        - list_operator_bundles - See available operators for each version
 
     Returns:
         str: A JSON string containing available OpenShift versions with metadata
@@ -42,22 +43,25 @@ async def list_versions(mcp, get_access_token_func) -> str:
 
 @track_tool_usage()
 async def list_operator_bundles(mcp, get_access_token_func) -> str:
-    """List available operator bundles for cluster installation with comprehensive metadata.
+    """List available operator bundles that can be added to clusters.
 
-    TOOL_NAME=list_operator_bundles
-    DISPLAY_NAME=Operator Bundle List
-    USECASE=Retrieve available operator bundles that extend OpenShift cluster functionality
-    INSTRUCTIONS=1. Call function without parameters, 2. Receive list of available operator bundles
-    INPUT_DESCRIPTION=No parameters required
-    OUTPUT_DESCRIPTION=JSON string with available operator bundles including bundle names, descriptions, and operator details
-    EXAMPLES=list_operator_bundles()
-    PREREQUISITES=Valid OCM offline token for authentication
-    RELATED_TOOLS=add_operator_bundle_to_cluster (adds bundles from this list), create_cluster
+    Retrieves operator bundles that extend OpenShift cluster functionality with additional
+    capabilities like virtualization, AI/ML, monitoring, and storage. These bundles are
+    automatically installed during cluster deployment if added before installation.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - list_operator_bundles()
+        - See available operators before creating a cluster
+        - Check if a specific operator bundle is available
+        - Find operators for a specific use case (e.g., virtualization, AI)
 
-    Retrieves details about operator bundles that can be optionally installed
-    during cluster deployment.
+    Prerequisites:
+        - Valid OCM offline token for authentication
+
+    Related tools:
+        - add_operator_bundle_to_cluster - Add bundles from this list to a cluster
+        - create_cluster - Operator bundles can be added to new clusters
+        - list_versions - See compatible OpenShift versions
 
     Returns:
         str: A JSON string containing available operator bundles with metadata
@@ -80,32 +84,31 @@ async def add_operator_bundle_to_cluster(
     bundle_name: Annotated[
         str,
         Field(
-            description="The name of the operator bundle to add. The available operator bundle names are 'virtualization' and 'openshift-ai'"
+            description="The name of the operator bundle to add. Use list_operator_bundles to see available bundles. Common bundles: 'virtualization', 'openshift-ai'."
         ),
     ],
 ) -> str:
-    """Add an operator bundle to be installed with the cluster with comprehensive metadata.
+    """Add an operator bundle to be automatically installed with the cluster.
 
-    TOOL_NAME=add_operator_bundle_to_cluster
-    DISPLAY_NAME=Add Operator Bundle
-    USECASE=Add operator bundles to extend cluster functionality with virtualization, AI, and other capabilities
-    INSTRUCTIONS=1. Get bundle name from list_operator_bundles, 2. Provide cluster_id and bundle_name, 3. Receive updated cluster configuration
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID, bundle_name (string): operator bundle name ('virtualization' or 'openshift-ai')
-    OUTPUT_DESCRIPTION=Formatted string with updated cluster configuration showing added operator bundle
-    EXAMPLES=add_operator_bundle_to_cluster("cluster-uuid", "virtualization")
-    PREREQUISITES=Valid cluster with status allowing operator addition, bundle name from list_operator_bundles
-    RELATED_TOOLS=list_operator_bundles (get available bundles), cluster_info (verify cluster state), create_cluster
+    Configures the specified operator bundle to be installed during cluster deployment.
+    The operator will be installed automatically after the cluster installation completes.
+    Bundle must be from the list returned by list_operator_bundles(). Add operator bundles
+    before starting cluster installation.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - add_operator_bundle_to_cluster("cluster-uuid", "virtualization")
+        - add_operator_bundle_to_cluster("cluster-uuid", "openshift-ai")
 
-    Configures the specified operator bundle to be automatically installed
-    during cluster deployment. The bundle must be from the list of available
-    bundles returned by list_operator_bundles().
+    Prerequisites:
+        - Existing cluster (from create_cluster)
+        - Cluster not yet installed (check with cluster_info)
+        - Bundle name from list_operator_bundles
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to configure.
-        bundle_name (str): The name of the operator bundle to add.
-            The available operator bundle names are "virtualization" and "openshift-ai"
+    Related tools:
+        - list_operator_bundles - Get available operator bundle names
+        - cluster_info - Verify cluster state and installed operators
+        - create_cluster - Create cluster first
+        - install_cluster - Start installation after adding bundles
 
     Returns:
         str: A formatted string containing the updated cluster configuration

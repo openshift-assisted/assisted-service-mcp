@@ -1,6 +1,8 @@
 """Network configuration tools for Assisted Service MCP Server."""
 
 import json
+from typing import Annotated
+from pydantic import Field
 from jinja2 import TemplateError
 
 from metrics import track_tool_usage
@@ -17,25 +19,33 @@ from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env
 
 
 @track_tool_usage()
-async def validate_nmstate_yaml(mcp, get_access_token_func, nmstate_yaml: str) -> str:
-    """Validate an nmstate YAML document before submission.
+async def validate_nmstate_yaml(
+    mcp,
+    get_access_token_func,
+    nmstate_yaml: Annotated[
+        str,
+        Field(description="The NMState YAML document to validate. This defines static network configuration for a host."),
+    ],
+) -> str:
+    """Validate an NMState YAML document before applying to hosts.
 
-    TOOL_NAME=validate_nmstate_yaml
-    DISPLAY_NAME=Validate NMState YAML
-    USECASE=Validate static network configuration YAML before applying to hosts
-    INSTRUCTIONS=1. Generate or obtain nmstate YAML, 2. Call function to validate, 3. Fix errors if validation fails, 4. Apply to hosts after validation succeeds
-    INPUT_DESCRIPTION=nmstate_yaml (string): NMState YAML document for static network configuration
-    OUTPUT_DESCRIPTION=String "YAML is valid" on success, or error message with validation failure details
-    EXAMPLES=validate_nmstate_yaml("interfaces:\\n- name: eth0\\n  type: ethernet\\n  state: up")
-    PREREQUISITES=NMState YAML document (from generate_nmstate_yaml or manually created)
-    RELATED_TOOLS=generate_nmstate_yaml (generate initial YAML), alter_static_network_config_nmstate_for_host (apply validated YAML)
+    Validates the YAML syntax and structure to ensure it's correct before submitting to the
+    cluster. Always validate YAML after generating or manually editing before applying it to
+    hosts. Invalid YAML will cause host configuration failures.
 
-    CPU-bound operation - uses def for validation logic.
+    Examples:
+        - validate_nmstate_yaml("interfaces:\\n- name: eth0\\n  type: ethernet\\n  state: up...")
+        - After generating YAML with generate_nmstate_yaml, validate it
+        - After manually editing YAML, validate before applying
+        - Catch syntax errors before they cause host configuration problems
 
-    The YAML must be validated before being submitted to the cluster to ensure correct network configuration.
+    Prerequisites:
+        - NMState YAML document (from generate_nmstate_yaml or manual creation)
 
-    Args:
-        nmstate_yaml (str): The nmstate YAML to validate.
+    Related tools:
+        - generate_nmstate_yaml - Generate initial YAML from parameters
+        - alter_static_network_config_nmstate_for_host - Apply validated YAML to hosts
+        - list_static_network_config - View currently applied configurations
 
     Returns:
         str: "YAML is valid" if successful, otherwise error message.
@@ -46,27 +56,35 @@ async def validate_nmstate_yaml(mcp, get_access_token_func, nmstate_yaml: str) -
 
 @track_tool_usage()
 async def generate_nmstate_yaml(
-    mcp, get_access_token_func, params: NMStateTemplateParams
+    mcp,
+    get_access_token_func,
+    params: Annotated[
+        NMStateTemplateParams,
+        Field(
+            description="Structured network configuration parameters including interface name, IP addresses (IPv4/IPv6), DNS servers, gateway, and routes. Use NMStateTemplateParams schema."
+        ),
+    ],
 ) -> str:
-    """Generate initial nmstate YAML from network configuration parameters.
+    """Generate NMState YAML from structured network parameters.
 
-    TOOL_NAME=generate_nmstate_yaml
-    DISPLAY_NAME=Generate NMState YAML
-    USECASE=Generate initial static network configuration YAML from structured parameters
-    INSTRUCTIONS=1. Gather network info from user (interface, IPs, DNS, gateway), 2. Call with NMStateTemplateParams, 3. Receive generated YAML, 4. Validate with validate_nmstate_yaml, 5. Apply with alter_static_network_config_nmstate_for_host
-    INPUT_DESCRIPTION=params (NMStateTemplateParams): structured network configuration including interface name, IP addresses, DNS servers, gateway, routes
-    OUTPUT_DESCRIPTION=Generated nmstate YAML string, or error message if generation fails
-    EXAMPLES=generate_nmstate_yaml(NMStateTemplateParams(interface_name="eth0", ipv4_address="192.168.1.10/24", ipv4_gateway="192.168.1.1"))
-    PREREQUISITES=Network configuration information from user
-    RELATED_TOOLS=validate_nmstate_yaml (validate generated YAML), alter_static_network_config_nmstate_for_host (apply to host)
+    Creates NMState YAML configuration from structured parameters rather than writing YAML
+    manually. Always use this to generate initial YAML from user requirements, then validate
+    and optionally tweak the result. Do not generate nmstate yaml from scratch without calling
+    this tool.
 
-    I/O-bound operation - uses async def for potential future API calls.
+    Examples:
+        - generate_nmstate_yaml(NMStateTemplateParams(interface_name="eth0", ipv4_address="192.168.1.10/24", ipv4_gateway="192.168.1.1", ipv4_dns=["8.8.8.8"]))
+        - Generate YAML for static IP configuration from user input
+        - Create YAML with both IPv4 and IPv6 configuration
+        - Generate YAML with multiple DNS servers and custom routes
 
-    Always use this tool to generate initial YAML from user input rather than creating YAML from scratch.
-    The generated YAML can be tweaked as needed before validation and application.
+    Prerequisites:
+        - Network information from user (interface, IPs, gateway, DNS)
 
-    Args:
-        params: NMStateTemplateParams object containing network configuration.
+    Related tools:
+        - validate_nmstate_yaml - Validate the generated YAML
+        - alter_static_network_config_nmstate_for_host - Apply generated YAML to hosts
+        - list_static_network_config - View applied configurations
 
     Returns:
         str: Generated nmstate YAML or error message.
@@ -88,32 +106,45 @@ async def generate_nmstate_yaml(
 async def alter_static_network_config_nmstate_for_host(
     mcp,
     get_access_token_func,
-    cluster_id: str,
-    index: int | None,
-    new_nmstate_yaml: str | None,
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to configure."),
+    ],
+    index: Annotated[
+        int | None,
+        Field(
+            description="The position of the host in the static network configuration list. Use None to append a new host configuration. Use 0, 1, 2, etc. to replace or delete an existing host configuration."
+        ),
+    ],
+    new_nmstate_yaml: Annotated[
+        str | None,
+        Field(
+            description="The validated NMState YAML to apply. Use None to delete the configuration at the specified index. Provide YAML to add or update a configuration."
+        ),
+    ],
 ) -> str:
-    """Add, replace, or delete nmstate YAML configuration for a specific host.
+    """Add, replace, or delete static network configuration for a host.
 
-    TOOL_NAME=alter_static_network_config_nmstate_for_host
-    DISPLAY_NAME=Alter Host Static Network Config
-    USECASE=Apply, update, or remove static network configuration for individual cluster hosts
-    INSTRUCTIONS=1. Generate/validate YAML, 2. Get cluster_id, 3. To add: set index=None, provide YAML, 4. To update: set index to host position, provide new YAML, 5. To remove: set index to host position, set YAML=None
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID, index (int or null): host position in config list (null to append new), new_nmstate_yaml (string or null): validated nmstate YAML (null to delete config at index)
-    OUTPUT_DESCRIPTION=Formatted string with updated infrastructure environment showing new static network configuration
-    EXAMPLES=alter_static_network_config_nmstate_for_host("cluster-uuid", None, "interfaces:\\n- name: eth0..."), alter_static_network_config_nmstate_for_host("cluster-uuid", 0, None)
-    PREREQUISITES=Validated nmstate YAML (from validate_nmstate_yaml), cluster with infrastructure environment
-    RELATED_TOOLS=generate_nmstate_yaml (generate YAML), validate_nmstate_yaml (validate before applying), list_static_network_config (view current configs)
+    Manages static network configurations for cluster hosts. To add a new host config, use
+    index=None and provide YAML. To update an existing host config, provide the index and
+    new YAML. To remove a host config, provide the index and set YAML=None. Each
+    configuration corresponds to one host in the order they boot from the ISO.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - alter_static_network_config_nmstate_for_host("cluster-uuid", None, "interfaces:\\n- name: eth0...")  # Add new host config
+        - alter_static_network_config_nmstate_for_host("cluster-uuid", 0, "interfaces:\\n- name: eth1...")  # Update first host
+        - alter_static_network_config_nmstate_for_host("cluster-uuid", 1, None)  # Delete second host config
 
-    Add new host: index=None, provide YAML (appends to end).
-    Replace host config: provide index and new YAML.
-    Delete host config: provide index, set YAML=None.
+    Prerequisites:
+        - Validated NMState YAML (from validate_nmstate_yaml)
+        - Cluster with infrastructure environment
+        - Know which host corresponds to which index (first boot = index 0, second = 1, etc.)
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster.
-        index (int | None): Host position in config list, or None to append.
-        new_nmstate_yaml (str | None): New nmstate YAML, or None to delete.
+    Related tools:
+        - generate_nmstate_yaml - Create YAML from parameters
+        - validate_nmstate_yaml - Validate YAML before applying
+        - list_static_network_config - View current configurations and indices
+        - cluster_info - View cluster and infrastructure environment
 
     Returns:
         str: Updated infrastructure environment with new static network config.
@@ -147,27 +178,34 @@ async def alter_static_network_config_nmstate_for_host(
 
 @track_tool_usage()
 async def list_static_network_config(
-    mcp, get_access_token_func, cluster_id: str
+    mcp,
+    get_access_token_func,
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to query."),
+    ],
 ) -> str:
-    """List all host static network configurations for a cluster.
+    """List all static network configurations for cluster hosts.
 
-    TOOL_NAME=list_static_network_config
-    DISPLAY_NAME=List Static Network Configs
-    USECASE=View all static network configurations applied to cluster hosts
-    INSTRUCTIONS=1. Get cluster_id, 2. Call function, 3. Receive JSON array of host configs with indices
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID
-    OUTPUT_DESCRIPTION=JSON array of static network configurations (one per host), or error if cluster doesn't have exactly one infrastructure environment
-    EXAMPLES=list_static_network_config("cluster-uuid")
-    PREREQUISITES=Cluster with infrastructure environment
-    RELATED_TOOLS=alter_static_network_config_nmstate_for_host (modify configs), generate_nmstate_yaml (create new configs), cluster_info
+    Shows all static network configurations applied to the cluster's infrastructure
+    environment. Each configuration in the array corresponds to one host, in the order
+    they were added. Use the array index when updating or deleting specific host
+    configurations.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - list_static_network_config("cluster-uuid")
+        - Check which hosts have static network configs
+        - Find the index of a specific host's configuration
+        - Verify configurations after adding or updating
 
-    Returns all host static network configurations for the cluster's infrastructure environment.
-    Each configuration corresponds to one host, indexed by position in the array.
+    Prerequisites:
+        - Cluster with infrastructure environment
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster.
+    Related tools:
+        - alter_static_network_config_nmstate_for_host - Add, update, or remove configs
+        - generate_nmstate_yaml - Generate new configurations
+        - validate_nmstate_yaml - Validate configurations
+        - cluster_info - View cluster and infrastructure environment details
 
     Returns:
         str: JSON array of static network configs, or error message.

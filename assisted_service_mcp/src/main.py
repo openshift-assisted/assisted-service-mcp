@@ -2,6 +2,7 @@
 
 import uvicorn
 from assisted_service_mcp.src.api import app, server
+from assisted_service_mcp.src.settings import settings
 from metrics import metrics, initiate_metrics
 from service_client.logger import log
 
@@ -13,6 +14,7 @@ def main() -> None:
     """
     try:
         log.info("Starting Assisted Service MCP Server")
+        log.info(f"Configuration: TRANSPORT={settings.TRANSPORT}, HOST={settings.MCP_HOST}, PORT={settings.MCP_PORT}")
 
         # Initialize metrics with list of all tools
         tool_names = server.list_tools()
@@ -23,8 +25,8 @@ def main() -> None:
         app.add_route("/metrics", metrics)
         log.info("Metrics endpoint available at /metrics")
 
-        # Start the server
-        uvicorn.run(app, host="0.0.0.0")
+        # Start the server using settings
+        uvicorn.run(app, host=settings.MCP_HOST, port=settings.MCP_PORT)
 
     except KeyboardInterrupt:
         log.info("Received keyboard interrupt, shutting down")

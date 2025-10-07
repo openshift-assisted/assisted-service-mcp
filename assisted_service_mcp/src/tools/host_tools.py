@@ -23,31 +23,33 @@ async def set_host_role(
     role: Annotated[
         str,
         Field(
-            description="The role to assign to the host. Valid options are: auto-assign (Let the installer automatically determine the role), master (Control plane node - API server, etcd, scheduler), worker (Compute node for running application workloads)."
+            description="The role to assign to the host. Valid options: 'auto-assign' (let installer decide), 'master' (control plane node with API server, etcd, scheduler), 'worker' (compute node for application workloads)."
         ),
     ],
 ) -> str:
     """Assign a specific role to a discovered host in the cluster.
 
-    TOOL_NAME=set_host_role
-    DISPLAY_NAME=Set Host Role
-    USECASE=Configure whether discovered host will be control plane (master) or compute (worker) node
-    INSTRUCTIONS=1. Boot hosts with cluster ISO, 2. Get host_id from cluster_info, 3. Get cluster_id, 4. Choose role (auto-assign/master/worker), 5. Receive updated host config
-    INPUT_DESCRIPTION=host_id (string): host UUID from discovered hosts, cluster_id (string): cluster UUID, role (string): auto-assign (automatic)/master (control plane)/worker (compute node)
-    OUTPUT_DESCRIPTION=Formatted string with updated host configuration showing newly assigned role
-    EXAMPLES=set_host_role("host-uuid", "cluster-uuid", "master"), set_host_role("host-uuid", "cluster-uuid", "worker")
-    PREREQUISITES=Host discovered after booting from cluster ISO (visible in cluster_info)
-    RELATED_TOOLS=cluster_info (get host list and IDs), cluster_iso_download_url (get ISO to boot hosts), host_events (view host-specific events)
+    Sets whether a host will be a control plane (master) node or worker node. Use 'master'
+    for nodes that will run the Kubernetes control plane (API server, etcd, scheduler).
+    Use 'worker' for nodes that will only run application workloads. Use 'auto-assign' to
+    let the installer choose based on cluster requirements. HA clusters require at least
+    3 master nodes.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - set_host_role("host-uuid", "cluster-uuid", "master")  # Make this host a control plane node
+        - set_host_role("host-uuid", "cluster-uuid", "worker")  # Make this host a worker node
+        - set_host_role("host-uuid", "cluster-uuid", "auto-assign")  # Let installer decide
+        - For HA: assign 'master' to first 3 hosts, 'worker' to remaining hosts
 
-    Sets the role for a host that has been discovered through booting from the cluster ISO.
-    The role determines the host's function in the OpenShift cluster.
+    Prerequisites:
+        - Discovered host (boot from cluster ISO to discover)
+        - Host ID from cluster_info host list
+        - Cluster with infrastructure environment
 
-    Args:
-        host_id (str): The unique identifier of the host to configure.
-        cluster_id (str): The unique identifier of the cluster containing the host.
-        role (str): auto-assign, master (control plane), or worker (compute).
+    Related tools:
+        - cluster_info - Get list of discovered hosts with their IDs
+        - host_events - View host-specific events and validation results
+        - cluster_iso_download_url - Get ISO to boot hosts for discovery
 
     Returns:
         str: Formatted string with updated host configuration showing assigned role.
@@ -60,11 +62,6 @@ async def set_host_role(
 
     # Update the host with the specified role
     result = await client.update_host(host_id, infra_env_id, host_role=role)
-    log.info(
-        "Successfully set role '%s' for host %s in cluster %s",
-        role,
-        host_id,
-        cluster_id,
-    )
+    log.info("Successfully set role for host %s in cluster %s", host_id, cluster_id)
     return result.to_str()
 

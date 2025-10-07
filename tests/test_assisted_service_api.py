@@ -59,15 +59,14 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     def test_init_with_environment_variables(self, mock_access_token: str) -> None:
         """Test client initialization with environment variables."""
         test_url = "https://custom-api.example.com/v2"
-        with patch.dict(
-            os.environ, {"INVENTORY_URL": test_url, "CLIENT_DEBUG": "true"}
-        ):
-            with patch.object(
-                InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
-            ):
-                client = InventoryClient(mock_access_token)
-                assert client.inventory_url == test_url
-                assert client.client_debug is True
+        with patch("assisted_service_mcp.src.settings.settings.INVENTORY_URL", test_url):
+            with patch("assisted_service_mcp.src.settings.settings.CLIENT_DEBUG", True):
+                with patch.object(
+                    InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
+                ):
+                    client = InventoryClient(mock_access_token)
+                    assert client.inventory_url == test_url
+                    assert client.client_debug is True
 
     @patch("requests.post")
     def test_get_pull_secret_success(
@@ -113,7 +112,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         mock_response.text = "pull-secret-content"
         mock_post.return_value = mock_response
 
-        with patch.dict(os.environ, {"PULL_SECRET_URL": custom_url}):
+        with patch("assisted_service_mcp.src.settings.settings.PULL_SECRET_URL", custom_url):
             client = InventoryClient(mock_access_token)
 
             # Access the pull_secret property to trigger lazy loading

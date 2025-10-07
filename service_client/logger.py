@@ -73,12 +73,14 @@ class SensitiveFormatter(logging.Formatter):
 
 def get_logging_level() -> int:
     """
-    Get the logging level from environment variable.
+    Get the logging level from settings.
 
     Returns:
         int: The logging level (defaults to INFO if not set or invalid).
     """
-    level = os.environ.get("LOGGING_LEVEL", "")
+    # Import here to avoid circular dependency at module load time
+    from assisted_service_mcp.src.settings import settings
+    level = settings.LOGGING_LEVEL
     return getattr(logging, level.upper(), logging.INFO) if level else logging.INFO
 
 
@@ -116,7 +118,10 @@ def add_stream_handler(logger: logging.Logger) -> None:
     logger.addHandler(ch)
 
 
-logger_name = os.environ.get("LOGGER_NAME", "")
+# Import settings for logger configuration
+from assisted_service_mcp.src.settings import settings
+
+logger_name = settings.LOGGER_NAME
 urllib3_logger = logging.getLogger("urllib3")
 urllib3_logger.handlers = [logging.NullHandler()]
 
@@ -126,8 +131,8 @@ urllib3_logger.setLevel(logging.ERROR)
 log = logging.getLogger(logger_name)
 log.setLevel(get_logging_level())
 
-# Check if we should log to file (default: True, set to False in containers)
-log_to_file = os.environ.get("LOG_TO_FILE", "true").lower() == "true"
+# Check if we should log to file (from settings)
+log_to_file = settings.LOG_TO_FILE
 
 if log_to_file:
     add_log_file_handler(log, "assisted-service-mcp.log")

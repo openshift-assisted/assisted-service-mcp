@@ -21,26 +21,26 @@ async def cluster_info(
         ),
     ],
 ) -> str:
-    """Get comprehensive information about a specific assisted installer cluster with comprehensive metadata.
+    """Get comprehensive information about a specific cluster.
 
-    TOOL_NAME=cluster_info
-    DISPLAY_NAME=Cluster Information
-    USECASE=Retrieve detailed configuration, status, network settings, and installation progress for a specific cluster
-    INSTRUCTIONS=1. Obtain cluster_id from list_clusters or previous cluster operations, 2. Call function with cluster_id, 3. Receive detailed cluster information
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID obtained from list_clusters or cluster creation
-    OUTPUT_DESCRIPTION=Formatted string with cluster name, ID, OpenShift version, installation status/progress, network configuration (VIPs, subnets), and host information/roles
-    EXAMPLES=cluster_info("550e8400-e29b-41d4-a716-446655440000")
-    PREREQUISITES=Valid cluster_id, OCM offline token for authentication
-    RELATED_TOOLS=list_clusters (get cluster IDs), cluster_events (view cluster history), install_cluster, set_cluster_vips
+    Retrieves detailed cluster information including configuration, status, network settings,
+    installation progress, and host information. Use this to check cluster state, verify
+    configuration, or monitor installation progress.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - cluster_info("550e8400-e29b-41d4-a716-446655440000")
+        - After creating a cluster, use this to verify the configuration
+        - During installation, use this to check current status and progress
 
-    Retrieves detailed cluster information including configuration, status, hosts,
-    network settings, and installation progress for the specified cluster ID.
+    Prerequisites:
+        - Valid cluster UUID (from list_clusters or create_cluster)
+        - OCM offline token for authentication
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to retrieve information for.
-            This is typically a UUID string.
+    Related tools:
+        - list_clusters - Get cluster IDs
+        - cluster_events - View cluster installation history
+        - install_cluster - Start cluster installation
+        - set_cluster_vips - Configure network VIPs
 
     Returns:
         str: A formatted string containing detailed cluster information including:
@@ -60,23 +60,24 @@ async def cluster_info(
 async def list_clusters(
     mcp, get_access_token_func  # Positional args for consistency
 ) -> str:
-    """List all assisted installer clusters for the current user with comprehensive metadata.
+    """List all clusters for the current user.
 
-    TOOL_NAME=list_clusters
-    DISPLAY_NAME=List Clusters
-    USECASE=Retrieve summary of all OpenShift clusters associated with the current user's account
-    INSTRUCTIONS=1. Call function without parameters, 2. Receive list of cluster summaries
-    INPUT_DESCRIPTION=No parameters required
-    OUTPUT_DESCRIPTION=JSON array with cluster objects containing name, id, openshift_version, and status (e.g., 'ready', 'installing', 'error')
-    EXAMPLES=list_clusters()
-    PREREQUISITES=Valid OCM offline token for authentication
-    RELATED_TOOLS=cluster_info (get detailed cluster information), create_cluster (create new cluster), cluster_events (view cluster history)
+    Retrieves a summary of all OpenShift clusters associated with your account. This provides
+    basic information about each cluster (name, ID, version, status) without detailed
+    configuration. Use cluster_info() to get comprehensive details about a specific cluster.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - list_clusters()
+        - Use at the start of a session to see all available clusters
+        - Check status of multiple clusters at once
 
-    Retrieves a summary of all clusters associated with the current user's account.
-    This provides basic information about each cluster without detailed configuration.
-    Use cluster_info() to get comprehensive details about a specific cluster.
+    Prerequisites:
+        - Valid OCM offline token for authentication
+
+    Related tools:
+        - cluster_info - Get detailed information for a specific cluster
+        - create_cluster - Create a new cluster
+        - cluster_events - View installation history for a cluster
 
     Returns:
         str: A JSON-formatted string containing an array of cluster objects.
@@ -110,7 +111,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
     version: Annotated[
         str,
         Field(
-            description="The OpenShift version to install (e.g., '4.18.2', '4.17.1')."
+            description="The OpenShift version to install (e.g., '4.18.2', '4.17.1'). Use list_versions to see available versions."
         ),
     ],
     base_domain: Annotated[
@@ -122,65 +123,51 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
     single_node: Annotated[
         bool,
         Field(
-            description="Whether to create a single-node cluster.Set to True for edge deployments or resource-constrained environments. Set to False for  production high-availability clusters with multiple control plane nodes."
+            description="Whether to create a single-node cluster. Set to True for edge deployments or resource-constrained environments. Set to False for production high-availability clusters with multiple control plane nodes."
         ),
     ],
     ssh_public_key: Annotated[
         str | None,
-        Field(default=None, description="SSH public key for accessing cluster nodes."),
+        Field(default=None, description="SSH public key for accessing cluster nodes. Allows SSH access to nodes during and after installation."),
     ] = None,
     cpu_architecture: Annotated[
         str,
         Field(
             default="x86_64",
-            description="The CPU architecture for the cluster. Defaults to 'x86_64' if not specified. Valid options are: x86_64, aarch64, arm64, ppc64le, s390x.",
+            description="CPU architecture for the cluster. Valid options: x86_64 (default), aarch64, arm64, ppc64le, s390x.",
         ),
     ] = "x86_64",
     platform: Annotated[
         Helpers.VALID_PLATFORMS | None,
         Field(
             default=None,
-            description="The platform of the cluster. Defaults to 'baremetal' if not specified and single_node is false, or 'none' if not specified and single_node is true. Valid options: baremetal, vsphere, oci, nutanix, none.",
+            description="Infrastructure platform. For multi-node: baremetal (default), vsphere, oci, nutanix, none. For single-node: must be 'none'. Auto-selected based on single_node if not specified.",
         ),
     ] = None,
 ) -> str:
-    """Create a new OpenShift cluster with comprehensive configuration options.
+    """Create a new OpenShift cluster.
 
-    TOOL_NAME=create_cluster
-    DISPLAY_NAME=Create OpenShift Cluster
-    USECASE=Create new OpenShift cluster for production HA or single-node edge deployments
-    INSTRUCTIONS=1. Get version from list_versions, 2. Choose single_node (True/False) and platform, 3. Provide name/domain/architecture, 4. Optionally add SSH key, 5. Receive cluster ID
-    INPUT_DESCRIPTION=name (string): cluster name, version (string): OpenShift version from list_versions, base_domain (string): DNS domain (e.g. 'example.com'), single_node (boolean): True for SNO/False for HA, ssh_public_key (string, optional): SSH public key, cpu_architecture (string, optional): x86_64/aarch64/arm64/ppc64le/s390x (default: x86_64), platform (string, optional): baremetal/vsphere/oci/nutanix/none (auto-selected based on single_node if not specified)
-    OUTPUT_DESCRIPTION=String containing the created cluster's UUID for use in subsequent operations
-    EXAMPLES=create_cluster("my-cluster", "4.18.2", "example.com", False, ssh_public_key="ssh-rsa AAAA...", platform="baremetal"), create_cluster("edge-cluster", "4.17.1", "edge.example.com", True)
-    PREREQUISITES=Valid OCM offline token, OpenShift version from list_versions, DNS domain configured
-    RELATED_TOOLS=list_versions (get available versions), cluster_info (view created cluster), set_cluster_vips (configure VIPs for HA clusters), install_cluster (start installation)
+    Creates a cluster definition and infrastructure environment for either high-availability
+    (multi-node) or single-node (SNO) deployment. For single-node clusters, platform must be
+    'none'. For multi-node clusters, platform defaults to 'baremetal' but can be vsphere,
+    oci, or nutanix. This creates the cluster configuration only; use install_cluster to
+    start the actual installation.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - create_cluster("prod-cluster", "4.18.2", "example.com", False, ssh_public_key="ssh-rsa AAAA...", platform="baremetal")
+        - create_cluster("edge-cluster", "4.17.1", "edge.local", True)  # Single-node, platform='none' auto-selected
+        - create_cluster("vsphere-cluster", "4.18.2", "vsphere.com", False, platform="vsphere", cpu_architecture="x86_64")
 
-    Creates a cluster definition and associated infrastructure environment. The cluster can be configured 
-    for high availability (multi-node) or single-node deployment (SNO). For single-node clusters, platform 
-    must be 'none'. For multi-node clusters, platform defaults to 'baremetal' but can be set to vsphere, 
-    oci, or nutanix.
+    Prerequisites:
+        - Valid OCM offline token for authentication
+        - OpenShift version from list_versions
+        - Configured DNS domain
 
-    Args:
-        name (str): The name for the new cluster.
-        version (str): The OpenShift version to install (e.g., "4.18.2", "4.17.1").
-            Use list_versions() to see available versions.
-        base_domain (str): The base DNS domain for the cluster (e.g., "example.com").
-            The cluster will be accessible at api.{name}.{base_domain}.
-        single_node (bool): Whether to create a single-node cluster. Set to True for
-            edge deployments or resource-constrained environments. Set to False for
-            production high-availability clusters with multiple control plane nodes.
-        ssh_public_key (str, optional): SSH public key for accessing cluster nodes.
-            Providing this key will allow SSH access to the nodes during and after
-            cluster installation.
-        cpu_architecture (str, optional): The CPU architecture for the cluster.
-            Valid options: x86_64 (default), aarch64, arm64, ppc64le, s390x.
-        platform (str, optional): The platform of the cluster.
-            For multi-node: baremetal (default), vsphere, oci, nutanix, none.
-            For single-node: must be 'none'.
-            Auto-selected if not specified.
+    Related tools:
+        - list_versions - Get available OpenShift versions
+        - cluster_info - View created cluster details
+        - set_cluster_vips - Configure VIPs (required for HA baremetal/vsphere/nutanix)
+        - install_cluster - Start the installation process
 
     Returns:
         str: The created cluster's UUID.
@@ -264,28 +251,25 @@ async def set_cluster_vips(
 ) -> str:
     """Configure virtual IP addresses (VIPs) for cluster API and ingress traffic.
 
-    TOOL_NAME=set_cluster_vips
-    DISPLAY_NAME=Configure Cluster VIPs
-    USECASE=Configure virtual IPs for high-availability cluster API and ingress endpoints
-    INSTRUCTIONS=1. Get cluster_id from create_cluster, 2. Ensure platform is baremetal/vsphere/nutanix, 3. Provide two unused IPs from cluster subnet, 4. Receive updated cluster config
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID, api_vip (string): IP for API endpoint (kubectl/management tools), ingress_vip (string): IP for application ingress traffic
-    OUTPUT_DESCRIPTION=Formatted string with updated cluster configuration showing configured VIP addresses
-    EXAMPLES=set_cluster_vips("cluster-uuid", "192.168.1.100", "192.168.1.101")
-    PREREQUISITES=Multi-node cluster on baremetal/vsphere/nutanix platform, IPs within cluster subnet and not assigned to any host, reachable from all cluster nodes
-    RELATED_TOOLS=create_cluster (create cluster first), cluster_info (verify VIP configuration), install_cluster
+    Sets the API and ingress VIPs required for HA clusters on baremetal, vsphere, and nutanix
+    platforms. VIPs are NOT needed for single-node clusters or clusters on 'none' or 'oci'
+    platforms. The IP addresses must be within the cluster's network subnet, not assigned to
+    any physical host, and reachable from all cluster nodes.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - set_cluster_vips("cluster-uuid", "192.168.1.100", "192.168.1.101")
+        - After creating an HA baremetal cluster, set VIPs before installation
+        - Use consecutive IPs from your cluster subnet
 
-    VIPs are only required for clusters on baremetal, vsphere, and nutanix platforms.
-    Do NOT set VIPs for clusters on 'none' or 'oci' platforms.
-    
-    The IP addresses must be within the cluster's network subnet, not assigned to any physical host,
-    and reachable from all cluster nodes.
+    Prerequisites:
+        - Multi-node cluster on baremetal, vsphere, or nutanix platform
+        - Two unused IP addresses within the cluster subnet
+        - IPs must be reachable from all cluster nodes
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to configure.
-        api_vip (str): The IP address for the cluster API endpoint where kubectl connects.
-        ingress_vip (str): The IP address for ingress traffic to applications.
+    Related tools:
+        - create_cluster - Create the cluster first
+        - cluster_info - Verify VIP configuration
+        - install_cluster - Install after VIPs are configured
 
     Returns:
         str: Formatted string with updated cluster configuration including VIP addresses.
@@ -318,27 +302,26 @@ async def set_cluster_platform(
         ),
     ],
 ) -> str:
-    """Set or update the platform type for a cluster.
+    """Set or update the infrastructure platform type for a cluster.
 
-    TOOL_NAME=set_cluster_platform
-    DISPLAY_NAME=Set Cluster Platform
-    USECASE=Configure or change the infrastructure platform type for cluster deployment
-    INSTRUCTIONS=1. Get cluster_id from create_cluster, 2. Choose platform type based on infrastructure, 3. Receive updated cluster config, 4. May need to reconfigure network settings
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID, platform (string): baremetal/vsphere/oci/nutanix/none
-    OUTPUT_DESCRIPTION=Formatted string with updated cluster configuration showing new platform setting
-    EXAMPLES=set_cluster_platform("cluster-uuid", "vsphere"), set_cluster_platform("cluster-uuid", "none")
-    PREREQUISITES=Existing cluster, compatible platform choice for cluster type (single-node clusters require 'none')
-    RELATED_TOOLS=create_cluster (creates with default platform), set_cluster_vips (VIP configuration depends on platform), cluster_info
+    Changes the platform type which determines deployment method and available infrastructure
+    features. Single-node clusters require platform 'none'. Multi-node clusters can use
+    baremetal, vsphere, oci, or nutanix. Changing the platform may require reconfiguration
+    of network settings (VIPs) and other platform-specific parameters.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - set_cluster_platform("cluster-uuid", "vsphere")  # Change to vSphere deployment
+        - set_cluster_platform("cluster-uuid", "none")  # Set for single-node or platformless
+        - set_cluster_platform("cluster-uuid", "baremetal")  # Standard baremetal deployment
 
-    The platform type determines how the cluster will be deployed and what infrastructure-specific
-    features are available. Changing the platform may require reconfiguration of network settings
-    and other platform-specific parameters.
+    Prerequisites:
+        - Existing cluster (from create_cluster)
+        - Compatible platform choice for cluster type (single-node requires 'none')
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to configure.
-        platform (str): baremetal, vsphere, oci, nutanix, or none.
+    Related tools:
+        - create_cluster - Creates cluster with default platform
+        - set_cluster_vips - Configure VIPs (required for baremetal/vsphere/nutanix)
+        - cluster_info - Verify platform configuration
 
     Returns:
         str: Formatted string with updated cluster configuration and new platform setting.
@@ -358,26 +341,30 @@ async def install_cluster(
         str, Field(description="The unique identifier of the cluster to install.")
     ],
 ) -> str:
-    """Trigger the installation process for a prepared cluster.
+    """Start the OpenShift installation process for a prepared cluster.
 
-    TOOL_NAME=install_cluster
-    DISPLAY_NAME=Install Cluster
-    USECASE=Start OpenShift installation on validated and prepared cluster
-    INSTRUCTIONS=1. Ensure all hosts discovered and validated, 2. Verify network config complete (VIPs if needed), 3. Check validations pass, 4. Call with cluster_id, 5. Monitor via cluster_info/cluster_events
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID ready for installation
-    OUTPUT_DESCRIPTION=Formatted string with cluster status after installation triggered, includes progress information
-    EXAMPLES=install_cluster("cluster-uuid")
-    PREREQUISITES=All required hosts discovered and ready, network configuration complete (VIPs set if required), all cluster validations passing
-    RELATED_TOOLS=create_cluster (create first), cluster_info (check readiness and monitor progress), cluster_events (monitor installation), set_cluster_vips (configure network)
+    Initiates installation on all discovered and validated hosts. The cluster must have all
+    prerequisites met: required number of hosts discovered and ready, network configuration
+    complete (VIPs set if required), and all validations passing. This operation returns
+    immediately; use cluster_info and cluster_events to monitor installation progress.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - install_cluster("cluster-uuid")
+        - After all hosts are discovered and validated, trigger installation
+        - VIPs must be configured first for HA baremetal/vsphere/nutanix clusters
 
-    Initiates the OpenShift installation on all discovered and validated hosts. The cluster must
-    have all prerequisites met before installation can begin. Returns immediately - use cluster_info
-    and cluster_events to monitor progress.
+    Prerequisites:
+        - All required hosts discovered and in 'ready' state
+        - Network configuration complete (VIPs set if required by platform)
+        - All cluster validations passing (check with cluster_info)
+        - For HA: minimum 3 master nodes, VIPs configured
+        - For SNO: 1 node with sufficient resources
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to install.
+    Related tools:
+        - create_cluster - Create cluster first
+        - cluster_info - Check readiness and monitor installation progress
+        - cluster_events - View detailed installation events and logs
+        - set_cluster_vips - Configure VIPs before installation (HA clusters)
 
     Returns:
         str: Formatted string with cluster status and installation progress information.
@@ -403,27 +390,26 @@ async def set_cluster_ssh_key(
         ),
     ],
 ) -> str:
-    """Set or update the SSH public key for a cluster and its boot images.
+    """Set or update the SSH public key for a cluster.
 
-    TOOL_NAME=set_cluster_ssh_key
-    DISPLAY_NAME=Set Cluster SSH Key
-    USECASE=Configure SSH access to cluster nodes during and after installation
-    INSTRUCTIONS=1. Get cluster_id from create_cluster, 2. Provide SSH public key in OpenSSH format, 3. Download new ISO after update, 4. Boot/reboot hosts with new ISO to apply key
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID, ssh_public_key (string): SSH public key in OpenSSH format (e.g., 'ssh-rsa AAAAB3...')
-    OUTPUT_DESCRIPTION=Formatted string with updated cluster configuration, or partial success message if boot image update fails
-    EXAMPLES=set_cluster_ssh_key("cluster-uuid", "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@host")
-    PREREQUISITES=Existing cluster, valid SSH public key in OpenSSH format
-    RELATED_TOOLS=create_cluster (can set SSH key at creation), cluster_iso_download_url (get new ISO with updated key), cluster_info
+    Updates both the cluster configuration and boot images with the SSH public key, enabling
+    SSH access to cluster nodes during and after installation. Only ISO images downloaded after
+    this update will include the new key. Hosts already booted need to be rebooted with a new
+    ISO to get the updated key.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - set_cluster_ssh_key("cluster-uuid", "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@host")
+        - Add SSH key to existing cluster that was created without one
+        - Update SSH key if the old key is compromised
 
-    Updates both the cluster configuration and associated infrastructure environment boot images
-    with the SSH public key. Only ISO images downloaded after this update will include the new key.
-    Discovered hosts must be booted with a new ISO to get the updated key.
+    Prerequisites:
+        - Existing cluster (from create_cluster)
+        - Valid SSH public key in OpenSSH format (starts with ssh-rsa, ssh-ed25519, etc.)
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to update.
-        ssh_public_key (str): SSH public key in OpenSSH format (e.g., 'ssh-rsa AAAAB3...').
+    Related tools:
+        - create_cluster - Can set SSH key at creation time
+        - cluster_iso_download_url - Download new ISO with updated key
+        - cluster_info - Verify SSH key configuration
 
     Returns:
         str: Formatted string with updated cluster configuration, or error message if boot image update fails.

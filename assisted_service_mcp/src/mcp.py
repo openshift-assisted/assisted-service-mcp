@@ -4,7 +4,6 @@ This module contains the main Assisted Service MCP Server class that provides
 tools for MCP clients. It uses FastMCP to register and manage MCP capabilities.
 """
 
-import os
 import asyncio
 import inspect
 from functools import wraps
@@ -13,6 +12,7 @@ from service_client.logger import log
 
 # Import auth utilities
 from assisted_service_mcp.utils.auth import get_offline_token, get_access_token
+from assisted_service_mcp.src.settings import settings
 
 # Import all tool modules
 from assisted_service_mcp.src.tools import (
@@ -35,25 +35,22 @@ class AssistedServiceMCPServer:
     def __init__(self):
         """Initialize the MCP server with assisted service tools."""
         try:
-            # Get transport configuration
-            transport_type = os.environ.get("TRANSPORT", "sse").lower()
-            use_stateless_http = transport_type == "streamable-http"
+            # Get transport configuration from settings
+            use_stateless_http = settings.TRANSPORT.lower() == "streamable-http"
 
             # Initialize FastMCP server
             self.mcp = FastMCP(
-                "AssistedService", host="0.0.0.0", stateless_http=use_stateless_http
+                "AssistedService", host=settings.MCP_HOST, stateless_http=use_stateless_http
             )
-
-            # Create closures for auth functions that capture self.mcp
+            # Define auth helpers bound to this MCP instance
             self._get_offline_token = lambda: get_offline_token(self.mcp)
-            self._get_access_token = lambda: get_access_token(self.mcp)
-
+            self._get_access_token = lambda: get_access_token(
+                self.mcp, offline_token_func=self._get_offline_token
+            )
             self._register_mcp_tools()
-
             log.info("Assisted Service MCP Server initialized successfully")
-
         except Exception as e:
-            log.error(f"Failed to initialize Assisted Service MCP Server: {e}")
+            log.exception("Failed to initialize Assisted Service MCP Server: %s", e)
             raise
 
     def _register_mcp_tools(self) -> None:

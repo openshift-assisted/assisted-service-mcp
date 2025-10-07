@@ -17,29 +17,30 @@ async def cluster_iso_download_url(
     cluster_id: Annotated[
         str,
         Field(
-            description="The unique identifier of the cluster, whose ISO image URL has to be retrieved."
+            description="The unique identifier of the cluster whose ISO image URL will be retrieved."
         ),
     ],
 ) -> str:
     """Get ISO download URL(s) for cluster boot images.
 
-    TOOL_NAME=cluster_iso_download_url
-    DISPLAY_NAME=Cluster ISO Download URL
-    USECASE=Get presigned URLs to download bootable ISO images for cluster host discovery and installation
-    INSTRUCTIONS=1. Get cluster_id from create_cluster, 2. Call function to get ISO URLs, 3. Download ISO from returned URL(s), 4. Boot hosts from ISO for discovery
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID
-    OUTPUT_DESCRIPTION=JSON array with ISO download information including presigned URLs and optional expiration timestamps for each infrastructure environment
-    EXAMPLES=cluster_iso_download_url("cluster-uuid")
-    PREREQUISITES=Cluster with created infrastructure environments
-    RELATED_TOOLS=create_cluster (creates cluster and infra env), set_cluster_ssh_key (update SSH key, requires new ISO download), cluster_info
+    Retrieves time-limited download URLs for all infrastructure environment ISOs
+    associated with the cluster. These bootable ISOs are used to boot hosts for automatic
+    discovery and installation. Download the ISO and boot your hosts from it (USB, virtual
+    media, PXE) to add them to the cluster. URLs are time-limited for security and will
+    expire after a period.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - cluster_iso_download_url("cluster-uuid")
+        - After creating a cluster, get the ISO URL to boot your first host
+        - If you updated SSH key, download a new ISO with the updated key
 
-    Retrieves presigned download URLs for all infrastructure environment ISOs associated with the cluster.
-    These ISOs are used to boot hosts for discovery and installation. URLs are time-limited for security.
+    Prerequisites:
+        - Cluster with created infrastructure environment (automatically created by create_cluster)
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster.
+    Related tools:
+        - create_cluster - Creates cluster and infrastructure environment
+        - set_cluster_ssh_key - Update SSH key (requires new ISO download)
+        - cluster_info - View cluster and infrastructure environment details
 
     Returns:
         str: JSON array with ISO URLs and optional expiration times, or message if no ISOs found.
@@ -98,30 +99,33 @@ async def cluster_credentials_download_url(
     file_name: Annotated[
         str,
         Field(
-            description="The type of credential file to download. Valid options are: kubeconfig (Standard kubeconfig file for cluster access), kubeconfig-noingress (Kubeconfig without ingress configuration), kubeadmin-password (The kubeadmin user password file)."
+            description="The type of credential file to download. Valid options: 'kubeconfig' (standard kubeconfig for cluster access - use this), 'kubeconfig-noingress' (kubeconfig without ingress), 'kubeadmin-password' (the kubeadmin user password)."
         ),
     ],
 ) -> str:
-    """Get presigned download URL for cluster credential files after successful installation.
+    """Get presigned download URL for cluster credentials after installation completes.
 
-    TOOL_NAME=cluster_credentials_download_url
-    DISPLAY_NAME=Cluster Credentials Download URL
-    USECASE=Get secure presigned URLs to download kubeconfig and kubeadmin password after cluster installation completes
-    INSTRUCTIONS=1. Ensure cluster installation completed successfully, 2. Get cluster_id, 3. Choose file_name (kubeconfig recommended), 4. Download credentials from returned URL before expiration
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID, file_name (string): kubeconfig (standard, use this)/kubeconfig-noingress (without ingress)/kubeadmin-password (admin password)
-    OUTPUT_DESCRIPTION=JSON object with presigned download URL and optional expiration timestamp for secure credential file access
-    EXAMPLES=cluster_credentials_download_url("cluster-uuid", "kubeconfig"), cluster_credentials_download_url("cluster-uuid", "kubeadmin-password")
-    PREREQUISITES=Successfully installed cluster (check with cluster_info)
-    RELATED_TOOLS=cluster_info (verify installation complete), install_cluster (start installation), cluster_events (monitor installation progress)
+    Retrieves a presigned URL for downloading cluster credential files such as
+    kubeconfig, kubeadmin password, or kubeconfig without ingress configuration.
+    For a successfully installed cluster the kubeconfig file should always be used
+    over the kubeconfig-noingress file.
+    The URL is time-limited and provides secure access to sensitive cluster files.
+    Whenever a URL is returned provide the user with information on the expiration
+    of that URL if possible.
+    
+    Examples:
+        - cluster_credentials_download_url("cluster-uuid", "kubeconfig")
+        - cluster_credentials_download_url("cluster-uuid", "kubeadmin-password")
+        - After installation completes, get kubeconfig to start using the cluster
+        - Get admin password if you need to log into the web console
 
-    I/O-bound operation - uses async def for external API calls.
+    Prerequisites:
+        - Successfully completed cluster installation (check status with cluster_info)
 
-    Retrieves a time-limited presigned URL for downloading cluster credential files. For successfully
-    installed clusters, always use "kubeconfig" over "kubeconfig-noingress". URLs expire for security.
-
-    Args:
-        cluster_id (str): The unique identifier of the cluster to get credentials for.
-        file_name (str): kubeconfig, kubeconfig-noingress, or kubeadmin-password.
+    Related tools:
+        - cluster_info - Verify installation is complete
+        - install_cluster - Start the installation
+        - cluster_events - Monitor installation progress
 
     Returns:
         str: JSON with presigned URL and optional expiration timestamp.

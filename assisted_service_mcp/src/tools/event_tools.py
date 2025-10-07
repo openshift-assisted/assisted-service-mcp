@@ -19,32 +19,39 @@ async def cluster_events(
 ) -> str:
     """Get chronological events for cluster installation progress and diagnostics.
 
-    TOOL_NAME=cluster_events
-    DISPLAY_NAME=Cluster Events
-    USECASE=Track cluster installation progress, configuration changes, and diagnose issues through event history
-    INSTRUCTIONS=1. Get cluster_id from create_cluster or list_clusters, 2. Call function to retrieve events, 3. Review chronological event log for progress and issues
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID
-    OUTPUT_DESCRIPTION=JSON string with timestamped events including event types, severity levels, and descriptive messages about cluster activities
-    EXAMPLES=cluster_events("cluster-uuid")
-    PREREQUISITES=Existing cluster with UUID
-    RELATED_TOOLS=cluster_info (current cluster state), host_events (host-specific events), install_cluster (triggers installation events), list_clusters
+    Retrieves timestamped events related to cluster installation, configuration changes,
+    and status updates. Use this to track installation progress, understand what actions
+    have been taken, and diagnose issues. Events include validation results, configuration
+    changes, and error messages.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - cluster_events("cluster-uuid")
+        - Monitor installation progress in real-time
+        - Investigate why a cluster installation failed
+        - Review configuration changes made to the cluster
 
-    Retrieves chronological events related to cluster installation, configuration changes, and status updates.
-    Events help track installation progress and diagnose issues.
+    Prerequisites:
+        - Existing cluster with UUID (from list_clusters or create_cluster)
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster to get events for.
+    Related tools:
+        - cluster_info - Current cluster state and status
+        - host_events - Events specific to individual hosts
+        - install_cluster - Triggers installation events
+        - list_clusters - Get cluster UUIDs
 
     Returns:
         str: JSON string with timestamped cluster events and descriptive messages.
     """
     log.info("Retrieving events for cluster_id: %s", cluster_id)
-    client = InventoryClient(get_access_token_func())
-    result = await client.get_events(cluster_id=cluster_id)
-    log.info("Successfully retrieved events for cluster %s", cluster_id)
-    return result
+    try:
+        access_token = get_access_token_func()
+        client = InventoryClient(access_token)
+        result = await client.get_events(cluster_id=cluster_id)
+        log.info("Successfully retrieved events for cluster %s", cluster_id)
+        return result
+    except Exception as e:
+        log.error("Failed to retrieve events for cluster %s: %s", cluster_id, str(e))
+        raise
 
 
 @track_tool_usage()
@@ -64,33 +71,39 @@ async def host_events(
 ) -> str:
     """Get events specific to a particular host for installation tracking and diagnostics.
 
-    TOOL_NAME=host_events
-    DISPLAY_NAME=Host Events
-    USECASE=Track host-specific installation progress, hardware validation, and diagnose host issues
-    INSTRUCTIONS=1. Get host_id from cluster_info host list, 2. Get cluster_id from create_cluster or list_clusters, 3. Call function to retrieve host events, 4. Review for validation results and issues
-    INPUT_DESCRIPTION=cluster_id (string): cluster UUID containing the host, host_id (string): host UUID
-    OUTPUT_DESCRIPTION=JSON string with host-specific events including hardware validation results, installation steps, role assignment, and error messages
-    EXAMPLES=host_events("cluster-uuid", "host-uuid")
-    PREREQUISITES=Existing cluster with discovered hosts
-    RELATED_TOOLS=cluster_events (cluster-wide events), cluster_info (get host list), set_host_role (configure host role)
+    Retrieves host-specific events including hardware validation results, installation steps,
+    role assignment, and error messages. Use this to diagnose host-specific issues like
+    hardware compatibility problems, network configuration issues, or installation failures
+    on a particular node.
 
-    I/O-bound operation - uses async def for external API calls.
+    Examples:
+        - host_events("cluster-uuid", "host-uuid")
+        - Debug why a specific host failed validation
+        - Monitor installation progress on a particular node
+        - Check hardware detection and compatibility results
 
-    Retrieves events related to a specific host's installation progress, hardware validation,
-    role assignment, and any host-specific issues or status changes.
+    Prerequisites:
+        - Existing cluster with discovered hosts
+        - Host ID (from cluster_info host list)
 
-    Args:
-        cluster_id (str): The unique identifier of the cluster containing the host.
-        host_id (str): The unique identifier of the specific host to get events for.
+    Related tools:
+        - cluster_events - Cluster-wide events
+        - cluster_info - Get host list and IDs
+        - set_host_role - Configure host role assignment
 
     Returns:
         str: JSON string with host-specific events including validation results and installation steps.
     """
-    log.info("Retrieving events for host %s in cluster %s", host_id, cluster_id)
-    client = InventoryClient(get_access_token_func())
-    result = await client.get_events(cluster_id=cluster_id, host_id=host_id)
-    log.info(
-        "Successfully retrieved events for host %s in cluster %s", host_id, cluster_id
-    )
-    return result
+    try:
+        log.info("Retrieving events for host %s in cluster %s", host_id, cluster_id)
+        client = InventoryClient(get_access_token_func())
+        result = await client.get_events(cluster_id=cluster_id, host_id=host_id)
+        log.info(
+            "Successfully retrieved events for host %s in cluster %s", host_id, cluster_id
+        )
+        return result
+    except Exception as e:
+        log.error(
+            "Failed to retrieve events for host %s in cluster %s: %s", host_id, cluster_id, str(e))
+        raise
 

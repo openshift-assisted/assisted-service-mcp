@@ -40,7 +40,7 @@ class TestTokenFunctions:
     def test_get_offline_token_from_environment(self) -> None:
         """Test retrieving offline token from environment variables."""
         test_token = "test-offline-token"
-        with patch.dict(os.environ, {"OFFLINE_TOKEN": test_token}):
+        with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", test_token):
             result = server.get_offline_token()
             assert result == test_token
 
@@ -55,7 +55,7 @@ class TestTokenFunctions:
         # Set up both environment and header tokens
         mock_request.headers.get.return_value = header_token
 
-        with patch.dict(os.environ, {"OFFLINE_TOKEN": env_token}):
+        with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", env_token):
             result = server.get_offline_token()
 
             # Should return the environment token, not the header token
@@ -190,7 +190,7 @@ class TestTokenFunctions:
         mock_response.json.return_value = {"access_token": access_token}
         mock_post.return_value = mock_response
 
-        with patch.dict(os.environ, {"SSO_URL": custom_sso_url}):
+        with patch("assisted_service_mcp.src.settings.settings.SSO_URL", custom_sso_url):
             with patch.object(server, "get_offline_token", return_value=offline_token):
                 result = server.get_access_token()
 
