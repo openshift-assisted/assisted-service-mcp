@@ -43,6 +43,9 @@ parameters:
 - name: TRANSPORT
   value: "streamable-http"
   description: "MCP Server transport type, can be sse or streamable-http"
+- name: ENABLE_TROUBLESHOOTING_TOOLS
+  value: "0"
+  description: "Whether the troubleshooting tool call(s) should be enabled"
 
 apiVersion: template.openshift.io/v1
 kind: Template
@@ -101,6 +104,8 @@ objects:
             value: ${LOGGING_LEVEL}
           - name: TRANSPORT
             value: ${TRANSPORT}
+          - name: ENABLE_TROUBLESHOOTING_TOOLS
+            value: ${ENABLE_TROUBLESHOOTING_TOOLS}
 - apiVersion: v1
   kind: Service
   metadata:
