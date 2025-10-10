@@ -10,7 +10,10 @@ from collections import OrderedDict
 from typing import Optional
 
 import yaml
-from log_analyzer.log_analyzer import NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH
+from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
+    NEW_LOG_BUNDLE_PATH,
+    OLD_LOG_BUNDLE_PATH,
+)
 
 from .base import ErrorSignature, SignatureResult
 

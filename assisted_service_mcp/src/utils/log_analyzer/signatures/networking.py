@@ -10,8 +10,11 @@ import os
 import re
 from typing import Optional
 
-from log_analyzer.log_analyzer import NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH
-from log_analyzer.signatures.advanced_analysis import (
+from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
+    NEW_LOG_BUNDLE_PATH,
+    OLD_LOG_BUNDLE_PATH,
+)
+from assisted_service_mcp.src.utils.log_analyzer.signatures.advanced_analysis import (
     operator_statuses_from_controller_logs,
     filter_operators,
 )

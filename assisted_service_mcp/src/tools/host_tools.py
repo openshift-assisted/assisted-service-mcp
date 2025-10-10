@@ -1,18 +1,17 @@
 """Host management tools for Assisted Service MCP Server."""
 
-from typing import Annotated
+from typing import Annotated, Callable, Literal
 from pydantic import Field
 
-from metrics import track_tool_usage
-from assisted_service_mcp.utils.client_factory import InventoryClient
-from service_client.logger import log
+from assisted_service_mcp.src.metrics import track_tool_usage
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
 
 
 @track_tool_usage()
 async def set_host_role(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     host_id: Annotated[
         str, Field(description="The unique identifier of the host to configure.")
     ],
@@ -21,7 +20,7 @@ async def set_host_role(
         Field(description="The unique identifier of the cluster containing the host."),
     ],
     role: Annotated[
-        str,
+        Literal["auto-assign", "master", "worker"],
         Field(
             description="The role to assign to the host. Valid options: 'auto-assign' (let installer decide), 'master' (control plane node with API server, etcd, scheduler), 'worker' (compute node for application workloads)."
         ),
@@ -35,13 +34,8 @@ async def set_host_role(
     let the installer choose based on cluster requirements. HA clusters require at least
     3 master nodes.
 
-    Examples:
-        - set_host_role("host-uuid", "cluster-uuid", "master")  # Make this host a control plane node
-        - set_host_role("host-uuid", "cluster-uuid", "worker")  # Make this host a worker node
-        - set_host_role("host-uuid", "cluster-uuid", "auto-assign")  # Let installer decide
-        - For HA: assign 'master' to first 3 hosts, 'worker' to remaining hosts
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Discovered host (boot from cluster ISO to discover)
         - Host ID from cluster_info host list
         - Cluster with infrastructure environment
@@ -64,4 +58,3 @@ async def set_host_role(
     result = await client.update_host(host_id, infra_env_id, host_role=role)
     log.info("Successfully set role for host %s in cluster %s", host_id, cluster_id)
     return result.to_str()
-

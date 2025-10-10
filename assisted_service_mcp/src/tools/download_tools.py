@@ -1,19 +1,18 @@
 """Download URL tools for Assisted Service MCP Server."""
 
 import json
-from typing import Annotated
+from typing import Annotated, Callable
 from pydantic import Field
 
-from metrics import track_tool_usage
-from assisted_service_mcp.utils.client_factory import InventoryClient
-from service_client.logger import log
+from assisted_service_mcp.src.metrics import track_tool_usage
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.utils.helpers import format_presigned_url
 
 
 @track_tool_usage()
 async def cluster_iso_download_url(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(
@@ -29,12 +28,8 @@ async def cluster_iso_download_url(
     media, PXE) to add them to the cluster. URLs are time-limited for security and will
     expire after a period.
 
-    Examples:
-        - cluster_iso_download_url("cluster-uuid")
-        - After creating a cluster, get the ISO URL to boot your first host
-        - If you updated SSH key, download a new ISO with the updated key
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Cluster with created infrastructure environment (automatically created by create_cluster)
 
     Related tools:
@@ -46,8 +41,13 @@ async def cluster_iso_download_url(
         str: JSON array with ISO URLs and optional expiration times, or message if no ISOs found.
     """
     log.info("Retrieving InfraEnv ISO URLs for cluster_id: %s", cluster_id)
-    client = InventoryClient(get_access_token_func())
-    infra_envs = await client.list_infra_envs(cluster_id)
+    try:
+        token = get_access_token_func()
+        client = InventoryClient(token)
+        infra_envs = await client.list_infra_envs(cluster_id)
+    except Exception as e:
+        log.error("Failed to retrieve infrastructure environments: %s", e)
+        return f"Error retrieving ISO URLs: {str(e)}"
 
     if not infra_envs:
         log.info("No infrastructure environments found for cluster %s", cluster_id)
@@ -64,10 +64,15 @@ async def cluster_iso_download_url(
     for infra_env in infra_envs:
         infra_env_id = infra_env.get("id", "unknown")
 
-        # Use the new get_infra_env_download_url method
-        presigned_url = await client.get_infra_env_download_url(infra_env_id)
+        try:
+            presigned_url = await client.get_infra_env_download_url(infra_env_id)
+        except Exception as e:
+            log.error(
+                "Failed to get download URL for infra env %s: %s", infra_env_id, e
+            )
+            continue
 
-        if presigned_url.url:
+        if presigned_url and presigned_url.url:
             iso_info.append(format_presigned_url(presigned_url))
         else:
             log.warning(
@@ -88,8 +93,7 @@ async def cluster_iso_download_url(
 
 @track_tool_usage()
 async def cluster_credentials_download_url(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(
@@ -112,14 +116,9 @@ async def cluster_credentials_download_url(
     The URL is time-limited and provides secure access to sensitive cluster files.
     Whenever a URL is returned provide the user with information on the expiration
     of that URL if possible.
-    
-    Examples:
-        - cluster_credentials_download_url("cluster-uuid", "kubeconfig")
-        - cluster_credentials_download_url("cluster-uuid", "kubeadmin-password")
-        - After installation completes, get kubeconfig to start using the cluster
-        - Get admin password if you need to log into the web console
 
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Successfully completed cluster installation (check status with cluster_info)
 
     Related tools:
@@ -135,14 +134,25 @@ async def cluster_credentials_download_url(
         cluster_id,
         file_name,
     )
-    client = InventoryClient(get_access_token_func())
-    result = await client.get_presigned_for_cluster_credentials(cluster_id, file_name)
+    try:
+        client = InventoryClient(get_access_token_func())
+        result = await client.get_presigned_for_cluster_credentials(
+            cluster_id, file_name
+        )
+    except Exception as e:
+        log.error("Failed to retrieve credentials URL: %s", e)
+        return json.dumps({"error": f"Failed to retrieve credentials URL: {str(e)}"})
+
+    if not result:
+        log.warning(
+            "No presigned URL returned for cluster %s file %s", cluster_id, file_name
+        )
+        return json.dumps({"error": "No credentials URL available"})
+
     log.info(
-        "Successfully retrieved presigned URL for cluster %s credentials file %s - %s",
+        "Successfully retrieved presigned URL for cluster %s credentials file %s",
         cluster_id,
         file_name,
-        result,
     )
 
     return json.dumps(format_presigned_url(result))
-

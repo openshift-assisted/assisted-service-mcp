@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 
 [[package]]
@@ -134,17 +134,19 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "assisted-service-client" },
+    { name = "fastapi" },
     { name = "jinja2" },
     { name = "mcp" },
     { name = "nestedarchive" },
     { name = "netaddr" },
     { name = "prometheus-client" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "retry" },
     { name = "tabulate" },
-    { name = "types-requests" },
 ]
 
 [package.dev-dependencies]
@@ -154,8 +156,10 @@ dev = [
     { name = "pydocstyle" },
     { name = "pylint" },
     { name = "pyright" },
+    { name = "pytest" },
     { name = "ruff" },
     { name = "types-pyyaml" },
+    { name = "types-requests" },
 ]
 performance = [
     { name = "aiohttp" },
@@ -170,17 +174,19 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "assisted-service-client", specifier = ">=2.41.0.post3" },
+    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "mcp", specifier = ">=1.15.0" },
     { name = "nestedarchive", specifier = ">=0.2.4" },
     { name = "netaddr", specifier = ">=1.3.0" },
     { name = "prometheus-client", specifier = ">=0.22.1" },
     { name = "pydantic", specifier = ">=2.12.1" },
+    { name = "pydantic-settings", specifier = ">=2.6.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "retry", specifier = ">=0.9.2" },
     { name = "tabulate", specifier = ">=0.9.0" },
-    { name = "types-requests", specifier = ">=2.32.4.20250611" },
 ]
 
 [package.metadata.requires-dev]
@@ -190,8 +196,10 @@ dev = [
     { name = "pydocstyle", specifier = ">=6.3.0" },
     { name = "pylint", specifier = ">=3.3.7" },
     { name = "pyright", specifier = ">=1.1.402" },
+    { name = "pytest", specifier = ">=8.0.0" },
     { name = "ruff", specifier = ">=0.12.1" },
     { name = "types-pyyaml", specifier = ">=6" },
+    { name = "types-requests", specifier = ">=2.32.4.20250611" },
 ]
 performance = [{ name = "aiohttp", specifier = ">=3.8.0" }]
 test = [
@@ -388,6 +396,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/12/80/630b4b88364e9a8c8c5797f4602d0f76ef820909ee32f0bacb9f90654042/dill-0.4.0.tar.gz", hash = "sha256:0633f1d2df477324f53a895b02c901fb961bdbf65a17122586ea7019292cbcf0", size = 186976, upload-time = "2025-04-16T00:41:48.867Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/50/3d/9373ad9c56321fdab5b41197068e1d8c25883b3fea29dd361f9b55116869/dill-0.4.0-py3-none-any.whl", hash = "sha256:44f54bf6412c2c8464c14e8243eb163690a9800dbe2c367330883b19c7561049", size = 119668, upload-time = "2025-04-16T00:41:47.671Z" },
+]
+
+[[package]]
+name = "fastapi"
+version = "0.119.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0a/f9/5c5bcce82a7997cc0eb8c47b7800f862f6b56adc40486ed246e5010d443b/fastapi-0.119.0.tar.gz", hash = "sha256:451082403a2c1f0b99c6bd57c09110ed5463856804c8078d38e5a1f1035dbbb7", size = 336756, upload-time = "2025-10-11T17:13:40.53Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/70/584c4d7cad80f5e833715c0a29962d7c93b4d18eed522a02981a6d1b6ee5/fastapi-0.119.0-py3-none-any.whl", hash = "sha256:90a2e49ed19515320abb864df570dd766be0662c5d577688f1600170f7f73cf2", size = 107095, upload-time = "2025-10-11T17:13:39.048Z" },
 ]
 
 [[package]]

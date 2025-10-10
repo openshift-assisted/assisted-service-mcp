@@ -3,23 +3,28 @@
 import uvicorn
 from assisted_service_mcp.src.api import app, server
 from assisted_service_mcp.src.settings import settings
-from metrics import metrics, initiate_metrics
-from service_client.logger import log
+from assisted_service_mcp.src.metrics import metrics, initiate_metrics
+from assisted_service_mcp.src.logger import log
 
 
 def main() -> None:
-    """Main entry point for the MCP server.
+    """Start the MCP server.
 
     Initializes the server, sets up metrics, and starts the uvicorn server.
     """
     try:
         log.info("Starting Assisted Service MCP Server")
-        log.info(f"Configuration: TRANSPORT={settings.TRANSPORT}, HOST={settings.MCP_HOST}, PORT={settings.MCP_PORT}")
+        log.info(
+            "Configuration: TRANSPORT=%s, HOST=%s, PORT=%s",
+            settings.TRANSPORT,
+            settings.MCP_HOST,
+            settings.MCP_PORT,
+        )
 
         # Initialize metrics with list of all tools
-        tool_names = server.list_tools()
+        tool_names = server.list_tools_sync()
         initiate_metrics(tool_names)
-        log.info(f"Initialized metrics for {len(tool_names)} tools")
+        log.info("Initialized metrics for %s tools", len(tool_names))
 
         # Add metrics endpoint
         app.add_route("/metrics", metrics)
@@ -31,7 +36,7 @@ def main() -> None:
     except KeyboardInterrupt:
         log.info("Received keyboard interrupt, shutting down")
     except Exception as e:
-        log.error(f"Server failed to start: {e}", exc_info=True)
+        log.error("Server failed to start: %s", e, exc_info=True)
         raise
     finally:
         log.info("Assisted Service MCP server shutting down")
@@ -39,4 +44,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

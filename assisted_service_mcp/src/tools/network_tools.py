@@ -1,14 +1,14 @@
 """Network configuration tools for Assisted Service MCP Server."""
 
 import json
-from typing import Annotated
+from typing import Annotated, Callable
 from pydantic import Field
 from jinja2 import TemplateError
 
-from metrics import track_tool_usage
-from assisted_service_mcp.utils.client_factory import InventoryClient
-from service_client.logger import log
-from static_net import (
+from assisted_service_mcp.src.metrics import track_tool_usage
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.utils.static_net import (
     NMStateTemplateParams,
     add_or_replace_static_host_config_yaml,
     generate_nmstate_from_template,
@@ -20,24 +20,19 @@ from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env
 
 @track_tool_usage()
 async def validate_nmstate_yaml(
-    mcp,
-    get_access_token_func,
+    _get_access_token_func: Callable[[], str],
     nmstate_yaml: Annotated[
         str,
-        Field(description="The NMState YAML document to validate. This defines static network configuration for a host."),
+        Field(
+            description="The NMState YAML document to validate. This defines static network configuration for a host."
+        ),
     ],
 ) -> str:
-    """Validate an NMState YAML document before applying to hosts.
+    r"""Validate an NMState YAML document before applying to hosts.
 
     Validates the YAML syntax and structure to ensure it's correct before submitting to the
     cluster. Always validate YAML after generating or manually editing before applying it to
     hosts. Invalid YAML will cause host configuration failures.
-
-    Examples:
-        - validate_nmstate_yaml("interfaces:\\n- name: eth0\\n  type: ethernet\\n  state: up...")
-        - After generating YAML with generate_nmstate_yaml, validate it
-        - After manually editing YAML, validate before applying
-        - Catch syntax errors before they cause host configuration problems
 
     Prerequisites:
         - NMState YAML document (from generate_nmstate_yaml or manual creation)
@@ -56,8 +51,7 @@ async def validate_nmstate_yaml(
 
 @track_tool_usage()
 async def generate_nmstate_yaml(
-    mcp,
-    get_access_token_func,
+    _get_access_token_func: Callable[[], str],
     params: Annotated[
         NMStateTemplateParams,
         Field(
@@ -71,12 +65,6 @@ async def generate_nmstate_yaml(
     manually. Always use this to generate initial YAML from user requirements, then validate
     and optionally tweak the result. Do not generate nmstate yaml from scratch without calling
     this tool.
-
-    Examples:
-        - generate_nmstate_yaml(NMStateTemplateParams(interface_name="eth0", ipv4_address="192.168.1.10/24", ipv4_gateway="192.168.1.1", ipv4_dns=["8.8.8.8"]))
-        - Generate YAML for static IP configuration from user input
-        - Create YAML with both IPv4 and IPv6 configuration
-        - Generate YAML with multiple DNS servers and custom routes
 
     Prerequisites:
         - Network information from user (interface, IPs, gateway, DNS)
@@ -104,8 +92,7 @@ async def generate_nmstate_yaml(
 
 @track_tool_usage()
 async def alter_static_network_config_nmstate_for_host(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to configure."),
@@ -123,7 +110,7 @@ async def alter_static_network_config_nmstate_for_host(
         ),
     ],
 ) -> str:
-    """Add, replace, or delete static network configuration for a host.
+    r"""Add, replace, or delete static network configuration for a host.
 
     Manages static network configurations for cluster hosts. To add a new host config, use
     index=None and provide YAML. To update an existing host config, provide the index and
@@ -136,6 +123,7 @@ async def alter_static_network_config_nmstate_for_host(
         - alter_static_network_config_nmstate_for_host("cluster-uuid", 1, None)  # Delete second host config
 
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Validated NMState YAML (from validate_nmstate_yaml)
         - Cluster with infrastructure environment
         - Know which host corresponds to which index (first boot = index 0, second = 1, etc.)
@@ -178,8 +166,7 @@ async def alter_static_network_config_nmstate_for_host(
 
 @track_tool_usage()
 async def list_static_network_config(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to query."),
@@ -191,12 +178,6 @@ async def list_static_network_config(
     environment. Each configuration in the array corresponds to one host, in the order
     they were added. Use the array index when updating or deleting specific host
     configurations.
-
-    Examples:
-        - list_static_network_config("cluster-uuid")
-        - Check which hosts have static network configs
-        - Find the index of a specific host's configuration
-        - Verify configurations after adding or updating
 
     Prerequisites:
         - Cluster with infrastructure environment
@@ -221,4 +202,3 @@ async def list_static_network_config(
         return "ERROR: this cluster doesn't have exactly 1 infra env, cannot manage static network config"
 
     return json.dumps(infra_envs[0].get("static_network_config", []))
-

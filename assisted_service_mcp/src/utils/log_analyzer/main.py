@@ -5,7 +5,7 @@ Main entry point for the OpenShift Assisted Installer Log Analyzer.
 import logging
 from typing import List, Optional
 
-from service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 
 from .log_analyzer import LogAnalyzer
 from .signatures import ALL_SIGNATURES, SignatureResult

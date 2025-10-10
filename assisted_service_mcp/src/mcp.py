@@ -1,18 +1,16 @@
-"""Assisted Service MCP Server implementation.
-
-This module contains the main Assisted Service MCP Server class that provides
-tools for MCP clients. It uses FastMCP to register and manage MCP capabilities.
-"""
+"""Assisted Service MCP server implementation."""
 
 import asyncio
 import inspect
 from functools import wraps
+from typing import Any, Awaitable, Callable
+
 from mcp.server.fastmcp import FastMCP
-from service_client.logger import log
+from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
 from assisted_service_mcp.utils.auth import get_offline_token, get_access_token
-from assisted_service_mcp.src.settings import settings
+from assisted_service_mcp.src.settings import settings, get_setting
 
 # Import all tool modules
 from assisted_service_mcp.src.tools import (
@@ -20,6 +18,7 @@ from assisted_service_mcp.src.tools import (
     event_tools,
     download_tools,
     version_tools,
+    operator_tools,
     host_tools,
     network_tools,
 )
@@ -32,15 +31,17 @@ class AssistedServiceMCPServer:
     Red Hat Assisted Installer API.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the MCP server with assisted service tools."""
         try:
             # Get transport configuration from settings
-            use_stateless_http = settings.TRANSPORT.lower() == "streamable-http"
+            use_stateless_http = (settings.TRANSPORT or "").lower() == "streamable-http"
 
             # Initialize FastMCP server
             self.mcp = FastMCP(
-                "AssistedService", host=settings.MCP_HOST, stateless_http=use_stateless_http
+                "AssistedService",
+                host=settings.MCP_HOST,
+                stateless_http=use_stateless_http,
             )
             # Define auth helpers bound to this MCP instance
             self._get_offline_token = lambda: get_offline_token(self.mcp)
@@ -73,6 +74,8 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
         self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_ssh_key))
+        if get_setting("ENABLE_TROUBLESHOOTING_TOOLS"):
+            self.mcp.tool()(self._wrap_tool(cluster_tools.analyze_cluster_logs))
 
         # Register event monitoring tools
         self.mcp.tool()(self._wrap_tool(event_tools.cluster_events))
@@ -84,10 +87,12 @@ class AssistedServiceMCPServer:
             self._wrap_tool(download_tools.cluster_credentials_download_url)
         )
 
-        # Register version and operator tools
+        # Register version tools
         self.mcp.tool()(self._wrap_tool(version_tools.list_versions))
-        self.mcp.tool()(self._wrap_tool(version_tools.list_operator_bundles))
-        self.mcp.tool()(self._wrap_tool(version_tools.add_operator_bundle_to_cluster))
+
+        # Register operator bundle tools
+        self.mcp.tool()(self._wrap_tool(operator_tools.list_operator_bundles))
+        self.mcp.tool()(self._wrap_tool(operator_tools.add_operator_bundle_to_cluster))
 
         # Register host management tools
         self.mcp.tool()(self._wrap_tool(host_tools.set_host_role))
@@ -113,7 +118,9 @@ class AssistedServiceMCPServer:
         )
         self.mcp.tool()(self._wrap_tool(network_tools.list_static_network_config))
 
-    def _wrap_tool(self, tool_func):
+    def _wrap_tool(
+        self, tool_func: Callable[..., Awaitable[Any]]
+    ) -> Callable[..., Awaitable[Any]]:
         """Wrap a tool function to inject mcp and auth dependencies.
 
         Args:
@@ -124,34 +131,38 @@ class AssistedServiceMCPServer:
         """
 
         @wraps(tool_func)
-        async def wrapped(*args, **kwargs):
-            # Inject mcp instance and auth function as first two parameters
-            return await tool_func(self.mcp, self._get_access_token, *args, **kwargs)
+        async def wrapped(*args: Any, **kwargs: Any) -> Any:
+            # Inject the access token provider as the first parameter
+            return await tool_func(self._get_access_token, *args, **kwargs)
 
         # Get the original function signature
         sig = inspect.signature(tool_func)
         params = list(sig.parameters.values())
 
-        # Remove the first two parameters (mcp and get_access_token_func)
-        # since they're injected by the wrapper
-        if len(params) >= 2 and params[0].name == "mcp" and params[1].name == "get_access_token_func":
-            params = params[2:]
+        # Remove the first parameter (auth token provider) since it's injected by the wrapper
+        if len(params) >= 1:
+            params = params[1:]
 
         # Create new signature with remaining parameters
         new_sig = sig.replace(parameters=params)
-        wrapped.__signature__ = new_sig
+        wrapped.__signature__ = new_sig  # type: ignore[attr-defined]
 
         return wrapped
 
-    def list_tools(self) -> list[str]:
-        """List all registered MCP tools.
+    async def list_tools(self) -> list[str]:
+        """List all registered MCP tools (async)."""
+        return [t.name for t in await self.mcp.list_tools()]
 
-        Returns:
-            list[str]: List of tool names.
-        """
+    def list_tools_sync(self) -> list[str]:
+        """Synchronize tool listing with a safe sync wrapper."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop -> safe to use asyncio.run
+            return asyncio.run(self.list_tools())
 
-        async def mcp_list_tools() -> list[str]:
-            return [t.name for t in await self.mcp.list_tools()]
-
-        return asyncio.run(mcp_list_tools())
-
+        # A loop is already running in this thread – do not nest.
+        raise RuntimeError(
+            "list_tools_sync() cannot be called from within a running event loop. "
+            "Use 'await list_tools()' in async contexts."
+        )

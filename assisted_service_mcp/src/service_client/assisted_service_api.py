@@ -15,11 +15,11 @@ import requests
 from requests.exceptions import RequestException
 from assisted_service_client import ApiClient, Configuration, PresignedUrl, api, models
 
-from service_client.logger import log
-from service_client.exceptions import sanitize_exceptions
-from service_client.helpers import Helpers
-from metrics.metrics import API_CALL_LATENCY
-from assisted_service_mcp.src.settings import settings
+from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.metrics.metrics import API_CALL_LATENCY
+from assisted_service_mcp.src.settings import get_setting
+from .exceptions import sanitize_exceptions
+from .helpers import Helpers
 
 T = TypeVar("T")
 
@@ -40,8 +40,9 @@ class InventoryClient:
         """Initialize the InventoryClient with an access token."""
         self.access_token = access_token
         self._pull_secret: Optional[str] = None
-        self.inventory_url = settings.INVENTORY_URL
-        self.client_debug = settings.CLIENT_DEBUG
+        # Read configuration at construction time so tests can patch settings
+        self.inventory_url: str = get_setting("INVENTORY_URL")
+        self.client_debug: bool = bool(get_setting("CLIENT_DEBUG"))
 
     async def _api_call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         """
@@ -68,7 +69,7 @@ class InventoryClient:
         return self._pull_secret
 
     def _get_pull_secret(self) -> str:
-        url = settings.PULL_SECRET_URL
+        url = get_setting("PULL_SECRET_URL")
         headers = {"Authorization": f"Bearer {self.access_token}"}
 
         try:

@@ -29,7 +29,7 @@ In VSCode for example:
                     "run",
                     "mcp",
                     "run",
-                    "/path/to/assisted-service-mcp/server.py"
+                    "/path/to/assisted-service-mcp/assisted_service_mcp/src/main.py"
                 ],
                 "env": {
                     "OFFLINE_TOKEN": <your token>
@@ -43,7 +43,7 @@ For SSE (recommended):
 
 Start the server in a terminal:
 
-`OFFLINE_TOKEN=<your token> uv run server.py`
+`OFFLINE_TOKEN=<your token> uv run assisted_service_mcp.src.main`
 
 Configure the server in the client:
 

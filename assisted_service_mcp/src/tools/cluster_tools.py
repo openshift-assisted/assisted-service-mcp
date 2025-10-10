@@ -1,19 +1,19 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
 import json
-from typing import Annotated
+from typing import Annotated, Callable
 from pydantic import Field
 
-from metrics import track_tool_usage
-from assisted_service_mcp.utils.client_factory import InventoryClient
-from service_client.helpers import Helpers
-from service_client.logger import log
+from assisted_service_mcp.src.metrics import track_tool_usage
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.service_client.helpers import Helpers
+from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
 
 
 @track_tool_usage()
 async def cluster_info(
-    mcp,  # FastMCP instance passed from mcp.py
-    get_access_token_func,  # Auth function passed from mcp.py
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(
@@ -26,11 +26,6 @@ async def cluster_info(
     Retrieves detailed cluster information including configuration, status, network settings,
     installation progress, and host information. Use this to check cluster state, verify
     configuration, or monitor installation progress.
-
-    Examples:
-        - cluster_info("550e8400-e29b-41d4-a716-446655440000")
-        - After creating a cluster, use this to verify the configuration
-        - During installation, use this to check current status and progress
 
     Prerequisites:
         - Valid cluster UUID (from list_clusters or create_cluster)
@@ -57,19 +52,12 @@ async def cluster_info(
 
 
 @track_tool_usage()
-async def list_clusters(
-    mcp, get_access_token_func  # Positional args for consistency
-) -> str:
+async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     """List all clusters for the current user.
 
     Retrieves a summary of all OpenShift clusters associated with your account. This provides
     basic information about each cluster (name, ID, version, status) without detailed
     configuration. Use cluster_info() to get comprehensive details about a specific cluster.
-
-    Examples:
-        - list_clusters()
-        - Use at the start of a session to see all available clusters
-        - Check status of multiple clusters at once
 
     Prerequisites:
         - Valid OCM offline token for authentication
@@ -92,10 +80,10 @@ async def list_clusters(
     clusters = await client.list_clusters()
     resp = [
         {
-            "name": cluster["name"],
-            "id": cluster["id"],
-            "openshift_version": cluster.get("openshift_version", "Unknown"),
-            "status": cluster["status"],
+            "name": cluster.name,
+            "id": cluster.id,
+            "openshift_version": getattr(cluster, "openshift_version", "Unknown"),
+            "status": cluster.status,
         }
         for cluster in clusters
     ]
@@ -105,8 +93,7 @@ async def list_clusters(
 
 @track_tool_usage()
 async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     name: Annotated[str, Field(description="The name of the new cluster.")],
     version: Annotated[
         str,
@@ -128,7 +115,10 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
     ],
     ssh_public_key: Annotated[
         str | None,
-        Field(default=None, description="SSH public key for accessing cluster nodes. Allows SSH access to nodes during and after installation."),
+        Field(
+            default=None,
+            description="SSH public key for accessing cluster nodes. Allows SSH access to nodes during and after installation.",
+        ),
     ] = None,
     cpu_architecture: Annotated[
         str,
@@ -161,7 +151,6 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
     Prerequisites:
         - Valid OCM offline token for authentication
         - OpenShift version from list_versions
-        - Configured DNS domain
 
     Related tools:
         - list_versions - Get available OpenShift versions
@@ -231,8 +220,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
 
 @track_tool_usage()
 async def set_cluster_vips(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to configure.")
     ],
@@ -253,15 +241,11 @@ async def set_cluster_vips(
 
     Sets the API and ingress VIPs required for HA clusters on baremetal, vsphere, and nutanix
     platforms. VIPs are NOT needed for single-node clusters or clusters on 'none' or 'oci'
-    platforms. The IP addresses must be within the cluster's network subnet, not assigned to
-    any physical host, and reachable from all cluster nodes.
-
-    Examples:
-        - set_cluster_vips("cluster-uuid", "192.168.1.100", "192.168.1.101")
-        - After creating an HA baremetal cluster, set VIPs before installation
-        - Use consecutive IPs from your cluster subnet
+    platforms. The IP addresses must be within the cluster's machine network subnet, not assigned
+    to any physical host, and reachable from all cluster nodes.
 
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Multi-node cluster on baremetal, vsphere, or nutanix platform
         - Two unused IP addresses within the cluster subnet
         - IPs must be reachable from all cluster nodes
@@ -290,8 +274,7 @@ async def set_cluster_vips(
 
 @track_tool_usage()
 async def set_cluster_platform(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to configure.")
     ],
@@ -309,12 +292,8 @@ async def set_cluster_platform(
     baremetal, vsphere, oci, or nutanix. Changing the platform may require reconfiguration
     of network settings (VIPs) and other platform-specific parameters.
 
-    Examples:
-        - set_cluster_platform("cluster-uuid", "vsphere")  # Change to vSphere deployment
-        - set_cluster_platform("cluster-uuid", "none")  # Set for single-node or platformless
-        - set_cluster_platform("cluster-uuid", "baremetal")  # Standard baremetal deployment
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Existing cluster (from create_cluster)
         - Compatible platform choice for cluster type (single-node requires 'none')
 
@@ -335,8 +314,7 @@ async def set_cluster_platform(
 
 @track_tool_usage()
 async def install_cluster(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to install.")
     ],
@@ -348,12 +326,8 @@ async def install_cluster(
     complete (VIPs set if required), and all validations passing. This operation returns
     immediately; use cluster_info and cluster_events to monitor installation progress.
 
-    Examples:
-        - install_cluster("cluster-uuid")
-        - After all hosts are discovered and validated, trigger installation
-        - VIPs must be configured first for HA baremetal/vsphere/nutanix clusters
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - All required hosts discovered and in 'ready' state
         - Network configuration complete (VIPs set if required by platform)
         - All cluster validations passing (check with cluster_info)
@@ -378,8 +352,7 @@ async def install_cluster(
 
 @track_tool_usage()
 async def set_cluster_ssh_key(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to update.")
     ],
@@ -397,12 +370,8 @@ async def set_cluster_ssh_key(
     this update will include the new key. Hosts already booted need to be rebooted with a new
     ISO to get the updated key.
 
-    Examples:
-        - set_cluster_ssh_key("cluster-uuid", "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@host")
-        - Add SSH key to existing cluster that was created without one
-        - Update SSH key if the old key is compromised
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Existing cluster (from create_cluster)
         - Valid SSH public key in OpenSSH format (starts with ssh-rsa, ssh-ed25519, etc.)
 
@@ -443,3 +412,15 @@ async def set_cluster_ssh_key(
     )
     return result.to_str()
 
+
+@track_tool_usage()
+async def analyze_cluster_logs(
+    get_access_token_func: Callable[[], str],
+    cluster_id: Annotated[str, Field(description="The ID of the cluster")],
+) -> str:
+    """
+    Analyze the cluster logs for the given cluster_id and return the results.
+    """
+    client = InventoryClient(get_access_token_func())
+    results = await analyze_cluster(cluster_id=cluster_id, api_client=client)
+    return "\n\n".join([str(r) for r in results])

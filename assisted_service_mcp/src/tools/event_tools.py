@@ -1,17 +1,16 @@
 """Event management tools for Assisted Service MCP Server."""
 
-from typing import Annotated
+from typing import Annotated, Callable
 from pydantic import Field
 
-from metrics import track_tool_usage
-from assisted_service_mcp.utils.client_factory import InventoryClient
-from service_client.logger import log
+from assisted_service_mcp.src.metrics import track_tool_usage
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.logger import log
 
 
 @track_tool_usage()
 async def cluster_events(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to get events for."),
@@ -24,13 +23,8 @@ async def cluster_events(
     have been taken, and diagnose issues. Events include validation results, configuration
     changes, and error messages.
 
-    Examples:
-        - cluster_events("cluster-uuid")
-        - Monitor installation progress in real-time
-        - Investigate why a cluster installation failed
-        - Review configuration changes made to the cluster
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Existing cluster with UUID (from list_clusters or create_cluster)
 
     Related tools:
@@ -56,8 +50,7 @@ async def cluster_events(
 
 @track_tool_usage()
 async def host_events(
-    mcp,
-    get_access_token_func,
+    get_access_token_func: Callable[[], str],
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster containing the host."),
@@ -76,13 +69,8 @@ async def host_events(
     hardware compatibility problems, network configuration issues, or installation failures
     on a particular node.
 
-    Examples:
-        - host_events("cluster-uuid", "host-uuid")
-        - Debug why a specific host failed validation
-        - Monitor installation progress on a particular node
-        - Check hardware detection and compatibility results
-
     Prerequisites:
+        - Valid OCM offline token for authentication
         - Existing cluster with discovered hosts
         - Host ID (from cluster_info host list)
 
@@ -99,11 +87,16 @@ async def host_events(
         client = InventoryClient(get_access_token_func())
         result = await client.get_events(cluster_id=cluster_id, host_id=host_id)
         log.info(
-            "Successfully retrieved events for host %s in cluster %s", host_id, cluster_id
+            "Successfully retrieved events for host %s in cluster %s",
+            host_id,
+            cluster_id,
         )
         return result
     except Exception as e:
         log.error(
-            "Failed to retrieve events for host %s in cluster %s: %s", host_id, cluster_id, str(e))
+            "Failed to retrieve events for host %s in cluster %s: %s",
+            host_id,
+            cluster_id,
+            str(e),
+        )
         raise
-

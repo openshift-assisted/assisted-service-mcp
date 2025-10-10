@@ -1,7 +1,7 @@
 """Shared helper functions used across multiple tool modules."""
 
-from assisted_service_mcp.utils.client_factory import InventoryClient
-from service_client.logger import log
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.logger import log
 
 
 async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) -> str:
@@ -39,4 +39,3 @@ async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) ->
 
     log.info("Using InfraEnv %s for cluster %s", infra_env_id, cluster_id)
     return infra_env_id
-

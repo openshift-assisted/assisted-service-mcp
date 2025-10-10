@@ -16,7 +16,7 @@ class Helpers:
         Get the platform object from a platform type string.
 
         Args:
-            platform (str): The platform type string
+            platform (Optional[str]): The platform type string, or None for default (baremetal)
 
         Returns:
             models.Platform: The platform object
