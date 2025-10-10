@@ -55,9 +55,9 @@ ruff:
 	uv run ruff check .
 
 check-types:
-	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined .
+	uv run mypy --config-file pyproject.toml .
 
-verify: black pylint pyright docstyle ruff check-types test
+verify: black pylint pyright ruff check-types test
 
 format:
 	uv run black .

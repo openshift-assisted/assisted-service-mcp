@@ -14,6 +14,7 @@ RUN uv sync
 COPY server.py .
 COPY service_client ./service_client/
 COPY static_net ./static_net/
+COPY log_analyzer ./log_analyzer/
 COPY metrics ./metrics/
 
 RUN chown -R 1001:0 ${APP_HOME}

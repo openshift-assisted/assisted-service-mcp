@@ -17,6 +17,7 @@ import uvicorn
 from pydantic import Field
 from assisted_service_client import models
 from mcp.server.fastmcp import FastMCP
+from log_analyzer.main import analyze_cluster
 
 from metrics import metrics, track_tool_usage, initiate_metrics
 from service_client import InventoryClient
@@ -35,6 +36,11 @@ transport_type = os.environ.get("TRANSPORT", "sse").lower()
 use_stateless_http = transport_type == "streamable-http"
 
 mcp = FastMCP("AssistedService", host="0.0.0.0", stateless_http=use_stateless_http)
+
+
+TROUBLESHOOTING_ENABLED = (
+    os.environ.get("ENABLE_TROUBLESHOOTING_TOOLS", "true").lower() == "true"
+)
 
 
 def format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
@@ -1009,6 +1015,20 @@ async def set_cluster_ssh_key(
     return result.to_str()
 
 
+@track_tool_usage()
+async def analyze_cluster_logs(
+    cluster_id: Annotated[str, Field(description="The ID of the cluster")],
+) -> str:
+    """
+    Analyze the cluster logs for the given cluster_id and return the results.
+    """
+    auth_token = get_access_token()
+    results = await asyncio.to_thread(
+        analyze_cluster, cluster_id=cluster_id, auth_token=auth_token
+    )
+    return str(results)
+
+
 def list_tools() -> list[str]:
     """List all MCP tools."""
 
@@ -1025,6 +1045,9 @@ if __name__ == "__main__":
     else:
         app = mcp.sse_app()
         log.info("Using SSE transport (stateful)")
+
+    if TROUBLESHOOTING_ENABLED:
+        mcp.add_tool(analyze_cluster_logs)
 
     initiate_metrics(list_tools())
     app.add_route("/metrics", metrics)
