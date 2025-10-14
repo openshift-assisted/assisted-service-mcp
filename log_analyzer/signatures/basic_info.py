@@ -56,51 +56,6 @@ class ComponentsVersionSignature(Signature):
 
         return None
 
-
-class HostsExtraDetailSignature(Signature):
-    """Provides extra details about hosts."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze host extra details."""
-        try:
-            metadata = log_analyzer.metadata
-            cluster = metadata["cluster"]
-
-            hosts = []
-            for host in cluster["hosts"]:
-                inventory = json.loads(host["inventory"])
-                hosts.append(
-                    OrderedDict(
-                        id=host["id"],
-                        hostname=inventory["hostname"],
-                        requested_hostname=host.get("requested_hostname", "N/A"),
-                        last_contacted=self.format_time(host["checked_in_at"]),
-                        installation_disk=host.get("installation_disk_path", "N/A"),
-                        product_name=inventory["system_vendor"].get(
-                            "product_name", "Unavailable"
-                        ),
-                        manufacturer=inventory["system_vendor"].get(
-                            "manufacturer", "Unavailable"
-                        ),
-                        virtual_host=inventory["system_vendor"].get("virtual", False),
-                        disks_count=len(inventory["disks"]),
-                    )
-                )
-
-            content = self.generate_table(hosts)
-
-            return SignatureResult(
-                signature_name=self.name,
-                title="Host Extra Details",
-                content=content,
-                severity="info",
-            )
-
-        except Exception as e:
-            logger.error("Error in HostsExtraDetailSignature: %s", e)
-            return None
-
-
 class HostsInterfacesSignature(Signature):
     """Analyzes host network interfaces."""
 
