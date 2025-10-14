@@ -57,49 +57,6 @@ class ComponentsVersionSignature(Signature):
         return None
 
 
-class FailureDescription(Signature):
-    """Generates failure description with cluster information."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze and format cluster failure description."""
-        try:
-            metadata = log_analyzer.metadata
-            cluster = metadata["cluster"]
-
-            # Extract key information
-            cluster_info = {
-                "Cluster ID": cluster["id"],
-                "OpenShift Cluster ID": cluster.get("openshift_cluster_id", "N/A"),
-                "Username": cluster.get("user_name", "N/A"),
-                "Email Domain": cluster.get("email_domain", "N/A"),
-                "Created At": self.format_time(cluster["created_at"]),
-                "Installation Started At": self.format_time(
-                    cluster.get("install_started_at", "")
-                ),
-                "Failed On": self.format_time(cluster.get("status_updated_at", "")),
-                "Status": cluster["status"],
-                "Status Info": cluster["status_info"],
-                "OpenShift Version": cluster.get("openshift_version", "N/A"),
-                "Platform Type": cluster.get("platform", {}).get("type", "N/A"),
-            }
-
-            # Format as table
-            content = "Cluster Information:\n" + self.generate_table(
-                [{"Field": k, "Value": v} for k, v in cluster_info.items()]
-            )
-
-            return SignatureResult(
-                signature_name=self.name,
-                title="Cluster Failure Description",
-                content=content,
-                severity="info",
-            )
-
-        except Exception as e:
-            logger.error("Error in FailureDescription: %s", e)
-            return None
-
-
 class HostsExtraDetailSignature(Signature):
     """Provides extra details about hosts."""
 
