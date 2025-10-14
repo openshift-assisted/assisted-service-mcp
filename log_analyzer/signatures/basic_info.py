@@ -6,117 +6,11 @@ These signatures provide fundamental information about the cluster and installat
 import json
 import logging
 from collections import OrderedDict, defaultdict
-from datetime import datetime
 from typing import Optional
 
 from .base import Signature, SignatureResult
 
 logger = logging.getLogger(__name__)
-
-
-class HostsStatusSignature(Signature):
-    """Analyzes host status and progress."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze host status."""
-        try:
-            metadata = log_analyzer.metadata
-            cluster = metadata["cluster"]
-
-            hosts = []
-            for host in cluster["hosts"]:
-                info = host["status_info"]
-                role = host["role"]
-                inventory = json.loads(host["inventory"])
-                if host.get("bootstrap", False):
-                    role = "bootstrap"
-
-                hosts.append(
-                    OrderedDict(
-                        id=host["id"],
-                        hostname=log_analyzer.get_hostname(host),
-                        progress=host["progress"]["current_stage"],
-                        status=host["status"],
-                        role=role,
-                        boot_mode=inventory.get("boot", {}).get(
-                            "current_boot_mode", "N/A"
-                        ),
-                        status_info=str(info),
-                        logs_info=host.get("logs_info", ""),
-                        last_checked_in_at=self.format_time(
-                            host.get("checked_in_at", str(datetime.min))
-                        ),
-                    )
-                )
-
-            # Generate host summary
-            summary_content = []
-
-            # Cluster status
-            summary_content.append("Cluster Status:")
-            summary_content.append(f"  Status: {cluster['status']}")
-            summary_content.append(f"  Status Info: {cluster['status_info']}")
-            summary_content.append("")
-
-            # Hosts table
-            summary_content.append("Hosts Status:")
-            summary_content.append(self.generate_table(hosts))
-
-            # Add host status summary if there are issues
-            host_summary = self._generate_hosts_summary(cluster["hosts"], log_analyzer)
-            if host_summary:
-                summary_content.append("")
-                summary_content.append("Host Status Summary:")
-                summary_content.append(host_summary)
-
-            return SignatureResult(
-                signature_name=self.name,
-                title="Installation Status",
-                content="\n".join(summary_content),
-                severity="info",
-            )
-
-        except Exception as e:
-            logger.error("Error in HostsStatusSignature: %s", e)
-            return None
-
-    def _generate_hosts_summary(self, hosts, log_analyzer):
-        """Generate a summary of host issues."""
-        host_summary = []
-        some_done = any(host["progress"]["current_stage"] == "Done" for host in hosts)
-
-        for host in hosts:
-            if host["role"] not in ["master", "bootstrap"]:
-                continue
-            if host["progress"]["current_stage"] == "Done" or host["status"] != "error":
-                continue
-
-            host_comment = {
-                "Waiting for bootkube": "bootkube.service never completed",
-                "Rebooting": "Node never pulled Ignition",
-                "Configuring": "Node pulled Ignition, but never started kubelet",
-                "Joined": (
-                    "The Node k8s resource associated with this host is not Ready"
-                    + (
-                        " or the Assisted Controller is not running on the cluster"
-                        if not some_done
-                        else ""
-                    )
-                ),
-                "Waiting for control plane": "Masters never formed 2-node cluster",
-                "Waiting for controller": "Assisted installer controller pod never started",
-                "Writing image to disk": "Image probably failed to be written on disk",
-            }.get(host["progress"]["current_stage"], "Unknown")
-
-            host_summary.append(
-                OrderedDict(
-                    hostname=log_analyzer.get_hostname(host),
-                    role=host["role"],
-                    description=host_comment,
-                )
-            )
-
-        return self.generate_table(host_summary) if host_summary else ""
 
 
 class ComponentsVersionSignature(Signature):
