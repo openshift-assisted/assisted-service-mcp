@@ -5,7 +5,7 @@ These signatures provide fundamental information about the cluster and installat
 
 import json
 import logging
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from typing import Optional
 
 from .base import Signature, SignatureResult
@@ -55,64 +55,6 @@ class ComponentsVersionSignature(Signature):
             logger.error("Error in ComponentsVersionSignature: %s", e)
 
         return None
-
-class HostsInterfacesSignature(Signature):
-    """Analyzes host network interfaces."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze host interfaces."""
-        try:
-            metadata = log_analyzer.metadata
-            cluster = metadata["cluster"]
-
-            hosts = []
-            for host in cluster["hosts"]:
-                interfaces = self._get_interfaces(host)
-                hosts.append(
-                    OrderedDict(
-                        id=host["id"],
-                        hostname=log_analyzer.get_hostname(host),
-                        name="\n".join(interfaces["name"]),
-                        mac_address="\n".join(interfaces["mac_address"]),
-                        ipv4_addresses="\n".join(interfaces["ipv4_addresses"]),
-                        ipv6_addresses="\n".join(interfaces["ipv6_addresses"]),
-                    )
-                )
-
-            content = self.generate_table(hosts)
-
-            return SignatureResult(
-                signature_name=self.name,
-                title="Host Interfaces",
-                content=content,
-                severity="info",
-            )
-
-        except Exception as e:
-            logger.error("Error in HostsInterfacesSignature: %s", e)
-            return None
-
-    def _get_interfaces(self, host):
-        """Extract interface information from host."""
-        inventory = json.loads(host["inventory"])
-        interfaces_details = defaultdict(list)
-
-        for interface in inventory.get("interfaces", []):
-            name = interface.get("name")
-            if not name:
-                continue
-            interfaces_details["name"].append(name)
-            interfaces_details["mac_address"].append(
-                json.dumps(interface.get("mac_address"))
-            )
-            interfaces_details["ipv4_addresses"].append(
-                json.dumps(interface.get("ipv4_addresses", []))
-            )
-            interfaces_details["ipv6_addresses"].append(
-                json.dumps(interface.get("ipv6_addresses", []))
-            )
-
-        return interfaces_details
 
 
 class StorageDetailSignature(Signature):
