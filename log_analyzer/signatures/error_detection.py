@@ -3,7 +3,6 @@ Error detection signatures for OpenShift Assisted Installer logs.
 These signatures identify specific error conditions during installation.
 """
 
-import json
 import logging
 import os
 import re
@@ -29,62 +28,6 @@ def _search_patterns_in_string(string, patterns):
         f'({"|".join(fr".*{pattern}.*" for pattern in patterns)})'
     )
     return combined_regex.findall(string)
-
-
-class MasterFailedToPullIgnitionSignature(ErrorSignature):
-    """Finds clusters where master nodes failed to pull ignition."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze master nodes ignition pull failures."""
-        try:
-            metadata = log_analyzer.metadata
-            cluster_hosts = metadata["cluster"]["hosts"]
-
-            # Not relevant for SNO
-            if len(cluster_hosts) <= 1:
-                return None
-
-            hosts = []
-            for host in cluster_hosts:
-                if (
-                    host["role"] == "bootstrap"
-                    and host["progress"]["current_stage"] == "WaitingForControlPlane"
-                ):
-                    # Probably failed due to other issues
-                    return None
-
-                inventory = json.loads(host["inventory"])
-                boot_mode = inventory.get("boot", {}).get("current_boot_mode", "N/A")
-
-                if (
-                    host["role"] == "master"
-                    and host["progress"]["current_stage"] == "Rebooting"
-                    and host["status"] == "error"
-                    and boot_mode == "bios"
-                ):
-                    hosts.append(
-                        OrderedDict(
-                            HostID=host["id"],
-                            Hostname=inventory["hostname"],
-                            Progress=host["progress"]["current_stage"],
-                        )
-                    )
-
-            if len(hosts) == 2:
-                # Only sign if both masters didn't pull ignition
-                content = "When both master nodes didn't pull the ignition post reboot there is nothing we can do.\n\n"
-                content += self.generate_table(hosts)
-
-                return self.create_result(
-                    title="Master Nodes Failed to Pull Ignition",
-                    content=content,
-                    severity="error",
-                )
-
-        except Exception as e:
-            logger.error("Error in MasterFailedToPullIgnitionSignature: %s", e)
-
-        return None
 
 
 class SNOHostnameHasEtcd(ErrorSignature):
