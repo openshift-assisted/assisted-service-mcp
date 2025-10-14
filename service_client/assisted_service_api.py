@@ -11,9 +11,10 @@ import asyncio
 from typing import Any, Optional, cast, Callable, TypeVar
 from urllib.parse import urlparse
 
+import nestedarchive
 import requests
 from requests.exceptions import RequestException
-from assisted_service_client import ApiClient, Configuration, api, models
+from assisted_service_client import ApiClient, Configuration, PresignedUrl, api, models
 
 from service_client.logger import log
 from service_client.exceptions import sanitize_exceptions
@@ -155,6 +156,22 @@ class InventoryClient:
         result = await self._api_call(self._installer_api().v2_list_clusters)
         log.info("Successfully listed clusters")
         return cast(list, result)
+
+    @sanitize_exceptions
+    async def get_cluster_logs(
+        self, cluster_id: str
+    ) -> nestedarchive.RemoteNestedArchive:
+        result = await self._api_call(
+            self._installer_api().v2_get_presigned_for_cluster_files,
+            cluster_id=cluster_id,
+            file_name="logs",
+        )
+
+        logs_url = cast(PresignedUrl, result).url
+        log.info("Downloading logs from %s", logs_url)
+        return nestedarchive.RemoteNestedArchive(
+            cast(str, logs_url), init_download=True
+        )
 
     @sanitize_exceptions
     async def get_events(

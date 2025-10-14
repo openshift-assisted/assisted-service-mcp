@@ -19,4 +19,4 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Python linter
-        run: uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined .
+        run: uv run mypy --config-file pyproject.toml .
