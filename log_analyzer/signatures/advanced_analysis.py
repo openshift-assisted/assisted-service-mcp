@@ -108,55 +108,6 @@ class EventsInstallationAttempts(Signature):
         return None
 
 
-class MissingMustGatherLogs(Signature):
-    """Checks if must-gather logs are missing when they should be collected."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze for missing must-gather logs."""
-        try:
-            metadata = log_analyzer.metadata
-            cluster_hosts = metadata["cluster"]["hosts"]
-            bootstrap_node = [
-                host for host in cluster_hosts if host.get("bootstrap", False)
-            ]
-
-            if not bootstrap_node:
-                return None
-
-            bootstrap_node = bootstrap_node[0]
-
-            eligible_bootstrap_stages = ["Rebooting", "Configuring", "Joined", "Done"]
-            if len(cluster_hosts) <= 1:
-                # In SNO when the bootstrap node goes to reboot the controller is still not running
-                eligible_bootstrap_stages.remove("Rebooting")
-
-            if (
-                bootstrap_node["progress"]["current_stage"]
-                not in eligible_bootstrap_stages
-            ):
-                return None
-
-            cluster = metadata["cluster"]
-            if cluster["logs_info"] in ("timeout", "completed"):
-                try:
-                    log_analyzer.get_must_gather()
-                    return None  # Must-gather exists, no issue
-                except FileNotFoundError:
-                    content = "This cluster's collected logs are missing must-gather logs although it should be collected, why is it missing?"
-
-                    return SignatureResult(
-                        signature_name=self.name,
-                        title="Missing Must-Gather Logs",
-                        content=content,
-                        severity="error",
-                    )
-
-        except Exception as e:
-            logger.error("Error in MissingMustGatherLogs: %s", e)
-
-        return None
-
-
 class FlappingValidations(Signature):
     """Analyzes flapping validation states."""
 
