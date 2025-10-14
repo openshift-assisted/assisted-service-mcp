@@ -5,11 +5,10 @@ These signatures analyze installation performance and identify bottlenecks.
 
 import logging
 import re
-from collections import OrderedDict
 from typing import Optional, List, Dict, Any
 
 
-from .base import Signature, ErrorSignature, SignatureResult
+from .base import ErrorSignature, SignatureResult
 
 logger = logging.getLogger(__name__)
 
