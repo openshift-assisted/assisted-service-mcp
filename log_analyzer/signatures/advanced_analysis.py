@@ -6,8 +6,8 @@ These signatures perform complex analysis across multiple log sources.
 import json
 import logging
 import re
-from collections import Counter, OrderedDict
-from typing import Any, Generator, Optional, Callable, cast
+from collections import OrderedDict
+from typing import Any, Generator, Optional, Callable
 
 from log_analyzer.log_analyzer import NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH
 
@@ -104,71 +104,6 @@ class EventsInstallationAttempts(Signature):
 
         except Exception as e:
             logger.error("Error in EventsInstallationAttempts: %s", e)
-
-        return None
-
-
-class FlappingValidations(Signature):
-    """Analyzes flapping validation states."""
-
-    validation_name_regexp = re.compile(r"Host .+: validation '(.+)'.+")
-    succeed_to_failing_regexp = re.compile(
-        r"Host .+: validation '.+' that used to succeed is now failing"
-    )
-    now_fixed_regexp = re.compile(r"Host .+: validation '.+' is now fixed")
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        """Analyze flapping validations."""
-        try:
-            events_by_host = log_analyzer.get_events_by_host()
-
-            host_tables = {}
-            for host_id, events in events_by_host.items():
-                succeed_to_failing_counter = Counter(
-                    cast(
-                        re.Match[str],
-                        self.validation_name_regexp.match(event["message"]),
-                    ).groups()[0]
-                    for event in events
-                    if self.succeed_to_failing_regexp.match(event["message"])
-                )
-
-                now_fixed = Counter(
-                    cast(
-                        re.Match[str],
-                        self.validation_name_regexp.match(event["message"]),
-                    ).groups()[0]
-                    for event in events
-                    if self.now_fixed_regexp.match(event["message"])
-                )
-
-                table = [
-                    OrderedDict[str, Any](
-                        validation=validation_name,
-                        failed=f"This went from succeeding to failing {succeed_to_failing_occurrences} times",
-                        fixed=f"This validation was fixed {now_fixed.get(validation_name, 0)} times",
-                    )
-                    for validation_name, succeed_to_failing_occurrences in succeed_to_failing_counter.items()
-                ]
-
-                if table:
-                    host_tables[host_id] = self.generate_table(table)
-
-            if host_tables:
-                content = "\n".join(
-                    f"Host ID {host_id}:\n{table}"
-                    for host_id, table in host_tables.items()
-                )
-
-                return SignatureResult(
-                    signature_name=self.name,
-                    title="Flapping Validations",
-                    content=content,
-                    severity="warning",
-                )
-
-        except Exception as e:
-            logger.error("Error in FlappingValidations: %s", e)
 
         return None
 
