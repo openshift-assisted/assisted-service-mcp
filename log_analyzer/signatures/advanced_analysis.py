@@ -6,7 +6,6 @@ These signatures perform complex analysis across multiple log sources.
 import json
 import logging
 import re
-from collections import OrderedDict
 from typing import Any, Generator, Optional, Callable
 
 from log_analyzer.log_analyzer import NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH
@@ -105,58 +104,6 @@ class EventsInstallationAttempts(Signature):
         except Exception as e:
             logger.error("Error in EventsInstallationAttempts: %s", e)
 
-        return None
-
-
-class NodeStatus(Signature):
-    """Dump node statuses from installer gather nodes.json."""
-
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        for base in (NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH):
-            path = f"{base}/resources/nodes.json"
-            try:
-                nodes_json = log_analyzer.logs_archive.get(path)
-            except FileNotFoundError:
-                continue
-            try:
-                nodes = json.loads(nodes_json)
-            except json.JSONDecodeError:
-                continue
-            nodes_table = []
-            for node in nodes.get("items", []):
-
-                def get_by_type(t, node):
-                    conds = node.get("status", {}).get("conditions", [])
-
-                    c = next((c for c in conds if c.get("type") == t), None)
-                    if not c:
-                        return "(Condition not found)"
-                    return f"Status {c['status']} with reason {c['reason']}, message {c['message']}"
-
-                nodes_table.append(
-                    OrderedDict(
-                        name=node.get("metadata", {}).get("name"),
-                        MemoryPressure=get_by_type("MemoryPressure", node),
-                        DiskPressure=get_by_type("DiskPressure", node),
-                        PIDPressure=get_by_type("PIDPressure", node),
-                        Ready=get_by_type("Ready", node),
-                    )
-                )
-            if nodes_table:
-                return SignatureResult(
-                    signature_name=self.name,
-                    title="Collected nodes.json from installer gather",
-                    content=self.generate_table(nodes_table),
-                    severity="info",
-                )
-            return SignatureResult(
-                signature_name=self.name,
-                title="Collected nodes.json from installer gather",
-                content=(
-                    "The nodes.json file doesn't have any node resources in it. You should probably check the kubelet logs for the 2 non-bootstrap control-plane hosts"
-                ),
-                severity="warning",
-            )
         return None
 
 
