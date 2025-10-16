@@ -1,13 +1,45 @@
 """Download URL tools for Assisted Service MCP Server."""
 
 import json
-from typing import Annotated, Callable
+from datetime import datetime, timezone
+from typing import Annotated, Callable, Any
 from pydantic import Field
 
+from assisted_service_client import models
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.logger import log
-from assisted_service_mcp.utils.helpers import format_presigned_url
+
+# Define a constant for zero datetime
+ZERO_DATETIME = datetime(1, 1, 1, tzinfo=timezone.utc)
+
+
+def format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
+    r"""
+    Format a presigned URL object into a readable string.
+
+    Args:
+        presigned_url: A PresignedUrl object with url and optional expires_at attributes.
+
+    Returns:
+        dict: A dict containing URL and optional expiration time.
+            Format:
+                {
+                    url: <url>
+                    expires_at: <expiration> (if expiration exists)
+                }
+    """
+    presigned_url_dict = {
+        "url": presigned_url.url,
+    }
+
+    # Only include expiration time if it's a meaningful date (not a zero/default value)
+    if presigned_url.expires_at and presigned_url.expires_at != ZERO_DATETIME:
+        presigned_url_dict["expires_at"] = presigned_url.expires_at.isoformat().replace(
+            "+00:00", "Z"
+        )
+
+    return presigned_url_dict
 
 
 @track_tool_usage()
@@ -25,17 +57,11 @@ async def cluster_iso_download_url(
     Retrieves time-limited download URLs for all infrastructure environment ISOs
     associated with the cluster. These bootable ISOs are used to boot hosts for automatic
     discovery and installation. Download the ISO and boot your hosts from it (USB, virtual
-    media, PXE) to add them to the cluster. URLs are time-limited for security and will
+    media) to add them to the cluster. URLs are time-limited for security and will
     expire after a period.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Cluster with created infrastructure environment (automatically created by create_cluster)
-
-    Related tools:
-        - create_cluster - Creates cluster and infrastructure environment
-        - set_cluster_ssh_key - Update SSH key (requires new ISO download)
-        - cluster_info - View cluster and infrastructure environment details
 
     Returns:
         str: JSON array with ISO URLs and optional expiration times, or message if no ISOs found.
@@ -118,13 +144,7 @@ async def cluster_credentials_download_url(
     of that URL if possible.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Successfully completed cluster installation (check status with cluster_info)
-
-    Related tools:
-        - cluster_info - Verify installation is complete
-        - install_cluster - Start the installation
-        - cluster_events - Monitor installation progress
 
     Returns:
         str: JSON with presigned URL and optional expiration timestamp.

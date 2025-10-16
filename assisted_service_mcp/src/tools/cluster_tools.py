@@ -17,7 +17,7 @@ async def cluster_info(
     cluster_id: Annotated[
         str,
         Field(
-            description="The unique identifier of the cluster to retrieve information for. This is typically a UUID string."
+            description="The unique identifier of the cluster to retrieve information for."
         ),
     ],
 ) -> str:
@@ -29,13 +29,6 @@ async def cluster_info(
 
     Prerequisites:
         - Valid cluster UUID (from list_clusters or create_cluster)
-        - OCM offline token for authentication
-
-    Related tools:
-        - list_clusters - Get cluster IDs
-        - cluster_events - View cluster installation history
-        - install_cluster - Start cluster installation
-        - set_cluster_vips - Configure network VIPs
 
     Returns:
         str: A formatted string containing detailed cluster information including:
@@ -59,14 +52,6 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     basic information about each cluster (name, ID, version, status) without detailed
     configuration. Use cluster_info() to get comprehensive details about a specific cluster.
 
-    Prerequisites:
-        - Valid OCM offline token for authentication
-
-    Related tools:
-        - cluster_info - Get detailed information for a specific cluster
-        - create_cluster - Create a new cluster
-        - cluster_events - View installation history for a cluster
-
     Returns:
         str: A JSON-formatted string containing an array of cluster objects.
             Each cluster object includes:
@@ -80,10 +65,10 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     clusters = await client.list_clusters()
     resp = [
         {
-            "name": cluster.name,
-            "id": cluster.id,
-            "openshift_version": getattr(cluster, "openshift_version", "Unknown"),
-            "status": cluster.status,
+            "name": cluster["name"],
+            "id": cluster["id"],
+            "openshift_version": cluster.get("openshift_version", "Unknown"),
+            "status": cluster["status"],
         }
         for cluster in clusters
     ]
@@ -149,14 +134,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         - create_cluster("vsphere-cluster", "4.18.2", "vsphere.com", False, platform="vsphere", cpu_architecture="x86_64")
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - OpenShift version from list_versions
-
-    Related tools:
-        - list_versions - Get available OpenShift versions
-        - cluster_info - View created cluster details
-        - set_cluster_vips - Configure VIPs (required for HA baremetal/vsphere/nutanix)
-        - install_cluster - Start the installation process
 
     Returns:
         str: The created cluster's UUID.
@@ -245,15 +223,8 @@ async def set_cluster_vips(
     to any physical host, and reachable from all cluster nodes.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Multi-node cluster on baremetal, vsphere, or nutanix platform
         - Two unused IP addresses within the cluster subnet
-        - IPs must be reachable from all cluster nodes
-
-    Related tools:
-        - create_cluster - Create the cluster first
-        - cluster_info - Verify VIP configuration
-        - install_cluster - Install after VIPs are configured
 
     Returns:
         str: Formatted string with updated cluster configuration including VIP addresses.
@@ -293,14 +264,8 @@ async def set_cluster_platform(
     of network settings (VIPs) and other platform-specific parameters.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Existing cluster (from create_cluster)
         - Compatible platform choice for cluster type (single-node requires 'none')
-
-    Related tools:
-        - create_cluster - Creates cluster with default platform
-        - set_cluster_vips - Configure VIPs (required for baremetal/vsphere/nutanix)
-        - cluster_info - Verify platform configuration
 
     Returns:
         str: Formatted string with updated cluster configuration and new platform setting.
@@ -327,18 +292,10 @@ async def install_cluster(
     immediately; use cluster_info and cluster_events to monitor installation progress.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - All required hosts discovered and in 'ready' state
         - Network configuration complete (VIPs set if required by platform)
         - All cluster validations passing (check with cluster_info)
-        - For HA: minimum 3 master nodes, VIPs configured
         - For SNO: 1 node with sufficient resources
-
-    Related tools:
-        - create_cluster - Create cluster first
-        - cluster_info - Check readiness and monitor installation progress
-        - cluster_events - View detailed installation events and logs
-        - set_cluster_vips - Configure VIPs before installation (HA clusters)
 
     Returns:
         str: Formatted string with cluster status and installation progress information.
@@ -371,14 +328,8 @@ async def set_cluster_ssh_key(
     ISO to get the updated key.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Existing cluster (from create_cluster)
         - Valid SSH public key in OpenSSH format (starts with ssh-rsa, ssh-ed25519, etc.)
-
-    Related tools:
-        - create_cluster - Can set SSH key at creation time
-        - cluster_iso_download_url - Download new ISO with updated key
-        - cluster_info - Verify SSH key configuration
 
     Returns:
         str: Formatted string with updated cluster configuration, or error message if boot image update fails.
@@ -418,8 +369,19 @@ async def analyze_cluster_logs(
     get_access_token_func: Callable[[], str],
     cluster_id: Annotated[str, Field(description="The ID of the cluster")],
 ) -> str:
-    """
-    Analyze the cluster logs for the given cluster_id and return the results.
+    """Analyze Assisted Installer logs for a cluster and summarize findings.
+
+    Runs a set of built‑in log analysis signatures against the cluster’s collected
+    logs (controller logs, bootstrap/control‑plane logs, and must‑gather content
+    when available). The results highlight common misconfigurations and known
+    error patterns to speed up triage of failed or degraded installations.
+
+    Prerequisites:
+        - Logs are available for the target cluster (downloadable via the API)
+
+    Returns:
+        str: Human‑readable report of signature results. Returns an empty
+            string if no issues were found by the analyzer.
     """
     client = InventoryClient(get_access_token_func())
     results = await analyze_cluster(cluster_id=cluster_id, api_client=client)

@@ -37,11 +37,6 @@ async def validate_nmstate_yaml(
     Prerequisites:
         - NMState YAML document (from generate_nmstate_yaml or manual creation)
 
-    Related tools:
-        - generate_nmstate_yaml - Generate initial YAML from parameters
-        - alter_static_network_config_nmstate_for_host - Apply validated YAML to hosts
-        - list_static_network_config - View currently applied configurations
-
     Returns:
         str: "YAML is valid" if successful, otherwise error message.
     """
@@ -69,11 +64,6 @@ async def generate_nmstate_yaml(
     Prerequisites:
         - Network information from user (interface, IPs, gateway, DNS)
 
-    Related tools:
-        - validate_nmstate_yaml - Validate the generated YAML
-        - alter_static_network_config_nmstate_for_host - Apply generated YAML to hosts
-        - list_static_network_config - View applied configurations
-
     Returns:
         str: Generated nmstate YAML or error message.
     """
@@ -84,10 +74,10 @@ async def generate_nmstate_yaml(
         return generated
     except TemplateError as e:
         log.error("Failed to render nmstate template", exc_info=e)
-        return "ERROR: Failed to generate nmstate yaml"
+        return f"ERROR: Failed to generate nmstate yaml: {str(e)}"
     except Exception as e:
         log.error("Exception generating nmstate yaml", exc_info=e)
-        return "ERROR: Unknown error"
+        return f"ERROR: Failed to generate nmstate yaml: {str(e)}"
 
 
 @track_tool_usage()
@@ -114,8 +104,7 @@ async def alter_static_network_config_nmstate_for_host(
 
     Manages static network configurations for cluster hosts. To add a new host config, use
     index=None and provide YAML. To update an existing host config, provide the index and
-    new YAML. To remove a host config, provide the index and set YAML=None. Each
-    configuration corresponds to one host in the order they boot from the ISO.
+    new YAML. To remove a host config, provide the index and set YAML=None.
 
     Examples:
         - alter_static_network_config_nmstate_for_host("cluster-uuid", None, "interfaces:\\n- name: eth0...")  # Add new host config
@@ -123,16 +112,9 @@ async def alter_static_network_config_nmstate_for_host(
         - alter_static_network_config_nmstate_for_host("cluster-uuid", 1, None)  # Delete second host config
 
     Prerequisites:
-        - Valid OCM offline token for authentication
-        - Validated NMState YAML (from validate_nmstate_yaml)
+        - Validated NMState YAML (from validate_nmstate_yaml), when adding or updating hosts
         - Cluster with infrastructure environment
         - Know which host corresponds to which index (first boot = index 0, second = 1, etc.)
-
-    Related tools:
-        - generate_nmstate_yaml - Create YAML from parameters
-        - validate_nmstate_yaml - Validate YAML before applying
-        - list_static_network_config - View current configurations and indices
-        - cluster_info - View cluster and infrastructure environment
 
     Returns:
         str: Updated infrastructure environment with new static network config.
@@ -181,12 +163,6 @@ async def list_static_network_config(
 
     Prerequisites:
         - Cluster with infrastructure environment
-
-    Related tools:
-        - alter_static_network_config_nmstate_for_host - Add, update, or remove configs
-        - generate_nmstate_yaml - Generate new configurations
-        - validate_nmstate_yaml - Validate configurations
-        - cluster_info - View cluster and infrastructure environment details
 
     Returns:
         str: JSON array of static network configs, or error message.

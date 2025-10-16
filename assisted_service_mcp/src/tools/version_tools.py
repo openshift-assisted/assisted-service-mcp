@@ -12,16 +12,9 @@ from assisted_service_mcp.src.logger import log
 async def list_versions(get_access_token_func: Callable[[], str]) -> str:
     """List all available OpenShift versions for installation.
 
-    Retrieves the complete list of OpenShift versions that can be installed using the
-    assisted installer service, including GA releases and pre-release candidates. Use
-    this before creating a cluster to see which versions are available.
-
-    Prerequisites:
-        - Valid OCM offline token for authentication
-
-    Related tools:
-        - create_cluster - Uses version from this list
-        - list_operator_bundles - See available operators for each version
+    Retrieves the latest OpenShift versions that can be installed using the assisted
+    installer service, including GA releases and pre-release candidates. Use this
+    before creating a cluster to see which versions are currently available.
 
     Returns:
         str: A JSON string containing available OpenShift versions with metadata

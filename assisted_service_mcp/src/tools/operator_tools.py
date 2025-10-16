@@ -17,14 +17,6 @@ async def list_operator_bundles(get_access_token_func: Callable[[], str]) -> str
     capabilities like virtualization, AI/ML, monitoring, and storage. These bundles are
     automatically installed during cluster deployment if added before installation.
 
-    Prerequisites:
-        - Valid OCM offline token for authentication
-
-    Related tools:
-        - add_operator_bundle_to_cluster - Add bundles from this list to a cluster
-        - create_cluster - Operator bundles can be added to new clusters
-        - list_versions - See compatible OpenShift versions
-
     Returns:
         str: A JSON string containing available operator bundles with metadata
             including bundle names, descriptions, and operator details.
@@ -49,7 +41,7 @@ async def add_operator_bundle_to_cluster(
     bundle_name: Annotated[
         str,
         Field(
-            description="The name of the operator bundle to add. Use list_operator_bundles to see available bundles. Common bundles: 'virtualization', 'openshift-ai'."
+            description="The name of the operator bundle to add. The available operator bundle names are 'virtualization' and 'openshift-ai'"
         ),
     ],
 ) -> str:
@@ -61,16 +53,9 @@ async def add_operator_bundle_to_cluster(
     before starting cluster installation.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Existing cluster (from create_cluster)
         - Cluster not yet installed (check with cluster_info)
         - Bundle name from list_operator_bundles
-
-    Related tools:
-        - list_operator_bundles - Get available operator bundle names
-        - cluster_info - Verify cluster state and installed operators
-        - create_cluster - Create cluster first
-        - install_cluster - Start installation after adding bundles
 
     Returns:
         str: A formatted string containing the updated cluster configuration

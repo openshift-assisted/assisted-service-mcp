@@ -5,7 +5,7 @@ from typing import Literal
 from typing import Any
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables with error handling
@@ -115,6 +115,12 @@ class Settings(BaseSettings):
             "example": "INFO",
         },
     )
+
+    # Accept lower/any-case input from env (e.g., "debug") and normalize
+    @field_validator("LOGGING_LEVEL", mode="before")
+    @classmethod
+    def _normalize_logging_level(cls, v):  # type: ignore[no-untyped-def]
+        return v.upper() if isinstance(v, str) else v
 
     LOGGER_NAME: str = Field(
         default="",

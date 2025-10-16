@@ -24,14 +24,7 @@ async def cluster_events(
     changes, and error messages.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Existing cluster with UUID (from list_clusters or create_cluster)
-
-    Related tools:
-        - cluster_info - Current cluster state and status
-        - host_events - Events specific to individual hosts
-        - install_cluster - Triggers installation events
-        - list_clusters - Get cluster UUIDs
 
     Returns:
         str: JSON string with timestamped cluster events and descriptive messages.
@@ -70,14 +63,8 @@ async def host_events(
     on a particular node.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Existing cluster with discovered hosts
         - Host ID (from cluster_info host list)
-
-    Related tools:
-        - cluster_events - Cluster-wide events
-        - cluster_info - Get host list and IDs
-        - set_host_role - Configure host role assignment
 
     Returns:
         str: JSON string with host-specific events including validation results and installation steps.

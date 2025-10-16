@@ -44,6 +44,12 @@ def test_settings_env_overrides() -> None:
     assert settings.CLIENT_DEBUG is True
 
 
+def test_logging_level_case_insensitive() -> None:
+    # lower-case should be accepted and normalized to upper-case
+    settings = reload_settings_with_env({"LOGGING_LEVEL": "debug"})
+    assert settings.LOGGING_LEVEL == "DEBUG"
+
+
 def test_settings_validation_invalid_transport() -> None:
     from pydantic import ValidationError  # pylint: disable=import-outside-toplevel
 

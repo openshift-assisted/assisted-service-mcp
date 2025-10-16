@@ -15,8 +15,7 @@ configure_logging()
 server = AssistedServiceMCPServer()
 
 # Choose the appropriate transport protocol based on settings
-TRANSPORT_VALUE = getattr(settings, "TRANSPORT", "sse")
-if TRANSPORT_VALUE and str(TRANSPORT_VALUE).lower() == "streamable-http":
+if settings.TRANSPORT == "streamable-http":
     app = server.mcp.streamable_http_app()
     log.info("Using StreamableHTTP transport (stateless)")
 else:

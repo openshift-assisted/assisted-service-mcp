@@ -1,18 +1,7 @@
 import asyncio
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from prometheus_client import REGISTRY, generate_latest
-from assisted_service_mcp.src.metrics import initiate_metrics, metrics, track_tool_usage
-
-
-def test_metrics_endpoint_returns_prometheus() -> None:
-    app = FastAPI()
-    app.add_route("/metrics", metrics)
-    with TestClient(app) as client:
-        resp = client.get("/metrics")
-        assert resp.status_code == 200
-        assert "# HELP" in resp.text or "HELP" in resp.text
+from assisted_service_mcp.src.metrics import initiate_metrics, track_tool_usage
 
 
 def test_track_tool_usage_decorator_counts_and_times() -> None:

@@ -35,15 +35,9 @@ async def set_host_role(
     3 master nodes.
 
     Prerequisites:
-        - Valid OCM offline token for authentication
         - Discovered host (boot from cluster ISO to discover)
         - Host ID from cluster_info host list
         - Cluster with infrastructure environment
-
-    Related tools:
-        - cluster_info - Get list of discovered hosts with their IDs
-        - host_events - View host-specific events and validation results
-        - cluster_iso_download_url - Get ISO to boot hosts for discovery
 
     Returns:
         str: Formatted string with updated host configuration showing assigned role.

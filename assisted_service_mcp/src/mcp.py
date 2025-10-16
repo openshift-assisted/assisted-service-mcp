@@ -10,7 +10,7 @@ from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
 from assisted_service_mcp.utils.auth import get_offline_token, get_access_token
-from assisted_service_mcp.src.settings import settings, get_setting
+from assisted_service_mcp.src.settings import settings
 
 # Import all tool modules
 from assisted_service_mcp.src.tools import (
@@ -35,7 +35,7 @@ class AssistedServiceMCPServer:
         """Initialize the MCP server with assisted service tools."""
         try:
             # Get transport configuration from settings
-            use_stateless_http = (settings.TRANSPORT or "").lower() == "streamable-http"
+            use_stateless_http = settings.TRANSPORT == "streamable-http"
 
             # Initialize FastMCP server
             self.mcp = FastMCP(
@@ -74,7 +74,7 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
         self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_ssh_key))
-        if get_setting("ENABLE_TROUBLESHOOTING_TOOLS"):
+        if settings.ENABLE_TROUBLESHOOTING_TOOLS:
             self.mcp.tool()(self._wrap_tool(cluster_tools.analyze_cluster_logs))
 
         # Register event monitoring tools
@@ -132,8 +132,9 @@ class AssistedServiceMCPServer:
 
         @wraps(tool_func)
         async def wrapped(*args: Any, **kwargs: Any) -> Any:
-            # Inject the access token provider as the first parameter
-            return await tool_func(self._get_access_token, *args, **kwargs)
+            # Generate token off the event loop; pass a cheap closure to tools
+            token = await asyncio.to_thread(self._get_access_token)
+            return await tool_func(lambda: token, *args, **kwargs)
 
         # Get the original function signature
         sig = inspect.signature(tool_func)

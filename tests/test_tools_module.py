@@ -565,3 +565,225 @@ def test_add_operator_bundle_to_cluster_happy() -> None:  # type: ignore[no-unty
             assert s == "cluster-str"
 
     asyncio.run(run())
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_info_success() -> None:
+    from assisted_service_mcp.src.tools import cluster_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from tests.test_utils import create_test_cluster
+
+    cluster = create_test_cluster(cluster_id="cid-123")
+    mock_client = Mock()
+    mock_client.get_cluster = AsyncMock(return_value=cluster)
+
+    AssistedServiceMCPServer()
+    with patch(
+        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
+        return_value=mock_client,
+    ):
+        resp = await cluster_tools.cluster_info(lambda: "t", "cid-123")
+        assert resp == cluster.to_str()
+
+
+@pytest.mark.asyncio
+async def test_tool_list_clusters_formats_fields_and_defaults_version() -> None:
+    from assisted_service_mcp.src.tools import cluster_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    # Two clusters with version, one without (defaults to "Unknown")
+    c1 = {
+        "name": "cluster1",
+        "id": "id1",
+        "openshift_version": "4.18.2",
+        "status": "ready",
+    }
+    c2 = {
+        "name": "cluster2",
+        "id": "id2",
+        "openshift_version": "4.17.1",
+        "status": "installing",
+    }
+    c3 = {"name": "cluster3", "id": "id3", "status": "installing"}
+
+    mock_client = Mock()
+    mock_client.list_clusters = AsyncMock(return_value=[c1, c2, c3])
+
+    AssistedServiceMCPServer()
+    with patch(
+        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
+        return_value=mock_client,
+    ):
+        resp = await cluster_tools.list_clusters(lambda: "t")
+        arr = json.loads(resp)
+        assert arr[0]["openshift_version"] == "4.18.2"
+        assert arr[2]["openshift_version"] == "Unknown"
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_iso_download_url_multiple_and_zero_expiration() -> None:
+    from assisted_service_mcp.src.tools import download_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    class _Presigned:
+        def __init__(self, url: str, expires_at: _dt.datetime | None) -> None:
+            self.url = url
+            self.expires_at = expires_at
+
+    mock_client = Mock()
+    mock_client.list_infra_envs = AsyncMock(return_value=[{"id": "ie1"}, {"id": "ie2"}])
+    mock_client.get_infra_env_download_url = AsyncMock(
+        side_effect=[
+            _Presigned(
+                "https://u/iso1",
+                _dt.datetime(
+                    1, 1, 1, tzinfo=_dt.timezone.utc
+                ),  # zero/default -> omitted
+            ),
+            _Presigned(
+                "https://u/iso2",
+                _dt.datetime.fromisoformat("2025-01-15T12:00:00+00:00"),
+            ),
+        ]
+    )
+
+    AssistedServiceMCPServer()
+    with patch(
+        "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+        return_value=mock_client,
+    ):
+        resp = await download_tools.cluster_iso_download_url(lambda: "t", "cid")
+        data = json.loads(resp)
+        assert data[0]["url"] == "https://u/iso1"
+        assert "expires_at" not in data[0]
+        assert data[1]["url"] == "https://u/iso2"
+        assert data[1]["expires_at"].startswith("2025-01-15T12:00:00")
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_iso_download_url_no_infraenvs_returns_message() -> None:
+    from assisted_service_mcp.src.tools import download_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_client.list_infra_envs = AsyncMock(return_value=[])
+
+    AssistedServiceMCPServer()
+    with patch(
+        "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+        return_value=mock_client,
+    ):
+        resp = await download_tools.cluster_iso_download_url(lambda: "t", "cid")
+        assert resp == "No ISO download URLs found for this cluster."
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_credentials_download_url_error_shaping() -> None:
+    from assisted_service_mcp.src.tools import download_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_client.get_presigned_for_cluster_credentials = AsyncMock(
+        side_effect=Exception("boom")
+    )
+
+    AssistedServiceMCPServer()
+    with patch(
+        "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+        return_value=mock_client,
+    ):
+        resp = await download_tools.cluster_credentials_download_url(
+            lambda: "t", "cid", "kubeconfig"
+        )
+        data = json.loads(resp)
+        assert "error" in data
+        assert "boom" in data["error"]
+
+
+@pytest.mark.asyncio
+async def test_tool_set_cluster_ssh_key_success_path() -> None:
+    from assisted_service_mcp.src.tools import cluster_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from tests.test_utils import create_test_cluster
+
+    cluster = create_test_cluster(cluster_id="cid")
+    mock_client = Mock()
+    mock_client.update_cluster = AsyncMock(return_value=cluster)
+    mock_client.update_infra_env = AsyncMock(return_value=None)
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.shared_helpers._get_cluster_infra_env_id",
+            new=AsyncMock(return_value="ie1"),
+        ),
+        patch(
+            "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+    ):
+        resp = await cluster_tools.set_cluster_ssh_key(
+            lambda: "t", "cid", "ssh-rsa AAAA"
+        )
+        assert resp == cluster.to_str()
+
+
+@pytest.mark.asyncio
+async def test_tool_list_static_network_config_success() -> None:
+    from assisted_service_mcp.src.tools import network_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_client.list_infra_envs = AsyncMock(
+        return_value=[{"static_network_config": ["cfg1", "cfg2"]}]
+    )
+
+    AssistedServiceMCPServer()
+    with patch(
+        "assisted_service_mcp.src.tools.network_tools.InventoryClient",
+        return_value=mock_client,
+    ):
+        resp = await network_tools.list_static_network_config(lambda: "t", "cid")
+        arr = json.loads(resp)
+        assert arr == ["cfg1", "cfg2"]
+
+
+@pytest.mark.asyncio
+async def test_tool_alter_static_network_add_or_replace_success() -> None:
+    from assisted_service_mcp.src.tools import network_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    class _Infra:
+        def __init__(self) -> None:
+            self.static_network_config: list[str] = []
+
+    class _Result:
+        def to_str(self) -> str:  # noqa: D401
+            return "UPDATED-INFRA"
+
+    mock_client = Mock()
+    mock_client.get_infra_env = AsyncMock(return_value=_Infra())
+    mock_client.update_infra_env = AsyncMock(return_value=_Result())
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.network_tools._get_cluster_infra_env_id",
+            new=AsyncMock(return_value="ie1"),
+        ),
+        patch(
+            "assisted_service_mcp.src.tools.network_tools.add_or_replace_static_host_config_yaml",
+            return_value="NEWCFG",
+        ),
+        patch(
+            "assisted_service_mcp.src.tools.network_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+    ):
+        resp = await network_tools.alter_static_network_config_nmstate_for_host(
+            lambda: "t", "cid", None, "interfaces: []\n"
+        )
+        assert resp == "UPDATED-INFRA"
+        mock_client.update_infra_env.assert_awaited_once_with(
+            "ie1", static_network_config="NEWCFG"
+        )
