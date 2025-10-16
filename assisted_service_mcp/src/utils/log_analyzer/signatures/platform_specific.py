@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 class LibvirtRebootFlagSignature(ErrorSignature):
     """Detect potential libvirt _on_reboot_ flag issue (MGMT-2840)."""
 
+    logs_required = False
+
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         md = log_analyzer.metadata
         cluster = md["cluster"]
