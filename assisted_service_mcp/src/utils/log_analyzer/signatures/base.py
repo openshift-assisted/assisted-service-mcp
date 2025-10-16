@@ -51,6 +51,8 @@ class SignatureResult:
 class Signature(abc.ABC):
     """Base class for signature analysis."""
 
+    logs_required = True
+
     def __init__(self):
         """Initialize the signature."""
         self.name = self.__class__.__name__

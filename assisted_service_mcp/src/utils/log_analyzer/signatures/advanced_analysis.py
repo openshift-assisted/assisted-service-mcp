@@ -79,6 +79,8 @@ logger = logging.getLogger(__name__)
 class EventsInstallationAttempts(Signature):
     """Inspects events file to check for multiple installation attempts."""
 
+    logs_required = False
+
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze multiple installation attempts."""
         try:

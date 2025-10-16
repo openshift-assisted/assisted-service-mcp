@@ -36,6 +36,8 @@ def _search_patterns_in_string(string, patterns):
 class SNOHostnameHasEtcd(ErrorSignature):
     """Looks for etcd in SNO hostname (OCPBUGS-15852)."""
 
+    logs_required = False
+
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze SNO hostname for etcd."""
         try:

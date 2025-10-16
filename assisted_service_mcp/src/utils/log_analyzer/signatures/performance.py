@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class SlowImageDownloadSignature(ErrorSignature):
     """Analyzes slow image download rates."""
 
+    logs_required = False
     image_download_regex = re.compile(
         r"Host (?P<hostname>.+?): New image status (?P<image>.+?). result:.+?; download rate: (?P<download_rate>.+?) MBps"
     )

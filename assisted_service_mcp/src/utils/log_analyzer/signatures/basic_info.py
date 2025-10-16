@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 class ComponentsVersionSignature(Signature):
     """Analyzes component versions."""
 
+    logs_required = False
+
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze component versions."""
         try:
