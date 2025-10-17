@@ -3,12 +3,19 @@
 Main entry point for the OpenShift Assisted Installer Log Analyzer.
 """
 import logging
+import json
 from typing import List, Optional
 
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-
-from .log_analyzer import LogAnalyzer
-from .signatures import ALL_SIGNATURES, SignatureResult
+from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
+    ClusterAnalyzer,
+    LogAnalyzer,
+)
+from assisted_service_mcp.src.utils.log_analyzer.signatures import (
+    ALL_SIGNATURES,
+    SignatureResult,
+    Signature,
+)
 
 
 async def analyze_cluster(
@@ -33,22 +40,44 @@ async def analyze_cluster(
     logger.info("Analyzing cluster: %s", cluster_id)
 
     try:
-        # Download logs
-        logs_archive = await api_client.get_cluster_logs(cluster_id)
+        # first call the api to get the cluster and check if logs are available
+        cluster = await api_client.get_cluster(cluster_id)
 
-        # Initialize log analyzer
-        log_analyzer = LogAnalyzer(logs_archive)
+        if cluster.logs_info != "completed":
+            logger.info(
+                "Logs are not available for cluster: %s\nDefaulting to signatures that don't require logs",
+                cluster_id,
+            )
 
-        # Determine which signatures to run
-        signatures_to_run = ALL_SIGNATURES
+            analyzer = ClusterAnalyzer()
+
+            # Call events API to get the events and set the events in the analyzer
+            events = await api_client.get_events(cluster_id)
+            analyzer.set_cluster_events(json.loads(events))
+
+            # Set the cluster metadata in the analyzer
+            analyzer.set_cluster_metadata(cluster.to_dict())
+
+            # Select signatures that don't require logs
+            signatures_to_run = [
+                sig for sig in ALL_SIGNATURES if sig.logs_required is False
+            ]
+
+        else:
+            # Download logs
+            logs_archive = await api_client.get_cluster_logs(cluster_id)
+
+            # Initialize log analyzer
+            analyzer = LogAnalyzer(logs_archive)
+
+            # Add all signatures to the list to run
+            signatures_to_run = ALL_SIGNATURES
+
+        # If specific signatures are provided, filter the signatures to run
         if specific_signatures:
-            signature_classes = {sig.__name__: sig for sig in ALL_SIGNATURES}
-            signatures_to_run = []
-            for sig_name in specific_signatures:
-                if sig_name in signature_classes:
-                    signatures_to_run.append(signature_classes[sig_name])
-                else:
-                    logger.warning("Unknown signature: %s", sig_name)
+            signatures_to_run = filter_signatures(
+                signatures_to_run, specific_signatures
+            )
 
         # Run signatures
         results = []
@@ -56,7 +85,7 @@ async def analyze_cluster(
             logger.debug("Running signature: %s", signature_class.__name__)
             try:
                 signature = signature_class()
-                result = signature.analyze(log_analyzer)
+                result = signature.analyze(analyzer)
                 if result:
                     results.append(result)
             except Exception as e:
@@ -69,6 +98,21 @@ async def analyze_cluster(
     except Exception as e:
         logger.error("Error analyzing cluster %s: %s", cluster_id, e)
         raise
+
+
+def filter_signatures(
+    signatures: List[type[Signature]], specific_signatures: List[str]
+) -> List[type[Signature]]:
+    """Filter signatures to run based on specific signatures."""
+    logger = logging.getLogger(__name__)
+    signature_classes = {sig.__name__: sig for sig in signatures}
+    filtered_signatures = []
+    for sig_name in specific_signatures:
+        if sig_name in signature_classes:
+            filtered_signatures.append(signature_classes[sig_name])
+        else:
+            logger.warning("Unknown signature: %s", sig_name)
+    return filtered_signatures
 
 
 def print_results(results: List[SignatureResult]) -> None:
