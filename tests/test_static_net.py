@@ -9,7 +9,7 @@ from ipaddress import IPv4Address
 import pytest
 import yaml
 
-from static_net import (
+from assisted_service_mcp.src.utils.static_net import (
     remove_static_host_config_by_index,
     add_or_replace_static_host_config_yaml,
     validate_and_parse_nmstate,
@@ -17,7 +17,7 @@ from static_net import (
     NMStateTemplateParams,
 )
 
-from static_net.template import (
+from assisted_service_mcp.src.utils.static_net.template import (
     EthernetInterfaceParams,
     IPV4AddressWithSubnet,
     RouteParams,
@@ -82,7 +82,7 @@ class TestRemoveStaticHostConfigByIndex:
         existing_config = json.dumps(config_data)
 
         with pytest.raises(
-            ValueError,
+            IndexError,
             match="static network config only has 1 elements, cannot delete index 5",
         ):
             remove_static_host_config_by_index(existing_config, 5)
@@ -92,7 +92,7 @@ class TestRemoveStaticHostConfigByIndex:
         existing_config = json.dumps([])
 
         with pytest.raises(
-            ValueError,
+            IndexError,
             match="static network config only has 0 elements, cannot delete index 0",
         ):
             remove_static_host_config_by_index(existing_config, 0)

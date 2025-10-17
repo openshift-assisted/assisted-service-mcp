@@ -8,7 +8,10 @@ import logging
 import re
 from typing import Any, Generator, Optional, Callable
 
-from log_analyzer.log_analyzer import NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH
+from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
+    NEW_LOG_BUNDLE_PATH,
+    OLD_LOG_BUNDLE_PATH,
+)
 
 from .base import Signature, SignatureResult
 

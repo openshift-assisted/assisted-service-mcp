@@ -6,7 +6,6 @@ Assisted Service API to manage OpenShift cluster installations, infrastructure
 environments, and host management.
 """
 
-import os
 import asyncio
 from typing import Any, Optional, cast, Callable, TypeVar
 from urllib.parse import urlparse
@@ -16,10 +15,11 @@ import requests
 from requests.exceptions import RequestException
 from assisted_service_client import ApiClient, Configuration, PresignedUrl, api, models
 
-from service_client.logger import log
-from service_client.exceptions import sanitize_exceptions
-from service_client.helpers import Helpers
-from metrics.metrics import API_CALL_LATENCY
+from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.metrics.metrics import API_CALL_LATENCY
+from assisted_service_mcp.src.settings import get_setting
+from .exceptions import sanitize_exceptions
+from .helpers import Helpers
 
 T = TypeVar("T")
 
@@ -40,10 +40,9 @@ class InventoryClient:
         """Initialize the InventoryClient with an access token."""
         self.access_token = access_token
         self._pull_secret: Optional[str] = None
-        self.inventory_url = os.environ.get(
-            "INVENTORY_URL", "https://api.openshift.com/api/assisted-install/v2"
-        )
-        self.client_debug = os.environ.get("CLIENT_DEBUG", "False").lower() == "true"
+        # Read configuration at construction time so tests can patch settings
+        self.inventory_url: str = get_setting("INVENTORY_URL")
+        self.client_debug: bool = bool(get_setting("CLIENT_DEBUG"))
 
     async def _api_call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         """
@@ -70,10 +69,7 @@ class InventoryClient:
         return self._pull_secret
 
     def _get_pull_secret(self) -> str:
-        url = os.environ.get(
-            "PULL_SECRET_URL",
-            "https://api.openshift.com/api/accounts_mgmt/v1/access_token",
-        )
+        url = get_setting("PULL_SECRET_URL")
         headers = {"Authorization": f"Bearer {self.access_token}"}
 
         try:

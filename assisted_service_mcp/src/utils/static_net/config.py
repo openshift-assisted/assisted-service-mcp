@@ -31,7 +31,7 @@ def remove_static_host_config_by_index(
     if index < 0:
         raise IndexError("negative indexes are not allowed")
     if index >= len(config):
-        raise ValueError(
+        raise IndexError(
             f"static network config only has {len(config)} elements, cannot delete index {index}"
         )
     del config[index]
@@ -73,13 +73,15 @@ def add_or_replace_static_host_config_yaml(
 def _generate_host_static_config(nmstate_yaml: str) -> HostStaticNetworkConfig:
     nmstate = validate_and_parse_nmstate(nmstate_yaml)
     interfaces = nmstate.get("interfaces")
+    if interfaces is None:
+        raise ValueError("nmstate YAML must contain an 'interfaces' key")
     name_and_mac_list: list[MacInterfaceMap] = [
         {
             "mac_address": i.get("mac-address"),
             "logical_nic_name": i.get("name"),
         }
         for i in interfaces
-        if i.get("mac-address")
+        if i.get("mac-address") and i.get("name")
     ]
     if not name_and_mac_list:
         raise ValueError("At least one interface must be associated to a MAC Address")

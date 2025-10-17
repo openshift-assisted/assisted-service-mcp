@@ -11,11 +11,7 @@ COPY pyproject.toml .
 COPY uv.lock .
 RUN uv sync
 
-COPY server.py .
-COPY service_client ./service_client/
-COPY static_net ./static_net/
-COPY log_analyzer ./log_analyzer/
-COPY metrics ./metrics/
+COPY assisted_service_mcp ./assisted_service_mcp/
 
 RUN chown -R 1001:0 ${APP_HOME}
 
@@ -26,4 +22,4 @@ ENV LOG_TO_FILE=false
 
 EXPOSE 8000
 
-CMD ["uv", "--cache-dir", "/tmp/uv-cache", "run", "server.py"]
+CMD ["uv", "--cache-dir", "/tmp/uv-cache", "run", "python", "-m", "assisted_service_mcp.src.main"]

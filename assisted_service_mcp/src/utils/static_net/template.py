@@ -12,7 +12,8 @@ class RouteParams(BaseModel):
     """The routes config in nmstate yaml"""
 
     destination: str = Field(
-        "0.0.0.0/0", description="The destination addreses for which this route applies"
+        "0.0.0.0/0",
+        description="The destination addresses for which this route applies",
     )
     next_hop_address: str = Field(
         description="The IP address to which to route traffic for this route"
@@ -63,7 +64,8 @@ class BondInterfaceParams(BaseModel):
         "balance-alb",
     ] = "active-backup"
     port_interface_names: list[str] = Field(
-        description="The interface names that are aggregated for this bond."
+        min_length=2,
+        description="The interface names that are aggregated for this bond.",
     )
     options: dict[str, Any] | None = Field(
         None, description="Link aggregation options for the bond interface"
@@ -80,7 +82,7 @@ class VLANInterfaceParams(BaseModel):
         None,
         description="If the user supplies an IP address for the vlan interface, don't reuse that same address on the base ethernet interface",
     )
-    vlan_id: int
+    vlan_id: int = Field(ge=1, le=4094, description="VLAN ID (1-4094)")
     base_interface_name: str = Field(
         description="If there is only one other ethernet interface configured for this host, use that interface name. Generally this base interface will not have an ip address configured, only the vlan interface."
     )
@@ -119,7 +121,7 @@ class NMStateTemplateParams(BaseModel):
 def generate_nmstate_from_template(params: NMStateTemplateParams) -> str:
     """Generate the nmstate yaml based on the params"""
     # Go through a serialization loop to standardize indentation and whitespace.
-    return yaml.dump(yaml.safe_load(NMSTATE_TEMPLATE.render(params)))
+    return yaml.dump(yaml.safe_load(NMSTATE_TEMPLATE.render(**params.model_dump())))
 
 
 NMSTATE_TEMPLATE = Template(
@@ -213,7 +215,7 @@ interfaces:
     enabled: false
   link-aggregation:
     mode: {{i.mode}}
-    port: 
+    port:
     {% for p in i.port_interface_names %}
     - {{p}}
     {% endfor %}

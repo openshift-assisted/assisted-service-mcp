@@ -15,7 +15,7 @@ run:
 
 .PHONY: run-local
 run-local:
-	uv run server.py
+	uv run python -m assisted_service_mcp.src.main
 
 .PHONY: run-mock-assisted
 run-mock-assisted:
@@ -30,7 +30,7 @@ deploy-template:
 	scripts/deploy_from_template.sh
 
 test-coverage:
-	uv run --group test pytest --cov=service_client --cov=server --cov-report=html --cov-report=term-missing
+	uv run --group test pytest --cov=assisted_service_mcp --cov-report=html --cov-report=term-missing
 
 test-verbose:
 	uv run --group test pytest -v

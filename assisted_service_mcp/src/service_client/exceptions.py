@@ -9,7 +9,7 @@ from typing import Callable, TypeVar, ParamSpec, Awaitable
 from functools import wraps
 
 from assisted_service_client.rest import ApiException
-from service_client.logger import log
+from assisted_service_mcp.src.logger import log
 
 
 class AssistedServiceAPIError(Exception):

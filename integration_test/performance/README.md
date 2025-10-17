@@ -19,7 +19,7 @@ This directory contains performance testing tools for the Assisted Service MCP S
 
 3. **Running MCP Server**:
    ```bash
-   TRANSPORT=streamable-http INVENTORY_URL="http://localhost:8080/api/assisted-install/v2" uv run server.py
+   TRANSPORT=streamable-http INVENTORY_URL="http://localhost:8080/api/assisted-install/v2" uv run python -m assisted_service_mcp.src.main
    ```
 
 ### Running Tests

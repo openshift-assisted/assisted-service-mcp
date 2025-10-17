@@ -2,7 +2,6 @@
 Unit tests for the assisted_service_api module.
 """
 
-import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,8 +9,8 @@ from requests.exceptions import RequestException
 from assisted_service_client.rest import ApiException
 from assisted_service_client import Configuration, models
 
-from service_client.assisted_service_api import InventoryClient
-from service_client.exceptions import AssistedServiceAPIError
+from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from tests.test_utils import (
     create_test_cluster,
     create_test_installing_cluster,
@@ -59,15 +58,16 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     def test_init_with_environment_variables(self, mock_access_token: str) -> None:
         """Test client initialization with environment variables."""
         test_url = "https://custom-api.example.com/v2"
-        with patch.dict(
-            os.environ, {"INVENTORY_URL": test_url, "CLIENT_DEBUG": "true"}
+        with patch(
+            "assisted_service_mcp.src.settings.settings.INVENTORY_URL", test_url
         ):
-            with patch.object(
-                InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
-            ):
-                client = InventoryClient(mock_access_token)
-                assert client.inventory_url == test_url
-                assert client.client_debug is True
+            with patch("assisted_service_mcp.src.settings.settings.CLIENT_DEBUG", True):
+                with patch.object(
+                    InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
+                ):
+                    client = InventoryClient(mock_access_token)
+                    assert client.inventory_url == test_url
+                    assert client.client_debug is True
 
     @patch("requests.post")
     def test_get_pull_secret_success(
@@ -113,7 +113,9 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         mock_response.text = "pull-secret-content"
         mock_post.return_value = mock_response
 
-        with patch.dict(os.environ, {"PULL_SECRET_URL": custom_url}):
+        with patch(
+            "assisted_service_mcp.src.settings.settings.PULL_SECRET_URL", custom_url
+        ):
             client = InventoryClient(mock_access_token)
 
             # Access the pull_secret property to trigger lazy loading
@@ -136,7 +138,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         # The method replaces the netloc and scheme but keeps the original path
         assert result == "https://custom.example.com/api/v1"
 
-    @patch("service_client.assisted_service_api.ApiClient")
+    @patch("assisted_service_mcp.src.service_client.assisted_service_api.ApiClient")
     def test_get_client_configuration(
         self, mock_api_client_class: Mock, client: InventoryClient
     ) -> None:
