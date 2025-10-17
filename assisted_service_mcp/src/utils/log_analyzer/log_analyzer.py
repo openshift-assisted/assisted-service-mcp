@@ -19,6 +19,35 @@ OLD_LOG_BUNDLE_PATH = (
 )
 
 
+class ClusterAnalyzer:
+    """Analyzer for OpenShift Assisted Installer clusters."""
+
+    def __init__(self):
+        self._metadata = None
+        self._cluster_events = None
+
+    def set_cluster_metadata(self, metadata: Dict[str, Any]):
+        """Set cluster metadata for analyzer."""
+        if not metadata.get("cluster"):
+            # Wrap metadata in a "cluster" key to match the expected structure
+            metadata = {"cluster": metadata}
+        self._metadata = self._clean_metadata_json(metadata)
+
+    def set_cluster_events(self, events: List[Dict[str, Any]]):
+        """Set cluster events for analyzer."""
+        self._cluster_events = events
+
+    @property
+    def metadata(self) -> Dict[str, Any] | None:
+        """Get cluster metadata."""
+        return self._metadata
+
+    @property
+    def cluster_events(self) -> List[Dict[str, Any]] | None:
+        """Get cluster events."""
+        return self._cluster_events
+
+
 class LogAnalyzer:
     """Analyzer for OpenShift Assisted Installer logs."""
 
