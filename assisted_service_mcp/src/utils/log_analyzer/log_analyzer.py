@@ -123,8 +123,7 @@ class LogAnalyzer:
                 events_content = self.logs_archive.get("cluster_events.json")
                 all_events = json.loads(cast(str | bytes, events_content))
 
-                # Get the last partition (latest installation attempt)
-                self._cluster_events = self.partition_cluster_events(all_events)[-1]
+                self._cluster_events = all_events
             except Exception as e:
                 logger.error("Failed to load cluster events: %s", e)
                 self._cluster_events = []
