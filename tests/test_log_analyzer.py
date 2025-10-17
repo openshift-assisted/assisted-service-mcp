@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, Mapping
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 
 def make_archive(get_map: Mapping[str, object]) -> Any:
@@ -93,14 +93,22 @@ def test_main_analyze_cluster_runs_signatures() -> None:
     from assisted_service_mcp.src.utils.log_analyzer import main as main_mod
 
     fake_archive = MagicMock()
-    fake_archive.get.return_value = "{}"  # minimal content to keep signatures no-op
+    fake_archive.get.return_value = (
+        '{"cluster": {"install_started_at": "2025-01-01T00:00:00Z", "hosts": []}}'
+    )
 
-    fake_client = MagicMock()
+    # Mock the cluster object returned by get_cluster
+    fake_cluster = MagicMock()
+    fake_cluster.logs_info = "completed"  # Trigger the logs path
+    fake_cluster.to_dict.return_value = {
+        "install_started_at": "2025-01-01T00:00:00Z",
+        "hosts": [],
+    }
 
-    async def _get_logs(cid: str) -> Any:  # pylint: disable=unused-argument
-        return fake_archive
-
-    fake_client.get_cluster_logs = _get_logs  # type: ignore[attr-defined]
+    fake_client = AsyncMock()
+    fake_client.get_cluster.return_value = fake_cluster
+    fake_client.get_cluster_logs.return_value = fake_archive
+    fake_client.get_events.return_value = "[]"  # JSON string
 
     # Run with an empty signature list to ensure happy path
     async def run() -> None:
