@@ -56,13 +56,23 @@ class ClusterAnalyzer:
     @staticmethod
     def _clean_metadata_json(md: Dict[str, Any]) -> Dict[str, Any]:
         """Clean metadata JSON by separating deleted hosts."""
-        installation_start_time = dateutil.parser.isoparse(
-            str(md["cluster"]["install_started_at"])
-        )
+        install_started_at = md["cluster"]["install_started_at"]
+        # Handle both datetime objects and ISO strings
+        if isinstance(install_started_at, str):
+            installation_start_time = dateutil.parser.isoparse(install_started_at)
+        else:
+            # It's already a datetime object
+            installation_start_time = install_started_at
 
         def host_deleted_before_installation_started(host):
             if deleted_at := host.get("deleted_at"):
-                return dateutil.parser.isoparse(deleted_at) < installation_start_time
+                # Handle both datetime objects and ISO strings
+                if isinstance(deleted_at, str):
+                    deleted_at_time = dateutil.parser.isoparse(deleted_at)
+                else:
+                    # It's already a datetime object
+                    deleted_at_time = deleted_at
+                return deleted_at_time < installation_start_time
             return False
 
         all_hosts = md["cluster"]["hosts"]

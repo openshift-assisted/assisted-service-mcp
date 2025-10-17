@@ -5,7 +5,7 @@ Base signature classes for OpenShift Assisted Installer log analysis.
 import abc
 import logging
 from typing import Optional, Any, Sequence
-
+from datetime import datetime
 import dateutil.parser
 from tabulate import tabulate
 
@@ -77,12 +77,19 @@ class Signature(abc.ABC):
         return tabulate(data, headers="keys", tablefmt="grid")
 
     @staticmethod
-    def format_time(time_str: str) -> str:
+    def format_time(time_str: str | datetime) -> str:
         """Format time string for display."""
         try:
-            return dateutil.parser.isoparse(time_str).strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            return time_str
+            # Handle both datetime objects and ISO strings
+            if isinstance(time_str, str):
+                dt = dateutil.parser.isoparse(time_str)
+            else:
+                # It's already a datetime object
+                dt = time_str
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, AttributeError, TypeError) as e:
+            logger.debug("Failed to format time %s: %s", time_str, e)
+            return str(time_str)
 
 
 class ErrorSignature(Signature, abc.ABC):
