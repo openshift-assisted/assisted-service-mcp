@@ -75,7 +75,7 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_ssh_key))
         if settings.ENABLE_TROUBLESHOOTING_TOOLS:
-            self.mcp.tool()(self._wrap_tool(cluster_tools.analyze_cluster_logs))
+            self.mcp.tool()(self._wrap_tool(cluster_tools.troubleshoot_cluster))
 
         # Register event monitoring tools
         self.mcp.tool()(self._wrap_tool(event_tools.cluster_events))

@@ -1,5 +1,5 @@
 """
-Core log analyzer for OpenShift Assisted Installer logs.
+Core analyzer for OpenShift Assisted Installer clusters and their logs.
 """
 
 import json

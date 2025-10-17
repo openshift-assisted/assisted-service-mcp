@@ -24,11 +24,11 @@ async def analyze_cluster(
     specific_signatures: Optional[List[str]] = None,
 ) -> List[SignatureResult]:
     """
-    Analyze a cluster's logs.
+    Analyze a cluster by using a signature analysis tool to detect common issues and errors.
 
     Args:
         cluster_id: UUID of the cluster to analyze
-        api_client: Client to fetch log files with
+        api_client: Client to fetch the cluster and its log files with
         specific_signatures: List of specific signature names to run (None for all)
 
     Returns:

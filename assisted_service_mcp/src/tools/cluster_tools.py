@@ -365,19 +365,19 @@ async def set_cluster_ssh_key(
 
 
 @track_tool_usage()
-async def analyze_cluster_logs(
+async def troubleshoot_cluster(
     get_access_token_func: Callable[[], str],
     cluster_id: Annotated[str, Field(description="The ID of the cluster")],
 ) -> str:
-    """Analyze Assisted Installer logs for a cluster and summarize findings.
+    """Troubleshoot an Assisted Installer cluster and its logs (if available) and summarize findings.
 
-    Runs a set of built‑in log analysis signatures against the cluster’s collected
-    logs (controller logs, bootstrap/control‑plane logs, and must‑gather content
+    Runs a set of built‑in analysis signatures against the cluster’s data or
+    the collected logs (controller logs, bootstrap/control‑plane logs, and must‑gather content
     when available). The results highlight common misconfigurations and known
     error patterns to speed up triage of failed or degraded installations.
 
     Prerequisites:
-        - Logs are available for the target cluster (downloadable via the API)
+        - Cluster is available (downloadable via the API)
 
     Returns:
         str: Human‑readable report of signature results. Returns an empty
