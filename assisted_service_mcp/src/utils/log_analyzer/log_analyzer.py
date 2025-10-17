@@ -48,7 +48,7 @@ class ClusterAnalyzer:
         return self._cluster_events
 
 
-class LogAnalyzer:
+class LogAnalyzer(ClusterAnalyzer):
     """Analyzer for OpenShift Assisted Installer logs."""
 
     _metadata: dict[str, Any] | None
@@ -60,9 +60,8 @@ class LogAnalyzer:
         Args:
             logs_archive: RemoteNestedArchive containing the cluster logs
         """
+        super().__init__()
         self.logs_archive = logs_archive
-        self._metadata = None
-        self._cluster_events = None
 
     @property
     def metadata(self) -> Dict[str, Any] | None:
