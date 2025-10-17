@@ -386,7 +386,7 @@ class ContainerCrashAnalysis(Signature):
                 "Found control-plane directory: %s/control-plane/", NEW_LOG_BUNDLE_PATH
             )
 
-            for node_dir in getattr(control_plane_dir, "iterdir", lambda: [])():
+            for node_dir in self.archive_dir_contents(control_plane_dir):
                 node_ip = node_dir.name
                 logger.debug("Found control plane node: %s", node_ip)
 
@@ -644,7 +644,7 @@ class ContainerCrashAnalysis(Signature):
         container_log_files = []
         pattern = re.compile(rf"^{re.escape(container_name)}-[a-f0-9]{{64}}\.log$")
 
-        for file in getattr(containers_dir, "iterdir", lambda: [])():
+        for file in self.archive_dir_contents(containers_dir):
             logger.debug("evaluating file name %s from path %s", file.name, file)
 
             if pattern.match(file.name):

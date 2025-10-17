@@ -235,7 +235,7 @@ class ErrorCreatingReadWriteLayer(ErrorSignature):
             return None
 
         messages = []
-        for namespace_dir in getattr(namespaces_dir, "iterdir", lambda: [])():
+        for namespace_dir in self.archive_dir_contents(namespaces_dir):
             try:
                 pods_yaml_path = os.path.join(namespace_dir, "core", "pods.yaml")
                 pods_yaml = log_analyzer.logs_archive.get(pods_yaml_path)
