@@ -19,49 +19,60 @@ OLD_LOG_BUNDLE_PATH = (
 )
 
 
-class LogAnalyzer:
-    """Analyzer for OpenShift Assisted Installer logs."""
+class ClusterAnalyzer:
+    """Analyzer for OpenShift Assisted Installer clusters."""
 
-    _metadata: dict[str, Any] | None
-
-    def __init__(self, logs_archive: nestedarchive.RemoteNestedArchive):
-        """
-        Initialize the log analyzer.
-
-        Args:
-            logs_archive: RemoteNestedArchive containing the cluster logs
-        """
-        self.logs_archive = logs_archive
+    def __init__(self):
         self._metadata = None
         self._cluster_events = None
+
+    def set_cluster_metadata(self, metadata: Dict[str, Any]):
+        """Set cluster metadata for analyzer."""
+        if not metadata.get("cluster"):
+            # Wrap metadata in a "cluster" key to match the expected structure
+            metadata = {"cluster": metadata}
+        self._metadata = self._clean_metadata_json(metadata)
+
+    def set_cluster_events(self, events: List[Dict[str, Any]]):
+        """Set cluster events for analyzer."""
+        self._cluster_events = events
 
     @property
     def metadata(self) -> Dict[str, Any] | None:
         """Get cluster metadata."""
-        if self._metadata is None:
-            try:
-                metadata_content = self.logs_archive.get("cluster_metadata.json")
-                raw_metadata = json.loads(cast(str | bytes, metadata_content))
-
-                # The metadata file contains cluster information at the root level
-                # Wrap it in a "cluster" key to match the expected structure
-                wrapped_metadata = {"cluster": raw_metadata}
-                self._metadata = self._clean_metadata_json(wrapped_metadata)
-            except Exception as e:
-                logger.error("Failed to load metadata: %s", e)
-                raise
         return self._metadata
+
+    @property
+    def cluster_events(self) -> List[Dict[str, Any]] | None:
+        """Get cluster events."""
+        return self._cluster_events
+
+    def get_all_cluster_events(self) -> List[Dict[str, Any]]:
+        """Get all the cluster installation events."""
+        if self._cluster_events is None:
+            return []
+        return self._cluster_events
 
     @staticmethod
     def _clean_metadata_json(md: Dict[str, Any]) -> Dict[str, Any]:
         """Clean metadata JSON by separating deleted hosts."""
-        installation_start_time = dateutil.parser.isoparse(
-            md["cluster"]["install_started_at"]
-        )
+        install_started_at = md["cluster"]["install_started_at"]
+        # Handle both datetime objects and ISO strings
+        if isinstance(install_started_at, str):
+            installation_start_time = dateutil.parser.isoparse(install_started_at)
+        else:
+            # It's already a datetime object
+            installation_start_time = install_started_at
 
         def host_deleted_before_installation_started(host):
             if deleted_at := host.get("deleted_at"):
-                return dateutil.parser.isoparse(deleted_at) < installation_start_time
+                # Handle both datetime objects and ISO strings
+                if isinstance(deleted_at, str):
+                    deleted_at_time = dateutil.parser.isoparse(deleted_at)
+                else:
+                    # It's already a datetime object
+                    deleted_at_time = deleted_at
+                return deleted_at_time < installation_start_time
             return False
 
         all_hosts = md["cluster"]["hosts"]
@@ -86,21 +97,6 @@ class LogAnalyzer:
             return []
 
         return events
-
-    def get_all_cluster_events(self) -> List[Dict[str, Any]]:
-        """Get all the cluster installation events."""
-        if self._cluster_events is None:
-            try:
-                events_content = self.logs_archive.get("cluster_events.json")
-                all_events = json.loads(cast(str | bytes, events_content))
-
-                # Get the last partition (latest installation attempt)
-                self._cluster_events = self.partition_cluster_events(all_events)[-1]
-            except Exception as e:
-                logger.error("Failed to load cluster events: %s", e)
-                self._cluster_events = []
-
-        return self._cluster_events
 
     @staticmethod
     def partition_cluster_events(
@@ -130,6 +126,66 @@ class LogAnalyzer:
             if "host_id" in event:
                 events_by_host[event["host_id"]].append(event)
         return events_by_host
+
+    @staticmethod
+    def get_hostname(host: Dict[str, Any]) -> str:
+        """Extract hostname from host metadata."""
+        hostname = host.get("requested_hostname")
+        if hostname:
+            return hostname
+
+        try:
+            inventory = json.loads(host["inventory"])
+            return inventory["hostname"]
+        except (KeyError, json.JSONDecodeError):
+            return host.get("id", "unknown")
+
+
+class LogAnalyzer(ClusterAnalyzer):
+    """Analyzer for OpenShift Assisted Installer logs."""
+
+    _metadata: dict[str, Any] | None
+
+    def __init__(self, logs_archive: nestedarchive.RemoteNestedArchive):
+        """
+        Initialize the log analyzer.
+
+        Args:
+            logs_archive: RemoteNestedArchive containing the cluster logs
+        """
+        super().__init__()
+        self.logs_archive = logs_archive
+
+    @property
+    def metadata(self) -> Dict[str, Any] | None:
+        """Get cluster metadata."""
+        if self._metadata is None:
+            try:
+                metadata_content = self.logs_archive.get("cluster_metadata.json")
+                raw_metadata = json.loads(cast(str | bytes, metadata_content))
+
+                # The metadata file contains cluster information at the root level
+                # Wrap it in a "cluster" key to match the expected structure
+                wrapped_metadata = {"cluster": raw_metadata}
+                self._metadata = self._clean_metadata_json(wrapped_metadata)
+            except Exception as e:
+                logger.error("Failed to load metadata: %s", e)
+                raise
+        return self._metadata
+
+    def get_all_cluster_events(self) -> List[Dict[str, Any]]:
+        """Get all the cluster installation events."""
+        if self._cluster_events is None:
+            try:
+                events_content = self.logs_archive.get("cluster_events.json")
+                all_events = json.loads(cast(str | bytes, events_content))
+
+                self._cluster_events = all_events
+            except Exception as e:
+                logger.error("Failed to load cluster events: %s", e)
+                self._cluster_events = []
+
+        return self._cluster_events
 
     def get_host_log_file(self, host_id: str, filename: str) -> str:
         """
@@ -213,16 +269,3 @@ class LogAnalyzer:
                 "controller_logs.tar.gz/must-gather.tar.gz", mode="rb"
             ),
         )
-
-    @staticmethod
-    def get_hostname(host: Dict[str, Any]) -> str:
-        """Extract hostname from host metadata."""
-        hostname = host.get("requested_hostname")
-        if hostname:
-            return hostname
-
-        try:
-            inventory = json.loads(host["inventory"])
-            return inventory["hostname"]
-        except (KeyError, json.JSONDecodeError):
-            return host.get("id", "unknown")

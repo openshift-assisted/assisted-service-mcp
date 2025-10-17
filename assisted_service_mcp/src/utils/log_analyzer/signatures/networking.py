@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 class SNOMachineCidrSignature(Signature):
     """Validates machine CIDR configuration for SNO clusters."""
 
+    logs_required = False
+
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze SNO machine CIDR configuration."""
         try:
