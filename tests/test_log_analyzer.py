@@ -17,6 +17,97 @@ def make_archive(get_map: Mapping[str, object]) -> Any:
     return _A()
 
 
+def test_cluster_analyzer_metadata_and_events_partitioning() -> None:
+    """Test that the cluster analyzer correctly handles cluster metadata and events partitioning."""
+    from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import ClusterAnalyzer
+
+    ca = ClusterAnalyzer()
+    ca.set_cluster_metadata(
+        {
+            "cluster": {
+                "install_started_at": "2025-01-01T11:11:00Z",
+                "hosts": [
+                    {"id": "h1", "requested_hostname": "h1-hostname"},
+                    {
+                        "id": "h2",
+                        "requested_hostname": "h2",
+                        "deleted_at": "2025-01-01T10:11:00Z",
+                    },
+                ],
+            }
+        }
+    )
+    ca.set_cluster_events(
+        [
+            {
+                "name": "example_event",
+                "event_time": "2025-01-01T11:11:00Z",
+                "host_id": "h1",
+            },
+            {
+                "name": "cluster_installation_reset",
+                "message": "Cluster installation reset 1",
+                "host_id": "h1",
+            },
+            {
+                "name": "example_recent_event",
+                "event_time": "2025-01-01T11:11:01Z",
+                "message": "Most recent event",
+                "host_id": "h1",
+            },
+        ]
+    )
+    assert ca.metadata is not None
+    assert ca.metadata["cluster"]["install_started_at"] == "2025-01-01T11:11:00Z"
+    # deleted host should be removed from hosts list
+    assert ca.metadata["cluster"]["hosts"] == [
+        {"id": "h1", "requested_hostname": "h1-hostname"}
+    ]
+    assert ca.cluster_events is not None
+    assert ca.get_all_cluster_events() == [
+        {
+            "name": "example_event",
+            "event_time": "2025-01-01T11:11:00Z",
+            "host_id": "h1",
+        },
+        {
+            "name": "cluster_installation_reset",
+            "message": "Cluster installation reset 1",
+            "host_id": "h1",
+        },
+        {
+            "name": "example_recent_event",
+            "event_time": "2025-01-01T11:11:01Z",
+            "message": "Most recent event",
+            "host_id": "h1",
+        },
+    ]
+    # last install cluster events should be the most recent event after the reset event
+    assert ca.get_last_install_cluster_events() == [
+        {
+            "name": "example_recent_event",
+            "event_time": "2025-01-01T11:11:01Z",
+            "message": "Most recent event",
+            "host_id": "h1",
+        }
+    ]
+    assert ca.get_events_by_host() == {
+        "h1": [
+            {
+                "name": "example_recent_event",
+                "event_time": "2025-01-01T11:11:01Z",
+                "message": "Most recent event",
+                "host_id": "h1",
+            }
+        ]
+    }
+    # get hostname should return the requested hostname of the host
+    assert (
+        ca.get_hostname({"id": "h1", "requested_hostname": "h1-hostname"})
+        == "h1-hostname"
+    )
+
+
 def test_log_analyzer_metadata_and_events_partitioning() -> None:
     from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import LogAnalyzer
 
@@ -116,6 +207,142 @@ def test_main_analyze_cluster_runs_signatures() -> None:
             "cid", fake_client, specific_signatures=[]
         )
         assert isinstance(results, list)
+
+    asyncio.run(run())
+
+
+def test_main_analyze_cluster_runs_signatures_no_logs() -> None:
+    """Test that the main function runs signatures when no logs are available."""
+    from assisted_service_mcp.src.utils.log_analyzer import main as main_mod
+
+    # Mock the cluster object returned by get_cluster
+    fake_cluster = MagicMock()
+    fake_cluster.to_dict.return_value = {
+        "cluster": {
+            "install_started_at": "2025-01-01T00:00:00Z",
+            "hosts": [
+                {
+                    "id": "h1",
+                    "requested_hostname": "etcd-h1",  # should trigger SNOHostnameHasEtcd signature
+                },
+            ],
+            "high_availability_mode": "None",
+        }
+    }
+    fake_cluster.logs_info = "not_completed"
+
+    fake_client = AsyncMock()
+    fake_client.get_cluster.return_value = fake_cluster
+    # should trigger SlowImageDownloadSignature signature
+    fake_client.get_events.return_value = '[{"name": "slow_image_download", "event_time": "2025-01-01T00:00:00Z", "message": "Host h1: New image status quay.io/openshift-release-dev/ocp-release:4.19.12-x86_64. result: downloaded; download rate: 8.0 MBps"}]'  # JSON string
+
+    # Run with an empty signature list should run all signatures that don't require logs
+    results = asyncio.run(
+        main_mod.analyze_cluster("cid", fake_client, specific_signatures=[])
+    )
+    assert isinstance(results, list)
+    assert len(results) == 2
+    for result in results:
+        assert result.title in ["No etcd in SNO hostname", "Slow Image Download"]
+        if result.title in "Slow Image Download":
+            assert "Detected slow image download rate (MBps):" in result.content
+
+
+def test_does_run_signature_if_logs_are_available() -> None:
+    """Test that a signature that requires logs runs if logs are available."""
+    from assisted_service_mcp.src.utils.log_analyzer import main as main_mod
+
+    fake_archive = MagicMock()
+    # These controller logs should trigger ApiInvalidCertificateSignature
+    fake_archive.get.return_value = 'time="2025-01-01T00:00:00Z" level=error msg="x509: certificate is valid for 127.0.0.1, not 192.168.1.1"'
+
+    # Mock the cluster object returned by get_cluster
+    fake_cluster = MagicMock()
+    fake_cluster.to_dict.return_value = {
+        "install_started_at": "2025-01-01T00:00:00Z",
+        "hosts": [],
+    }
+    fake_cluster.logs_info = "completed"
+
+    fake_client = AsyncMock()
+    fake_client.get_cluster.return_value = fake_cluster
+    # This event should trigger SlowImageDownloadSignature signature, which should not run
+    fake_client.get_events.return_value = '[{"name": "slow_image_download", "event_time": "2025-01-01T00:00:00Z", "message": "Host h1: New image status quay.io/openshift-release-dev/ocp-release:4.19.12-x86_64. result: downloaded; download rate: 8.0 MBps"}]'  # JSON string
+    # This should not be called
+    fake_client.get_cluster_logs.return_value = fake_archive
+
+    # Run with APIInvalidCertificateSignature, which should run if logs are available
+    results = asyncio.run(
+        main_mod.analyze_cluster(
+            "cid", fake_client, specific_signatures=["ApiInvalidCertificateSignature"]
+        )
+    )
+    assert isinstance(results, list)
+    assert len(results) == 1
+    assert results[0].title == "Invalid SAN values on certificate for AI API"
+    assert results[0].severity == "error"
+    assert "x509: certificate is valid for" in results[0].content
+
+
+def test_does_not_run_signature_if_logs_are_not_available() -> None:
+    """Test that a signature that requires logs does not run if logs are not available."""
+    from assisted_service_mcp.src.utils.log_analyzer import main as main_mod
+
+    fake_archive = MagicMock()
+    # These controller logs should trigger ApiInvalidCertificateSignature, which should not run because logs are not available
+    fake_archive.get.return_value = 'time="2025-01-01T00:00:00Z" level=error msg="x509: certificate is valid for 127.0.0.1, not 192.168.1.1"'
+
+    # Mock the cluster object returned by get_cluster
+    fake_cluster = MagicMock()
+    fake_cluster.to_dict.return_value = {
+        "install_started_at": "2025-01-01T00:00:00Z",
+        "hosts": [],
+    }
+    fake_cluster.logs_info = "not_completed"
+
+    fake_client = AsyncMock()
+    fake_client.get_cluster.return_value = fake_cluster
+    # This event should trigger SlowImageDownloadSignature signature, which should not run
+    fake_client.get_events.return_value = '[{"name": "slow_image_download", "event_time": "2025-01-01T00:00:00Z", "message": "Host h1: New image status quay.io/openshift-release-dev/ocp-release:4.19.12-x86_64. result: downloaded; download rate: 8.0 MBps"}]'  # JSON string
+    # This should not be called
+    fake_client.get_cluster_logs.return_value = fake_archive
+
+    # Run with ApiInvalidCertificateSignature, which shouldn't run if logs are not available
+    results = asyncio.run(
+        main_mod.analyze_cluster(
+            "cid", fake_client, specific_signatures=["ApiInvalidCertificateSignature"]
+        )
+    )
+    assert isinstance(results, list)
+    assert len(results) == 0
+
+
+def test_slow_image_download_signature_runs_no_logs() -> None:
+    """Test that the slow image download signature runs when logs are not available."""
+    from assisted_service_mcp.src.utils.log_analyzer import main as main_mod
+
+    # Mock the cluster object returned by get_cluster
+    fake_cluster = MagicMock()
+    fake_cluster.to_dict.return_value = {
+        "install_started_at": "2025-01-01T00:00:00Z",
+        "hosts": [],
+    }
+    fake_cluster.logs_info = "not_completed"
+
+    fake_client = AsyncMock()
+    fake_client.get_cluster.return_value = fake_cluster
+    fake_client.get_events.return_value = '[{"name": "image_download", "event_time": "2025-01-01T00:00:00Z", "message": "Host h1: New image status quay.io/openshift-release-dev/ocp-release:4.19.12-x86_64. result: downloaded; download rate: 8.0 MBps"}]'  # JSON string
+
+    # Run with slow image download signature
+    async def run() -> None:
+        results = await main_mod.analyze_cluster(
+            "cid", fake_client, specific_signatures=["SlowImageDownloadSignature"]
+        )
+        assert isinstance(results, list)
+        assert len(results) == 1
+        assert results[0].title == "Slow Image Download"
+        assert results[0].severity == "warning"
+        assert "Detected slow image download rate (MBps):" in results[0].content
 
     asyncio.run(run())
 
