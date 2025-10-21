@@ -126,7 +126,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
     (multi-node) or single-node (SNO) deployment. For single-node clusters, platform must be
     'none'. For multi-node clusters, platform defaults to 'baremetal' but can be vsphere,
     oci, or nutanix. This creates the cluster configuration only; use install_cluster to
-    start the actual installation.
+    start the actual installation. Optional parameters: ssh_public_key, cpu_architecture, platform.
 
     Examples:
         - create_cluster("prod-cluster", "4.18.2", "example.com", False, ssh_public_key="ssh-rsa AAAA...", platform="baremetal")
