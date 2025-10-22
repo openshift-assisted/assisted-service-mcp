@@ -82,6 +82,21 @@ class Signature(abc.ABC):
         except Exception:
             return time_str
 
+    @staticmethod
+    def archive_dir_contents(archive_dir):
+        """
+        Safely get directory contents from a nestedarchive.get() result.
+
+        Args:
+            archive_dir: Result from logs_archive.get() - could be a Path object
+                        (for directories) or str/bytes (for files)
+
+        Returns:
+            Iterator of directory contents if archive_dir is a directory,
+            empty list otherwise
+        """
+        return getattr(archive_dir, "iterdir", lambda: [])()
+
 
 class ErrorSignature(Signature, abc.ABC):
     """

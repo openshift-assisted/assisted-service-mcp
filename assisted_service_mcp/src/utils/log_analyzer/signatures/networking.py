@@ -98,7 +98,7 @@ class DuplicateVIP(ErrorSignature):
                 control_plane_dir = log_analyzer.logs_archive.get(
                     f"{NEW_LOG_BUNDLE_PATH}/control-plane/"
                 )
-                for node_dir in getattr(control_plane_dir, "iterdir", lambda: [])():
+                for node_dir in self.archive_dir_contents(control_plane_dir):
                     node_ip = os.path.basename(node_dir)
                     try:
                         ip_addr = log_analyzer.logs_archive.get(
@@ -129,7 +129,7 @@ class DuplicateVIP(ErrorSignature):
                     control_plane_dir = log_analyzer.logs_archive.get(
                         f"{OLD_LOG_BUNDLE_PATH}/control-plane/"
                     )
-                    for node_dir in getattr(control_plane_dir, "iterdir", lambda: [])():
+                    for node_dir in self.archive_dir_contents(control_plane_dir):
                         node_ip = os.path.basename(node_dir)
                         try:
                             ip_addr = log_analyzer.logs_archive.get(
@@ -190,7 +190,7 @@ class NameserverInClusterNetwork(ErrorSignature):
             control_plane_dir = log_analyzer.logs_archive.get(
                 f"{base_path}/control-plane/"
             )
-            for node_dir in getattr(control_plane_dir, "iterdir", lambda: [])():
+            for node_dir in self.archive_dir_contents(control_plane_dir):
                 node_ip = os.path.basename(node_dir)
                 try:
                     resolvconf = log_analyzer.logs_archive.get(
