@@ -193,7 +193,7 @@ class MissingMC(ErrorSignature):
         if cluster.get("high_availability_mode") != "None":
             return None
         path = (
-            "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/*/cluster-scoped-resources/"
+            "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/quay-io-openshift-release-dev-*/cluster-scoped-resources/"
             "machineconfiguration.openshift.io/machineconfigpools/master.yaml"
         )
         try:
@@ -229,7 +229,7 @@ class ErrorCreatingReadWriteLayer(ErrorSignature):
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         try:
             namespaces_dir = log_analyzer.logs_archive.get(
-                "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/*/namespaces"
+                "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/quay-io-openshift-release-dev-*/namespaces"
             )
         except FileNotFoundError:
             return None

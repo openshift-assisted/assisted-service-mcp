@@ -256,7 +256,7 @@ class NetworksMtuMismatch(ErrorSignature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        path = "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/*/namespaces/openshift-sdn/pods/sdn-*/sdn/sdn/logs/*.log"
+        path = "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/quay-io-openshift-release-dev-*/namespaces/openshift-sdn/pods/sdn-*/sdn/sdn/logs/*.log"
         try:
             sdn_logs = log_analyzer.logs_archive.get(path)
         except FileNotFoundError:
