@@ -106,7 +106,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         ),
     ] = None,
     cpu_architecture: Annotated[
-        str,
+        Helpers.VALID_CPU_ARCHITECTURES | None,
         Field(
             default="x86_64",
             description="CPU architecture for the cluster. Valid options: x86_64 (default), aarch64, arm64, ppc64le, s390x.",
@@ -149,6 +149,10 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         ssh_public_key is not None,
         platform,
     )
+
+    # Set default cpu_architecture if not provided
+    if cpu_architecture is None:
+        cpu_architecture = "x86_64"
 
     if platform:
         # Check for invalid combination: single_node = true and platform is specified and not "none"

@@ -10,6 +10,9 @@ class Helpers:
     # Valid platform types for cluster creation and updates
     VALID_PLATFORMS = Literal["baremetal", "vsphere", "oci", "nutanix", "none"]
 
+    # Valid CPU architectures for cluster creation and updates
+    VALID_CPU_ARCHITECTURES = Literal["x86_64", "aarch64", "arm64", "ppc64le", "s390x"]
+
     @staticmethod
     def get_platform_model(platform: Optional[str]) -> models.Platform:
         """
