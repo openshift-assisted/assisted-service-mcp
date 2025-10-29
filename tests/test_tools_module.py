@@ -483,6 +483,58 @@ async def test_tool_create_cluster_module() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tool_create_cluster_with_none_cpu_architecture_module() -> None:
+    """Test that cpu_architecture defaults to x86_64 when None is passed."""
+    from assisted_service_mcp.src.tools import cluster_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    # Simulate returned API objects' to_str() and attributes
+    class _Cluster:
+        def __init__(self, cid: str, ver: str) -> None:
+            self.id = cid
+            self.openshift_version = ver
+
+        def to_str(self) -> str:
+            return f"CLUSTER:{self.id}:{self.openshift_version}"
+
+    class _Infra:
+        def __init__(self, iid: str) -> None:
+            self.id = iid
+
+    mock_client = Mock()
+    mock_client.create_cluster = AsyncMock(return_value=_Cluster("cid-2", "4.19.0"))
+    mock_client.create_infra_env = AsyncMock(return_value=_Infra("ie-2"))
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await cluster_tools.create_cluster(
+            lambda: "test-access-token",
+            name="test-cluster",
+            version="4.19.0",
+            base_domain="example.com",
+            single_node=True,
+            ssh_public_key=None,
+            cpu_architecture=None,  # Test None value
+            platform=None,
+        )
+        assert resp == "cid-2"
+
+        # Verify that the create_cluster was called with the default x86_64
+        mock_client.create_cluster.assert_called_once()
+        call_kwargs = mock_client.create_cluster.call_args[1]
+        assert call_kwargs["cpu_architecture"] == "x86_64"
+
+
+@pytest.mark.asyncio
 async def test_tool_set_cluster_ssh_key_partial_failure_module() -> None:
     from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
