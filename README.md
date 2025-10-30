@@ -8,7 +8,7 @@ Try it out:
 
 1. Clone the repo:
 ```
-git clone git@github.com:carbonin/assisted-service-mcp.git
+git clone git@github.com:openshift-assisted/assisted-service-mcp.git
 ```
 
 2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
@@ -29,7 +29,7 @@ In VSCode for example:
                     "run",
                     "mcp",
                     "run",
-                    "/path/to/assisted-service-mcp/server.py"
+                    "/path/to/assisted-service-mcp/assisted_service_mcp/src/main.py"
                 ],
                 "env": {
                     "OFFLINE_TOKEN": <your token>
@@ -43,7 +43,7 @@ For SSE (recommended):
 
 Start the server in a terminal:
 
-`OFFLINE_TOKEN=<your token> uv run server.py`
+`OFFLINE_TOKEN=<your token> uv run assisted_service_mcp.src.main`
 
 Configure the server in the client:
 
@@ -88,6 +88,7 @@ The MCP server provides the following tools for interacting with the OpenShift A
   * `version`: OpenShift version (string, required)
   * `base_domain`: Base domain for the cluster (string, required)
   * `single_node`: Whether to create a single node cluster (boolean, required)
+  * `ssh_public_key`: SSH public key for accessing cluster nodes (string, optional)
 
 * **install_cluster** - Trigger installation for the assisted installer cluster with the given ID
   * `cluster_id`: Cluster ID (string, required)
@@ -106,10 +107,13 @@ The MCP server provides the following tools for interacting with the OpenShift A
   * `cluster_id`: Cluster ID (string, required)
   * `host_id`: Host ID (string, required)
 
-### Infrastructure Environment
+### ISO Download URL
 
-* **infraenv_info** - Get detailed information about the assisted installer infra env with the given ID. Contains data like ISO download URL and infra env metadata.
-  * `infraenv_id`: Infrastructure environment ID (string, required)
+* **cluster_iso_download_url** - Get ISO download URL(s) for a cluster. A formatted string containing ISO download URLs and optional expiration times. Each ISO's information is formatted as:
+  - URL: <download-url>
+  - Expires at: <expiration-timestamp> (if available)
+  Multiple ISOs are separated by blank lines.
+  * `cluster_id`: Cluster ID (string, required)
 
 ### Host Management
 
@@ -117,6 +121,12 @@ The MCP server provides the following tools for interacting with the OpenShift A
   * `host_id`: Host ID (string, required)
   * `infraenv_id`: Infrastructure environment ID (string, required)
   * `role`: Host role (string, required)
+
+### SSH Key Management
+
+* **set_cluster_ssh_key** - Set or update the SSH public key for a cluster. This allows SSH access to cluster nodes during and after installation.
+  * `cluster_id`: Cluster ID (string, required)
+  * `ssh_public_key`: SSH public key in OpenSSH format (string, required)
 
 ### OpenShift Versions and Operators
 
@@ -135,3 +145,21 @@ The MCP server provides the following tools for interacting with the OpenShift A
 * **Create a cluster**: "Create a new cluster named 'my-cluster' with OpenShift 4.14 and base domain 'example.com'"
 * **Check cluster events**: "What events happened on cluster abc123?"
 * **Install a cluster**: "Start the installation for cluster abc123"
+* **Get cluster credentials**: "Get the kubeconfig download link for cluster abc123"
+* **Update SSH key**: "Set the SSH key for cluster abc123 so I can access the nodes"
+
+## Prometheus Metrics
+
+The MCP server exposes Prometheus metrics to monitor tool usage and performance. The metrics are available at `http://localhost:8000/metrics` when the server is running.
+
+### Available Metrics
+
+* **assisted_service_mcp_tool_request_count** - Number of tool requests.
+* **assisted_service_mcp_tool_request_duration_sum** - Total time to run the tool, in seconds.
+* **assisted_service_mcp_tool_request_duration_count** - Total number of tool requests measured.
+* **assisted_service_mcp_tool_request_duration_bucket** - Number of tool requests organized in buckets.
+
+### Metric Labels
+
+All metrics include the following label:
+* **tool** - The name of the tool, for example `cluster_info`, `list_clusters`, etc.

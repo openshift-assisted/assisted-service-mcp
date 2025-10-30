@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Performance test output
+performance_test_results*

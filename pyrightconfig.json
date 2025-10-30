@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright/schema/pyrightconfig.schema.json",
+  "exclude": [
+    "integration_test/performance",
+    ".venv",
+    "venv"
+  ],
+  "ignore": [
+    "integration_test/performance"
+  ],
+  "excludeTests": false,
+  "useLibraryCodeForTypes": false
+}
+
+
