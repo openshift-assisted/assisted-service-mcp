@@ -667,9 +667,8 @@ async def test_tool_list_clusters_formats_fields_and_defaults_version() -> None:
         return_value=mock_client,
     ):
         resp = await cluster_tools.list_clusters(lambda: "t")
-        arr = json.loads(resp)
-        assert arr[0]["openshift_version"] == "4.18.2"
-        assert arr[2]["openshift_version"] == "Unknown"
+        assert "Openshift version: 4.18.2" in resp
+        assert "Openshift version: Unknown" in resp
 
 
 @pytest.mark.asyncio
