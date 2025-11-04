@@ -37,6 +37,8 @@ objects:
               secretKeyRef:
                 key: ${GEMINI_API_SECRET_KEY_NAME}
                 name: ${GEMINI_API_SECRET_NAME}
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: /opt/app-root/google-vertex-service-account.json
           - name: AGENT_URL
             value: ${AGENT_URL}
           - name: AGENT_PORT
@@ -45,6 +47,14 @@ objects:
             value: ${JOB_ID}
           - name: OCM_BASE_URL
             value: ${OCM_BASE_URL}
+          volumeMounts:
+          - name: google-vertex-service-account
+            mountPath: /opt/app-root/google-vertex-service-account.json
+            subPath: ${VERTEX_API_SECRET_KEY_NAME}
+        volumes:
+        - name: google-vertex-service-account
+          secret:
+            secretName: ${VERTEX_API_SECRET_NAME}
 
 parameters:
 - name: JOB_ID
@@ -68,3 +78,7 @@ parameters:
   value: api_key
 - name: OCM_BASE_URL
   value: https://api.stage.openshift.com
+- name: VERTEX_API_SECRET_NAME
+  value: vertexai
+- name: VERTEX_API_SECRET_KEY_NAME
+  value: service_account
