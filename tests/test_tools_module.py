@@ -1,9 +1,11 @@
 import asyncio
 import json
 import datetime as _dt
+from typing import cast
 from unittest.mock import patch, Mock, MagicMock, AsyncMock
 import pytest
 
+from assisted_service_client import models
 from assisted_service_mcp.src.tools.version_tools import list_versions
 from assisted_service_mcp.src.tools.operator_tools import (
     list_operator_bundles,
@@ -399,13 +401,18 @@ async def test_list_versions_happy_path() -> None:
 
     AssistedServiceMCPServer()
     mock_client = Mock()
-    mock_client.get_openshift_versions = AsyncMock(return_value=[{"version": "4.18.1"}])
+    mock_client.get_openshift_versions = AsyncMock(
+        return_value=cast(
+            models.OpenshiftVersions,
+            {"4.18.1": {"display_name": "4.18.1", "support_level": "production"}},
+        )
+    )
     with patch(
         "assisted_service_mcp.src.tools.version_tools.InventoryClient",
         return_value=mock_client,
     ):
         resp = await version_tools.list_versions(lambda: "t")
-        assert json.loads(resp)[0]["version"] == "4.18.1"
+        assert "4.18.1" in resp and "Full Support" in resp
 
 
 @pytest.mark.asyncio
