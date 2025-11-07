@@ -12,7 +12,7 @@ import nestedarchive
 logger = logging.getLogger(__name__)
 
 # Archive path constant for log bundle format
-NEW_LOG_BUNDLE_PATH = "*_bootstrap_*.tar/*_bootstrap_*.tar.gz/logs_host_*/log-bundle-*.tar.gz/log-bundle-*"
+LOG_BUNDLE_PATH = "*_bootstrap_*.tar/*_bootstrap_*.tar.gz/logs_host_*/log-bundle-*.tar.gz/log-bundle-*"
 
 
 class LogAnalyzer:
@@ -168,7 +168,7 @@ class LogAnalyzer:
             FileNotFoundError: If the journal file cannot be found
         """
         logs_path = (
-            f"{NEW_LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
+            f"{LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
         )
         content = self.logs_archive.get(logs_path, **kwargs)
         logger.debug("Found journal: %s", logs_path)

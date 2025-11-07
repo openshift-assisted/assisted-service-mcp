@@ -11,7 +11,7 @@ import re
 from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
-    NEW_LOG_BUNDLE_PATH,
+    LOG_BUNDLE_PATH,
 )
 from assisted_service_mcp.src.utils.log_analyzer.signatures.advanced_analysis import (
     operator_statuses_from_controller_logs,
@@ -95,13 +95,13 @@ class DuplicateVIP(ErrorSignature):
             # Check control-plane nodes
             try:
                 control_plane_dir = log_analyzer.logs_archive.get(
-                    f"{NEW_LOG_BUNDLE_PATH}/control-plane/"
+                    f"{LOG_BUNDLE_PATH}/control-plane/"
                 )
                 for node_dir in self.archive_dir_contents(control_plane_dir):
                     node_ip = os.path.basename(node_dir)
                     try:
                         ip_addr = log_analyzer.logs_archive.get(
-                            f"{NEW_LOG_BUNDLE_PATH}/control-plane/{node_ip}/network/ip-addr.txt"
+                            f"{LOG_BUNDLE_PATH}/control-plane/{node_ip}/network/ip-addr.txt"
                         )
                     except FileNotFoundError:
                         continue
@@ -114,7 +114,7 @@ class DuplicateVIP(ErrorSignature):
             # Check bootstrap
             try:
                 bootstrap_ip_addr = log_analyzer.logs_archive.get(
-                    f"{NEW_LOG_BUNDLE_PATH}/bootstrap/network/ip-addr.txt"
+                    f"{LOG_BUNDLE_PATH}/bootstrap/network/ip-addr.txt"
                 )
                 for vip in vips:
                     if vip in bootstrap_ip_addr:
@@ -195,7 +195,7 @@ class NameserverInClusterNetwork(ErrorSignature):
             return None
 
         report_lines = []
-        nameservers = self._get_nameservers(log_analyzer, NEW_LOG_BUNDLE_PATH)
+        nameservers = self._get_nameservers(log_analyzer, LOG_BUNDLE_PATH)
         for ns in nameservers:
             for cidr in cidrs:
                 try:
@@ -247,7 +247,7 @@ class DualStackBadRoute(ErrorSignature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        path = f"{NEW_LOG_BUNDLE_PATH}/control-plane/*/containers/ovnkube-node-*.log"
+        path = f"{LOG_BUNDLE_PATH}/control-plane/*/containers/ovnkube-node-*.log"
         try:
             ovnkube_logs = log_analyzer.logs_archive.get(path)
         except FileNotFoundError:
@@ -265,7 +265,7 @@ class DualstackrDNSBug(ErrorSignature):
     """Detect kube-apiserver 'must match public address family' message (MGMT-11651)."""
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        path = f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/kube-apiserver-*.log"
+        path = f"{LOG_BUNDLE_PATH}/bootstrap/containers/kube-apiserver-*.log"
         try:
             kubeapiserver_logs = log_analyzer.logs_archive.get(path)
         except FileNotFoundError:

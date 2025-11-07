@@ -13,7 +13,7 @@ from operator import itemgetter
 from typing import Any, Generator, Optional, Callable, List, Dict
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
-    NEW_LOG_BUNDLE_PATH,
+    LOG_BUNDLE_PATH,
 )
 
 from .base import Signature, SignatureResult
@@ -227,7 +227,7 @@ class ControllerFailedToStart(Signature):
             return None
         if bootstrap[0]["progress"]["current_stage"] != "Waiting for controller":
             return None
-        path = f"{NEW_LOG_BUNDLE_PATH}/resources/pods.json"
+        path = f"{LOG_BUNDLE_PATH}/resources/pods.json"
         try:
             pods_json = log_analyzer.logs_archive.get(path)
         except FileNotFoundError:
@@ -279,7 +279,7 @@ class MachineConfigDaemonErrorExtracting(Signature):
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         path = (
-            f"{NEW_LOG_BUNDLE_PATH}/control-plane/*/journals/machine-config-daemon-firstboot.log"
+            f"{LOG_BUNDLE_PATH}/control-plane/*/journals/machine-config-daemon-firstboot.log"
         )
         try:
             mcd_logs = log_analyzer.logs_archive.get(path)
@@ -368,18 +368,18 @@ class ContainerCrashAnalysis(Signature):
         host_dirs.append(
             {
                 "host_id": "bootstrap",
-                "kubelet_path": f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log",
-                "containers_path": f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/",
+                "kubelet_path": f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log",
+                "containers_path": f"{LOG_BUNDLE_PATH}/bootstrap/containers/",
             }
         )
 
         # Add control-plane directories
         try:
             control_plane_dir = log_analyzer.logs_archive.get(
-                f"{NEW_LOG_BUNDLE_PATH}/control-plane/"
+                f"{LOG_BUNDLE_PATH}/control-plane/"
             )
             logger.debug(
-                "Found control-plane directory: %s/control-plane/", NEW_LOG_BUNDLE_PATH
+                "Found control-plane directory: %s/control-plane/", LOG_BUNDLE_PATH
             )
 
             for node_dir in self.archive_dir_contents(control_plane_dir):
@@ -389,8 +389,8 @@ class ContainerCrashAnalysis(Signature):
                 host_dirs.append(
                     {
                         "host_id": node_ip,
-                        "kubelet_path": f"{NEW_LOG_BUNDLE_PATH}/control-plane/{node_ip}/journals/kubelet.log",
-                        "containers_path": f"{NEW_LOG_BUNDLE_PATH}/control-plane/{node_ip}/containers/",
+                        "kubelet_path": f"{LOG_BUNDLE_PATH}/control-plane/{node_ip}/journals/kubelet.log",
+                        "containers_path": f"{LOG_BUNDLE_PATH}/control-plane/{node_ip}/containers/",
                     }
                 )
         except FileNotFoundError as e:
