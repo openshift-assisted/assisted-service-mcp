@@ -75,14 +75,6 @@ class Signature(abc.ABC):
         return tabulate(data, headers="keys", tablefmt="grid")
 
     @staticmethod
-    def format_time(time_str: str) -> str:
-        """Format time string for display."""
-        try:
-            return dateutil.parser.isoparse(time_str).strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            return time_str
-
-    @staticmethod
     def archive_dir_contents(archive_dir):
         """
         Safely get directory contents from a nestedarchive.get() result.
