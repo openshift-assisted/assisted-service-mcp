@@ -196,15 +196,6 @@ class LogAnalyzer:
             ),
         )
 
-    def get_must_gather(self) -> bytes:
-        """Get must-gather logs."""
-        return cast(
-            bytes,
-            self.logs_archive.get(
-                "controller_logs.tar.gz/must-gather.tar.gz", mode="rb"
-            ),
-        )
-
     @staticmethod
     def get_hostname(host: Dict[str, Any]) -> str:
         """Extract hostname from host metadata."""
