@@ -6,7 +6,6 @@ import abc
 import logging
 from typing import Optional, Any, Sequence
 
-import dateutil.parser
 from tabulate import tabulate
 
 logger = logging.getLogger(__name__)

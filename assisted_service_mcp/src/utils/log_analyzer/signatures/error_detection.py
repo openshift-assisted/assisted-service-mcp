@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # pylint: disable=duplicate-code
 
+
 class SNOHostnameHasEtcd(ErrorSignature):
     """Looks for etcd in SNO hostname (OCPBUGS-15852)."""
 
@@ -92,9 +93,7 @@ class ApiExpiredCertificateSignature(ErrorSignature):
         if invalid_api_log_lines:
             content = invalid_api_log_lines[0]
             if (num_lines := len(invalid_api_log_lines)) > 1:
-                content += (
-                    f"\nadditional {num_lines - 1} similar error log lines found"
-                )
+                content += f"\nadditional {num_lines - 1} similar error log lines found"
             return self.create_result(
                 title="Expired Certificate",
                 content=content,

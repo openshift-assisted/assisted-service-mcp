@@ -244,9 +244,7 @@ class ControllerFailedToStart(Signature):
         try:
             ready = [
                 condition.get("status") == "True"
-                for condition in controller_pod.get("status", {}).get(
-                    "conditions", {}
-                )
+                for condition in controller_pod.get("status", {}).get("conditions", {})
                 if condition.get("type") == "Ready"
             ][0]
         except Exception:
@@ -278,9 +276,7 @@ class MachineConfigDaemonErrorExtracting(Signature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        path = (
-            f"{LOG_BUNDLE_PATH}/control-plane/*/journals/machine-config-daemon-firstboot.log"
-        )
+        path = f"{LOG_BUNDLE_PATH}/control-plane/*/journals/machine-config-daemon-firstboot.log"
         try:
             mcd_logs = log_analyzer.logs_archive.get(path)
         except FileNotFoundError:

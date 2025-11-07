@@ -167,9 +167,7 @@ class LogAnalyzer:
         Raises:
             FileNotFoundError: If the journal file cannot be found
         """
-        logs_path = (
-            f"{LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
-        )
+        logs_path = f"{LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
         content = self.logs_archive.get(logs_path, **kwargs)
         logger.debug("Found journal: %s", logs_path)
         return cast(str, content)

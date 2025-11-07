@@ -154,9 +154,7 @@ class TestContainerCrashAnalysis:
 
         archive_map = {
             f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -189,9 +187,7 @@ class TestContainerCrashAnalysis:
 
         archive_map = {
             f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -227,9 +223,7 @@ class TestContainerCrashAnalysis:
                 ["192.168.1.10"]
             ),
             f"{LOG_BUNDLE_PATH}/control-plane/192.168.1.10/journals/kubelet.log": cp_kubelet_log,
-            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
             f"{LOG_BUNDLE_PATH}/control-plane/192.168.1.10/containers/": self._create_mock_directory(
                 []
             ),
@@ -261,9 +255,7 @@ class TestContainerCrashAnalysis:
 
         archive_map = {
             f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -310,9 +302,7 @@ class TestContainerCrashAnalysis:
             f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": "\n".join(
                 kubelet_log_lines
             ),
-            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
