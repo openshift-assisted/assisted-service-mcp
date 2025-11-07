@@ -276,6 +276,9 @@ class InventoryClient:
         platform = Helpers.get_platform_model(cluster_params.get("platform"))
         cluster_params["platform"] = platform
 
+        if platform.type == "external":
+            cluster_params["user_managed_networking"] = True
+
         params = models.ClusterCreateParams(
             name=name,
             openshift_version=version,
