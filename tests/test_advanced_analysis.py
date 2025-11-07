@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LogAnalyzer,
-    NEW_LOG_BUNDLE_PATH,
+    LOG_BUNDLE_PATH,
 )
 from assisted_service_mcp.src.utils.log_analyzer.signatures.advanced_analysis import (
     ContainerCrashAnalysis,
@@ -93,7 +93,7 @@ class TestContainerCrashAnalysis:
 
         archive = make_archive(
             {
-                f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+                f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
             }
         )
 
@@ -114,11 +114,11 @@ class TestContainerCrashAnalysis:
         )
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
                 [log_file_name]
             ),
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name}": self._create_container_log_content(
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name}": self._create_container_log_content(
                 "etcd"
             ),
         }
@@ -153,10 +153,8 @@ class TestContainerCrashAnalysis:
         kubelet_log = self._create_kubelet_log_with_crashes(crashes)
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -188,10 +186,8 @@ class TestContainerCrashAnalysis:
         kubelet_log = self._create_kubelet_log_with_crashes(crashes)
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -222,15 +218,13 @@ class TestContainerCrashAnalysis:
         cp_kubelet_log = self._create_kubelet_log_with_crashes(cp_crashes)
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": bootstrap_kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/control-plane/": self._create_mock_directory(
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": bootstrap_kubelet_log,
+            f"{LOG_BUNDLE_PATH}/control-plane/": self._create_mock_directory(
                 ["192.168.1.10"]
             ),
-            f"{NEW_LOG_BUNDLE_PATH}/control-plane/192.168.1.10/journals/kubelet.log": cp_kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
-            f"{NEW_LOG_BUNDLE_PATH}/control-plane/192.168.1.10/containers/": self._create_mock_directory(
+            f"{LOG_BUNDLE_PATH}/control-plane/192.168.1.10/journals/kubelet.log": cp_kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
+            f"{LOG_BUNDLE_PATH}/control-plane/192.168.1.10/containers/": self._create_mock_directory(
                 []
             ),
         }
@@ -260,10 +254,8 @@ class TestContainerCrashAnalysis:
         kubelet_log = self._create_kubelet_log_with_crashes(crashes)
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -307,12 +299,10 @@ class TestContainerCrashAnalysis:
         ]
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": "\n".join(
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": "\n".join(
                 kubelet_log_lines
             ),
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
-                []
-            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory([]),
         }
 
         archive = make_archive(archive_map)
@@ -333,11 +323,11 @@ class TestContainerCrashAnalysis:
         log_file_name = "test-app-abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890.log"
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
                 [log_file_name]
             ),
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name}": self._create_container_log_content(
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name}": self._create_container_log_content(
                 "test-app", 25  # More than 20 lines,
             ),
         }
@@ -363,8 +353,8 @@ class TestContainerCrashAnalysis:
         kubelet_log = self._create_kubelet_log_with_crashes(crashes)
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
                 []
             ),  # No log files
         }
@@ -385,7 +375,7 @@ class TestContainerCrashAnalysis:
         kubelet_log = self._create_kubelet_log_with_crashes(crashes)
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
             # No containers directory
         }
 
@@ -453,7 +443,7 @@ class TestContainerCrashAnalysis:
         signature = ContainerCrashAnalysis()
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": "",  # Empty log
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": "",  # Empty log
         }
 
         archive = make_archive(archive_map)
@@ -476,12 +466,12 @@ class TestContainerCrashAnalysis:
         log_file_name_2 = "multi-log-container-fedcba0987654321fedcba0987654321fedcba0987654321fedcba09abcdef12.log"
 
         archive_map = {
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
                 [log_file_name_1, log_file_name_2]
             ),
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name_1}": log_content_1,
-            f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name_2}": log_content_2,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name_1}": log_content_1,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name_2}": log_content_2,
         }
 
         archive = make_archive(archive_map)

@@ -69,17 +69,3 @@ async def analyze_cluster(
     except Exception as e:
         logger.error("Error analyzing cluster %s: %s", cluster_id, e)
         raise
-
-
-def print_results(results: List[SignatureResult]) -> None:
-    """Print analysis results to stdout."""
-    if not results:
-        print("No issues found in the cluster logs.")
-        return
-
-    print("OpenShift Assisted Installer Log Analysis")
-    print("=" * 50)
-    print()
-
-    for result in results:
-        print(result)

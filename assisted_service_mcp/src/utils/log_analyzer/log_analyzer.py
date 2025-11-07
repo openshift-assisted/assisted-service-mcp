@@ -4,7 +4,6 @@ Core log analyzer for OpenShift Assisted Installer logs.
 
 import json
 import logging
-from collections import defaultdict
 from typing import Dict, List, Any, cast
 
 import dateutil.parser
@@ -12,11 +11,8 @@ import nestedarchive
 
 logger = logging.getLogger(__name__)
 
-# Archive path constants for different log bundle formats
-NEW_LOG_BUNDLE_PATH = "*_bootstrap_*.tar/*_bootstrap_*.tar.gz/logs_host_*/log-bundle-*.tar.gz/log-bundle-*"
-OLD_LOG_BUNDLE_PATH = (
-    "*_bootstrap_*.tar.gz/logs_host_*/log-bundle-*.tar.gz/log-bundle-*"
-)
+# Archive path constant for log bundle format
+LOG_BUNDLE_PATH = "*_bootstrap_*.tar/*_bootstrap_*.tar.gz/logs_host_*/log-bundle-*.tar.gz/log-bundle-*"
 
 
 class LogAnalyzer:
@@ -123,14 +119,6 @@ class LogAnalyzer:
 
         return partitions or [[]]
 
-    def get_events_by_host(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Get events grouped by host ID."""
-        events_by_host = defaultdict(list)
-        for event in self.get_last_install_cluster_events():
-            if "host_id" in event:
-                events_by_host[event["host_id"]].append(event)
-        return events_by_host
-
     def get_host_log_file(self, host_id: str, filename: str) -> str:
         """
         Get a specific log file for a host.
@@ -179,21 +167,9 @@ class LogAnalyzer:
         Raises:
             FileNotFoundError: If the journal file cannot be found
         """
-        new_logs_path = (
-            f"{NEW_LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
-        )
-        try:
-            content = self.logs_archive.get(new_logs_path, **kwargs)
-            logger.debug("Found journal under new location: %s", new_logs_path)
-            return cast(str, content)
-        except FileNotFoundError:
-            pass
-
-        old_logs_path = (
-            f"{OLD_LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
-        )
-        content = self.logs_archive.get(old_logs_path, **kwargs)
-        logger.debug("Found journal under old location: %s", old_logs_path)
+        logs_path = f"{LOG_BUNDLE_PATH}/control-plane/{host_ip}/journals/{journal_file}"
+        content = self.logs_archive.get(logs_path, **kwargs)
+        logger.debug("Found journal: %s", logs_path)
         return cast(str, content)
 
     def get_controller_logs(self) -> str:
@@ -202,15 +178,6 @@ class LogAnalyzer:
             str,
             self.logs_archive.get(
                 "controller_logs.tar.gz/assisted-installer-controller*.logs"
-            ),
-        )
-
-    def get_must_gather(self) -> bytes:
-        """Get must-gather logs."""
-        return cast(
-            bytes,
-            self.logs_archive.get(
-                "controller_logs.tar.gz/must-gather.tar.gz", mode="rb"
             ),
         )
 

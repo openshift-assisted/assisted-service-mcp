@@ -6,7 +6,6 @@ import abc
 import logging
 from typing import Optional, Any, Sequence
 
-import dateutil.parser
 from tabulate import tabulate
 
 logger = logging.getLogger(__name__)
@@ -73,14 +72,6 @@ class Signature(abc.ABC):
         if not data:
             return "No data available"
         return tabulate(data, headers="keys", tablefmt="grid")
-
-    @staticmethod
-    def format_time(time_str: str) -> str:
-        """Format time string for display."""
-        try:
-            return dateutil.parser.isoparse(time_str).strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            return time_str
 
     @staticmethod
     def archive_dir_contents(archive_dir):
