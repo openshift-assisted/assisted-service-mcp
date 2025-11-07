@@ -1,6 +1,5 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
-import json
 from typing import Annotated, Callable
 from pydantic import Field
 
@@ -53,12 +52,11 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     configuration. Use cluster_info() to get comprehensive details about a specific cluster.
 
     Returns:
-        str: A JSON-formatted string containing an array of cluster objects.
-            Each cluster object includes:
-            - name (str): The cluster name
-            - id (str): The unique cluster identifier
-            - openshift_version (str): The OpenShift version being installed
-            - status (str): Current cluster status (e.g., 'ready', 'installing', 'error')
+        str: A formatted list of clusters, each containing:
+            - Cluster name
+            - Unique cluster ID
+            - OpenShift version
+            - Current cluster status (e.g., "ready", "installing", "error")
     """
     log.info("Retrieving list of all clusters")
     client = InventoryClient(get_access_token_func())
@@ -73,7 +71,17 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
         for cluster in clusters
     ]
     log.info("Successfully retrieved %s clusters", len(resp))
-    return json.dumps(resp)
+    if not resp:
+        return "No clusters found."
+
+    formatted_output = ""
+    for cluster in resp:
+        formatted_output += f"{cluster['name']}\n"
+        formatted_output += f"- ID: {cluster['id']}\n"
+        formatted_output += f"- Openshift version: {cluster['openshift_version']}\n"
+        formatted_output += f"- Status: {cluster['status']}\n\n"
+
+    return formatted_output
 
 
 @track_tool_usage()
