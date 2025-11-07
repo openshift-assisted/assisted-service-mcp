@@ -21,18 +21,6 @@ logger = logging.getLogger(__name__)
 
 # pylint: disable=duplicate-code
 
-
-def _search_patterns_in_string(string, patterns):
-    """Utility function to search for patterns in a string."""
-    if isinstance(patterns, str):
-        patterns = [patterns]
-
-    combined_regex = re.compile(
-        f'({"|".join(fr".*{pattern}.*" for pattern in patterns)})'
-    )
-    return combined_regex.findall(string)
-
-
 class SNOHostnameHasEtcd(ErrorSignature):
     """Looks for etcd in SNO hostname (OCPBUGS-15852)."""
 
