@@ -12,7 +12,6 @@ from typing import Optional
 import yaml
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     NEW_LOG_BUNDLE_PATH,
-    OLD_LOG_BUNDLE_PATH,
 )
 
 from .base import ErrorSignature, SignatureResult
@@ -84,25 +83,23 @@ class ApiExpiredCertificateSignature(ErrorSignature):
     LOG_PATTERN = re.compile("x509: certificate has expired or is not yet valid.*")
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        new_logs_path = f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/bootstrap-control-plane/kube-apiserver.log"
-        old_logs_path = f"{OLD_LOG_BUNDLE_PATH}/bootstrap/containers/bootstrap-control-plane/kube-apiserver.log"
-        for path in (new_logs_path, old_logs_path):
-            try:
-                logs = log_analyzer.logs_archive.get(path)
-            except FileNotFoundError:
-                continue
-            invalid_api_log_lines = self.LOG_PATTERN.findall(logs)
-            if invalid_api_log_lines:
-                content = invalid_api_log_lines[0]
-                if (num_lines := len(invalid_api_log_lines)) > 1:
-                    content += (
-                        f"\nadditional {num_lines - 1} similar error log lines found"
-                    )
-                return self.create_result(
-                    title="Expired Certificate",
-                    content=content,
-                    severity="error",
+        path = f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/bootstrap-control-plane/kube-apiserver.log"
+        try:
+            logs = log_analyzer.logs_archive.get(path)
+        except FileNotFoundError:
+            return None
+        invalid_api_log_lines = self.LOG_PATTERN.findall(logs)
+        if invalid_api_log_lines:
+            content = invalid_api_log_lines[0]
+            if (num_lines := len(invalid_api_log_lines)) > 1:
+                content += (
+                    f"\nadditional {num_lines - 1} similar error log lines found"
                 )
+            return self.create_result(
+                title="Expired Certificate",
+                content=content,
+                severity="error",
+            )
         return None
 
 

@@ -14,7 +14,6 @@ from typing import Any, Generator, Optional, Callable, List, Dict
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     NEW_LOG_BUNDLE_PATH,
-    OLD_LOG_BUNDLE_PATH,
 )
 
 from .base import Signature, SignatureResult
@@ -228,48 +227,46 @@ class ControllerFailedToStart(Signature):
             return None
         if bootstrap[0]["progress"]["current_stage"] != "Waiting for controller":
             return None
-        for base in (NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH):
-            path = f"{base}/resources/pods.json"
-            try:
-                pods_json = log_analyzer.logs_archive.get(path)
-            except FileNotFoundError:
-                continue
-            try:
-                pods = json.loads(pods_json)
-                controller_pod = [
-                    pod
-                    for pod in pods.get("items", [])
-                    if pod.get("metadata", {}).get("namespace") == "assisted-installer"
-                ][0]
-            except Exception:
-                continue
-            try:
-                ready = [
-                    condition.get("status") == "True"
-                    for condition in controller_pod.get("status", {}).get(
-                        "conditions", {}
-                    )
-                    if condition.get("type") == "Ready"
-                ][0]
-            except Exception:
-                ready = False
-            conditions_tbl = self.generate_table(
-                controller_pod.get("status", {}).get("conditions", [])
-            )
-            containers_tbl = self.generate_table(
-                controller_pod.get("status", {}).get("containerStatuses", [])
-            )
-            content = (
-                f"The controller pod {'is' if ready else 'is not'} ready.\n"
-                f"Conditions:\n{conditions_tbl}\n\nContainer Statuses:\n{containers_tbl}"
-            )
-            return SignatureResult(
-                signature_name=self.name,
-                title="Assisted Installer Controller failed to start",
-                content=content,
-                severity="warning",
-            )
-        return None
+        path = f"{NEW_LOG_BUNDLE_PATH}/resources/pods.json"
+        try:
+            pods_json = log_analyzer.logs_archive.get(path)
+        except FileNotFoundError:
+            return None
+        try:
+            pods = json.loads(pods_json)
+            controller_pod = [
+                pod
+                for pod in pods.get("items", [])
+                if pod.get("metadata", {}).get("namespace") == "assisted-installer"
+            ][0]
+        except Exception:
+            return None
+        try:
+            ready = [
+                condition.get("status") == "True"
+                for condition in controller_pod.get("status", {}).get(
+                    "conditions", {}
+                )
+                if condition.get("type") == "Ready"
+            ][0]
+        except Exception:
+            ready = False
+        conditions_tbl = self.generate_table(
+            controller_pod.get("status", {}).get("conditions", [])
+        )
+        containers_tbl = self.generate_table(
+            controller_pod.get("status", {}).get("containerStatuses", [])
+        )
+        content = (
+            f"The controller pod {'is' if ready else 'is not'} ready.\n"
+            f"Conditions:\n{conditions_tbl}\n\nContainer Statuses:\n{containers_tbl}"
+        )
+        return SignatureResult(
+            signature_name=self.name,
+            title="Assisted Installer Controller failed to start",
+            content=content,
+            severity="warning",
+        )
 
 
 class MachineConfigDaemonErrorExtracting(Signature):
@@ -281,23 +278,22 @@ class MachineConfigDaemonErrorExtracting(Signature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        for base in (NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH):
-            path = (
-                f"{base}/control-plane/*/journals/machine-config-daemon-firstboot.log"
+        path = (
+            f"{NEW_LOG_BUNDLE_PATH}/control-plane/*/journals/machine-config-daemon-firstboot.log"
+        )
+        try:
+            mcd_logs = log_analyzer.logs_archive.get(path)
+        except FileNotFoundError:
+            return None
+        if self.mco_error.search(mcd_logs):
+            return SignatureResult(
+                signature_name=self.name,
+                title="machine-config-daemon could not extract machine-os-content",
+                content=(
+                    "machine-config-daemon-firstboot logs indicate a node may be hitting OCPBUGS-5352"
+                ),
+                severity="warning",
             )
-            try:
-                mcd_logs = log_analyzer.logs_archive.get(path)
-            except FileNotFoundError:
-                continue
-            if self.mco_error.search(mcd_logs):
-                return SignatureResult(
-                    signature_name=self.name,
-                    title="machine-config-daemon could not extract machine-os-content",
-                    content=(
-                        "machine-config-daemon-firstboot logs indicate a node may be hitting OCPBUGS-5352"
-                    ),
-                    severity="warning",
-                )
         return None
 
 

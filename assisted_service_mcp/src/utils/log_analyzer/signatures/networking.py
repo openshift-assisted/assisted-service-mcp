@@ -12,7 +12,6 @@ from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     NEW_LOG_BUNDLE_PATH,
-    OLD_LOG_BUNDLE_PATH,
 )
 from assisted_service_mcp.src.utils.log_analyzer.signatures.advanced_analysis import (
     operator_statuses_from_controller_logs,
@@ -123,36 +122,6 @@ class DuplicateVIP(ErrorSignature):
             except FileNotFoundError:
                 pass
 
-            # Fallback to OLD path
-            if not collisions:
-                try:
-                    control_plane_dir = log_analyzer.logs_archive.get(
-                        f"{OLD_LOG_BUNDLE_PATH}/control-plane/"
-                    )
-                    for node_dir in self.archive_dir_contents(control_plane_dir):
-                        node_ip = os.path.basename(node_dir)
-                        try:
-                            ip_addr = log_analyzer.logs_archive.get(
-                                f"{OLD_LOG_BUNDLE_PATH}/control-plane/{node_ip}/network/ip-addr.txt"
-                            )
-                        except FileNotFoundError:
-                            continue
-                        for vip in vips:
-                            if vip in ip_addr:
-                                collisions.append((vip, node_ip))
-                except FileNotFoundError:
-                    pass
-
-                try:
-                    bootstrap_ip_addr = log_analyzer.logs_archive.get(
-                        f"{OLD_LOG_BUNDLE_PATH}/bootstrap/network/ip-addr.txt"
-                    )
-                    for vip in vips:
-                        if vip in bootstrap_ip_addr:
-                            collisions.append((vip, "bootstrap"))
-                except FileNotFoundError:
-                    pass
-
             # Aggregate per VIP
             vip_to_nodes = {}
             for vip, node in collisions:
@@ -226,19 +195,18 @@ class NameserverInClusterNetwork(ErrorSignature):
             return None
 
         report_lines = []
-        for base in (NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH):
-            nameservers = self._get_nameservers(log_analyzer, base)
-            for ns in nameservers:
-                for cidr in cidrs:
-                    try:
-                        if ipaddress.ip_address(ns) in ipaddress.ip_network(
-                            cidr, strict=False
-                        ):
-                            report_lines.append(
-                                f"User defined nameserver {ns} overlaps with the cluster network {cidr}"
-                            )
-                    except ValueError:
-                        continue
+        nameservers = self._get_nameservers(log_analyzer, NEW_LOG_BUNDLE_PATH)
+        for ns in nameservers:
+            for cidr in cidrs:
+                try:
+                    if ipaddress.ip_address(ns) in ipaddress.ip_network(
+                        cidr, strict=False
+                    ):
+                        report_lines.append(
+                            f"User defined nameserver {ns} overlaps with the cluster network {cidr}"
+                        )
+                except ValueError:
+                    continue
         if report_lines:
             return self.create_result(
                 title="Nameserver in internal network",
@@ -279,18 +247,17 @@ class DualStackBadRoute(ErrorSignature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        for base in (NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH):
-            path = f"{base}/control-plane/*/containers/ovnkube-node-*.log"
-            try:
-                ovnkube_logs = log_analyzer.logs_archive.get(path)
-            except FileNotFoundError:
-                continue
-            if self.fatal_error_regex.search(ovnkube_logs):
-                return self.create_result(
-                    title="Bugzilla 2088346",
-                    content="ovnkube-node logs indicate the cluster may be hitting BZ 2088346",
-                    severity="error",
-                )
+        path = f"{NEW_LOG_BUNDLE_PATH}/control-plane/*/containers/ovnkube-node-*.log"
+        try:
+            ovnkube_logs = log_analyzer.logs_archive.get(path)
+        except FileNotFoundError:
+            return None
+        if self.fatal_error_regex.search(ovnkube_logs):
+            return self.create_result(
+                title="Bugzilla 2088346",
+                content="ovnkube-node logs indicate the cluster may be hitting BZ 2088346",
+                severity="error",
+            )
         return None
 
 
@@ -298,20 +265,19 @@ class DualstackrDNSBug(ErrorSignature):
     """Detect kube-apiserver 'must match public address family' message (MGMT-11651)."""
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        for base in (NEW_LOG_BUNDLE_PATH, OLD_LOG_BUNDLE_PATH):
-            path = f"{base}/bootstrap/containers/kube-apiserver-*.log"
-            try:
-                kubeapiserver_logs = log_analyzer.logs_archive.get(path)
-            except FileNotFoundError:
-                continue
-            if "must match public address family" in kubeapiserver_logs:
-                return self.create_result(
-                    title="rDNS and DNS entries for IPv4/IPv6 interface - MGMT-11651",
-                    content=(
-                        "kube-apiserver logs contain the message 'must match public address family', this is probably due to MGMT-11651"
-                    ),
-                    severity="warning",
-                )
+        path = f"{NEW_LOG_BUNDLE_PATH}/bootstrap/containers/kube-apiserver-*.log"
+        try:
+            kubeapiserver_logs = log_analyzer.logs_archive.get(path)
+        except FileNotFoundError:
+            return None
+        if "must match public address family" in kubeapiserver_logs:
+            return self.create_result(
+                title="rDNS and DNS entries for IPv4/IPv6 interface - MGMT-11651",
+                content=(
+                    "kube-apiserver logs contain the message 'must match public address family', this is probably due to MGMT-11651"
+                ),
+                severity="warning",
+            )
         return None
 
 
