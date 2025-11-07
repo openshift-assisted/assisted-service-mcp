@@ -4,7 +4,6 @@ Core log analyzer for OpenShift Assisted Installer logs.
 
 import json
 import logging
-from collections import defaultdict
 from typing import Dict, List, Any, cast
 
 import dateutil.parser
@@ -122,14 +121,6 @@ class LogAnalyzer:
             partitions.append(current_partition)
 
         return partitions or [[]]
-
-    def get_events_by_host(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Get events grouped by host ID."""
-        events_by_host = defaultdict(list)
-        for event in self.get_last_install_cluster_events():
-            if "host_id" in event:
-                events_by_host[event["host_id"]].append(event)
-        return events_by_host
 
     def get_host_log_file(self, host_id: str, filename: str) -> str:
         """

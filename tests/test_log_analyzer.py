@@ -64,9 +64,6 @@ def test_log_analyzer_metadata_and_events_partitioning() -> None:
     # last partition should only include post-reset events
     last_events = la.get_last_install_cluster_events()
     assert last_events and last_events[0]["name"] == "something_else"
-    # grouped by host
-    by_host = la.get_events_by_host()
-    assert "h2" in by_host and by_host["h2"][0]["name"] == "something_else"
 
 
 def test_log_analyzer_host_log_paths() -> None:
