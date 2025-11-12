@@ -5,6 +5,9 @@ build/
 dist/
 wheels/
 *.egg-info
+# tests generated files
+.coverage
+assisted-service-mcp.log
 
 # Virtual environments
 .venv
