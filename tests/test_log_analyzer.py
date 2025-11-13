@@ -111,7 +111,7 @@ def test_main_analyze_cluster_runs_signatures() -> None:
 
 def test_basic_info_signature_runs() -> None:
     from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import LogAnalyzer
-    from assisted_service_mcp.src.utils.log_analyzer.signatures.basic_info import (
+    from assisted_service_mcp.src.utils.log_analyzer.signatures.components_version_signature import (
         ComponentsVersionSignature,
     )
 
@@ -129,7 +129,7 @@ def test_basic_info_signature_runs() -> None:
 
 def test_error_detection_signature_no_crash() -> None:
     from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import LogAnalyzer
-    from assisted_service_mcp.src.utils.log_analyzer.signatures.error_detection import (
+    from assisted_service_mcp.src.utils.log_analyzer.signatures.sno_hostname_has_etcd import (
         SNOHostnameHasEtcd,
     )
 
@@ -147,7 +147,7 @@ def test_error_detection_signature_no_crash() -> None:
 
 def test_networking_signature_no_crash() -> None:
     from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import LogAnalyzer
-    from assisted_service_mcp.src.utils.log_analyzer.signatures.networking import (
+    from assisted_service_mcp.src.utils.log_analyzer.signatures.sno_machine_cidr_signature import (
         SNOMachineCidrSignature,
     )
 

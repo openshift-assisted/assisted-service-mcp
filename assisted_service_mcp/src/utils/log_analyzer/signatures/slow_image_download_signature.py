@@ -1,12 +1,10 @@
 """
-Performance analysis signatures for OpenShift Assisted Installer logs.
-These signatures analyze installation performance and identify bottlenecks.
+SlowImageDownloadSignature for OpenShift Assisted Installer logs.
 """
 
 import logging
 import re
 from typing import Optional, List, Dict, Any
-
 
 from .base import ErrorSignature, SignatureResult
 

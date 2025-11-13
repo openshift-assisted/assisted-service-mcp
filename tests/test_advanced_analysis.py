@@ -10,7 +10,7 @@ from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LogAnalyzer,
     LOG_BUNDLE_PATH,
 )
-from assisted_service_mcp.src.utils.log_analyzer.signatures.advanced_analysis import (
+from assisted_service_mcp.src.utils.log_analyzer.signatures.container_crash_analysis import (
     ContainerCrashAnalysis,
 )
 from assisted_service_mcp.src.utils.log_analyzer.signatures.base import SignatureResult
