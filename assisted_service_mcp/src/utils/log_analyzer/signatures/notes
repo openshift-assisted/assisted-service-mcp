@@ -1,0 +1,12 @@
+-# Add more advanced analysis signatures here:
+-# - AllInstallationAttemptsSignature (requires JIRA integration)
+-# - MustGatherAnalysis
+-# - NodeStatus
+-# - UserManagedNetworkingLoadBalancer
+-# - FailedRequestTriggersHostTimeout
+-# - ControllerWarnings
+-# - UserHasLoggedIntoCluster
+-# - OSTreeCommitMismatch
+-# - ControllerFailedToStart
+-# - MachineConfigDaemonErrorExtracting
+

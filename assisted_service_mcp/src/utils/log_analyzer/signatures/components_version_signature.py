@@ -1,6 +1,5 @@
 """
-Basic information and status signature analysis.
-These signatures provide fundamental information about the cluster and installation.
+ComponentsVersionSignature for OpenShift Assisted Installer logs.
 """
 
 import logging
