@@ -6,6 +6,7 @@ import logging
 from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
+from .helpers import get_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class SNOHostnameHasEtcd(ErrorSignature):
             if len(cluster["hosts"]) != 1:
                 return None
 
-            hostname = log_analyzer.get_hostname(cluster["hosts"][0])
+            hostname = get_hostname(cluster["hosts"][0])
             if "etcd" in hostname:
                 content = "Hostname cannot contain etcd, see https://issues.redhat.com/browse/OCPBUGS-15852"
 

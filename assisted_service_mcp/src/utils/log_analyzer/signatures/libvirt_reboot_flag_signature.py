@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
+from .helpers import get_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class LibvirtRebootFlagSignature(ErrorSignature):
                 hosts.append(
                     OrderedDict(
                         id=host["id"],
-                        hostname=log_analyzer.get_hostname(host),
+                        hostname=get_hostname(host),
                         role=host.get("role"),
                         progress=host.get("progress", {}).get("current_stage"),
                         status=host.get("status"),
