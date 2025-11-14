@@ -4,7 +4,7 @@ Core log analyzer for OpenShift Assisted Installer logs.
 
 import json
 import logging
-from typing import Dict, List, Any, cast
+from typing import Dict, List, Any, cast, Iterator, Tuple
 
 import dateutil.parser
 import nestedarchive
@@ -177,6 +177,21 @@ class LogAnalyzer:
             ),
         )
 
+    def cluster_is_sno(self) -> bool:
+        """
+        Check if the cluster is a Single Node OpenShift (SNO) cluster.
+
+        Returns:
+            True if the cluster is SNO (high_availability_mode == "None"), False otherwise
+        """
+        try:
+            cluster = self.metadata
+            return (
+                cluster is not None and cluster.get("high_availability_mode") == "None"
+            )
+        except Exception:
+            return False
+
     @staticmethod
     def get_hostname(host: Dict[str, Any]) -> str:
         """Extract hostname from host metadata."""
@@ -189,3 +204,28 @@ class LogAnalyzer:
             return inventory["hostname"]
         except (KeyError, json.JSONDecodeError):
             return host.get("id", "unknown")
+
+    def all_host_journal_logs(
+        self,
+    ) -> Iterator[Tuple[Dict[str, Any], str]]:
+        """
+        Iterate over hosts and their journal logs, skipping hosts where journal.logs is not found.
+
+        Yields:
+            Tuple of (host, journal_logs) for each host with available journal logs
+        """
+        try:
+            cluster = self.metadata
+        except Exception:
+            return
+
+        if cluster is None:
+            return
+
+        for host in cluster.get("hosts", []):
+            host_id = host["id"]
+            try:
+                journal_logs = self.get_host_log_file(host_id, "journal.logs")
+                yield host, journal_logs
+            except FileNotFoundError:
+                continue

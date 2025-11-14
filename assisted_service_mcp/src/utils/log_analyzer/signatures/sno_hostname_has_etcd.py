@@ -16,12 +16,10 @@ class SNOHostnameHasEtcd(ErrorSignature):
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze SNO hostname for etcd."""
         try:
-            metadata = log_analyzer.metadata
-            cluster = metadata
-
-            if cluster.get("high_availability_mode") != "None":
+            if not log_analyzer.cluster_is_sno():
                 return None
 
+            cluster = log_analyzer.metadata
             if len(cluster["hosts"]) != 1:
                 return None
 

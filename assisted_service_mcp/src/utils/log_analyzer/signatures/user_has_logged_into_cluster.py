@@ -19,17 +19,11 @@ class UserHasLoggedIntoCluster(Signature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        cluster = log_analyzer.metadata
         msgs = []
-        for host in cluster.get("hosts", []):
-            host_id = host["id"]
-            try:
-                journal_logs = log_analyzer.get_host_log_file(host_id, "journal.logs")
-            except FileNotFoundError:
-                continue
+        for host, journal_logs in log_analyzer.all_host_journal_logs():
             if self.USER_LOGIN_PATTERN.findall(journal_logs):
                 msgs.append(
-                    f"Host {host_id}: found evidence of a user login during installation. This might indicate that some settings have been changed manually; if incorrect they could contribute to failure."
+                    f"Host {host['id']}: found evidence of a user login during installation. This might indicate that some settings have been changed manually; if incorrect they could contribute to failure."
                 )
         if msgs:
             return SignatureResult(

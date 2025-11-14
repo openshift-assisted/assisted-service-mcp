@@ -18,12 +18,10 @@ class SNOMachineCidrSignature(Signature):
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze SNO machine CIDR configuration."""
         try:
-            metadata = log_analyzer.metadata
-            cluster = metadata
-
-            if cluster.get("high_availability_mode") != "None":
+            if not log_analyzer.cluster_is_sno():
                 return None
 
+            cluster = log_analyzer.metadata
             if not cluster.get("hosts"):
                 return None
             host = cluster["hosts"][0]

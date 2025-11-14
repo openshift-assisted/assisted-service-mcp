@@ -3,7 +3,7 @@ Helper functions for signature analysis.
 """
 
 import re
-from typing import Any, Generator, Callable
+from typing import Any, Generator, Callable, Dict
 
 
 def operator_statuses_from_controller_logs(
