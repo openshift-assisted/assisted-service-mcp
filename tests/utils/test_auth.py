@@ -1,11 +1,13 @@
 import types
 import importlib
+import sys
+from typing import Iterator
 from unittest.mock import Mock, patch, MagicMock
 import requests
 
 import pytest
 
-from assisted_service_mcp.utils import auth as auth_mod
+# Don't import auth at module level - import it fresh in each test
 
 
 class _ReqCtx:
@@ -25,19 +27,38 @@ class _MCP:
         return self._ctx
 
 
+@pytest.fixture(autouse=True)
+def reset_auth_module() -> Iterator[None]:
+    """Reload auth module before each test to ensure clean state."""
+    module_name = "assisted_service_mcp.utils.auth"
+    if module_name in sys.modules:
+        importlib.reload(sys.modules[module_name])
+    yield
+    # Cleanup: reload again after test to reset any patches
+    if module_name in sys.modules:
+        importlib.reload(sys.modules[module_name])
+
+
 def test_get_offline_token_prefers_settings_env() -> None:
+    # Import fresh for each test
+    from assisted_service_mcp.utils import auth as auth_mod
+
     with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", "env-token"):
         mcp = _MCP(headers={"OCM-Offline-Token": "header-token"})
         assert auth_mod.get_offline_token(mcp) == "env-token"
 
 
 def test_get_offline_token_from_header_when_no_env() -> None:
+    from assisted_service_mcp.utils import auth as auth_mod
+
     with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", None):
         mcp = _MCP(headers={"OCM-Offline-Token": "header-token"})
         assert auth_mod.get_offline_token(mcp) == "header-token"
 
 
 def test_get_offline_token_raises_when_missing() -> None:
+    from assisted_service_mcp.utils import auth as auth_mod
+
     with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", None):
         mcp = _MCP(headers={})
         with pytest.raises(RuntimeError):
@@ -45,12 +66,16 @@ def test_get_offline_token_raises_when_missing() -> None:
 
 
 def test_get_access_token_from_authorization_header() -> None:
+    from assisted_service_mcp.utils import auth as auth_mod
+
     mcp = _MCP(headers={"Authorization": "Bearer abc"})
     assert auth_mod.get_access_token(mcp) == "abc"
 
 
 @patch("requests.post")
 def test_get_access_token_via_offline_token(mock_post: Mock) -> None:  # type: ignore[no-untyped-def]
+    from assisted_service_mcp.utils import auth as auth_mod
+
     mcp = _MCP(headers={})
 
     with (
@@ -76,8 +101,8 @@ def test_get_access_token_sso_request_exception() -> None:
     with (
         patch("assisted_service_mcp.utils.auth.requests.post") as mock_post,
         patch(
-            "assisted_service_mcp.utils.auth.get_setting",
-            side_effect=lambda k: "https://sso.example.com" if k == "SSO_URL" else "",
+            "assisted_service_mcp.src.settings.settings.SSO_URL",
+            "https://sso.example.com",
         ),
     ):
         mock_post.side_effect = requests.exceptions.RequestException("network error")
@@ -99,8 +124,8 @@ def test_get_access_token_invalid_json_response() -> None:
     with (
         patch("assisted_service_mcp.utils.auth.requests.post", return_value=mock_resp),
         patch(
-            "assisted_service_mcp.utils.auth.get_setting",
-            side_effect=lambda k: "https://sso.example.com" if k == "SSO_URL" else "",
+            "assisted_service_mcp.src.settings.settings.SSO_URL",
+            "https://sso.example.com",
         ),
     ):
         with pytest.raises(RuntimeError, match="Invalid SSO response"):
