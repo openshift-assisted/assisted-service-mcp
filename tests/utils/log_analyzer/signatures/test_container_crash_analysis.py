@@ -1,5 +1,5 @@
 """
-Unit tests for advanced analysis signatures.
+Unit tests for ContainerCrashAnalysis signature.
 """
 
 from pathlib import Path
