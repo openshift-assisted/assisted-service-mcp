@@ -192,19 +192,6 @@ class LogAnalyzer:
         except Exception:
             return False
 
-    @staticmethod
-    def get_hostname(host: Dict[str, Any]) -> str:
-        """Extract hostname from host metadata."""
-        hostname = host.get("requested_hostname")
-        if hostname:
-            return hostname
-
-        try:
-            inventory = json.loads(host["inventory"])
-            return inventory["hostname"]
-        except (KeyError, json.JSONDecodeError):
-            return host.get("id", "unknown")
-
     def all_host_journal_logs(
         self,
     ) -> Iterator[Tuple[Dict[str, Any], str]]:

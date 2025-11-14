@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
+from .helpers import get_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class ErrorOnCleanupInstallDevice(ErrorSignature):
             if match:
                 hosts.append(
                     OrderedDict(
-                        host=log_analyzer.get_hostname(host),
+                        host=get_hostname(host),
                         message=match.group("message"),
                     )
                 )

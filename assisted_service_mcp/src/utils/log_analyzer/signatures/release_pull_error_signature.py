@@ -7,6 +7,7 @@ import re
 from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
+from .helpers import get_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class ReleasePullErrorSignature(ErrorSignature):
         for host, journal_logs in log_analyzer.all_host_journal_logs():
             if self.ERROR_PATTERN.findall(journal_logs):
                 hosts_sections.append(
-                    f"Release image cannot be pulled on {host['id']} ({log_analyzer.get_hostname(host)})"
+                    f"Release image cannot be pulled on {host['id']} ({get_hostname(host)})"
                 )
 
         if hosts_sections:

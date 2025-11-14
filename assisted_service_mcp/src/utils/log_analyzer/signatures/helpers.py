@@ -2,6 +2,7 @@
 Helper functions for signature analysis.
 """
 
+import json
 import re
 from typing import Any, Generator, Callable, Dict
 
@@ -61,3 +62,16 @@ def filter_operators(
             for required_condition_name, expected_condition_result in required_conditions
         )
     }
+
+
+def get_hostname(host: Dict[str, Any]) -> str:
+    """Extract hostname from host metadata."""
+    hostname = host.get("requested_hostname")
+    if hostname:
+        return hostname
+
+    try:
+        inventory = json.loads(host["inventory"])
+        return inventory["hostname"]
+    except (KeyError, json.JSONDecodeError):
+        return host.get("id", "unknown")
