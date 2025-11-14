@@ -19,7 +19,7 @@ class UserHasLoggedIntoCluster(Signature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        cluster = log_analyzer.metadata.get("cluster", {})
+        cluster = log_analyzer.metadata
         msgs = []
         for host in cluster.get("hosts", []):
             host_id = host["id"]

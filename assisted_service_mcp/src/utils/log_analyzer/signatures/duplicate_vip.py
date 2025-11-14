@@ -22,7 +22,7 @@ class DuplicateVIP(ErrorSignature):
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         """Analyze for duplicate VIP issues."""
         try:
-            cluster = log_analyzer.metadata["cluster"]
+            cluster = log_analyzer.metadata
 
             # SNO doesn't need balancing
             if cluster.get("high_availability_mode") == "None":

@@ -18,7 +18,7 @@ class ReleasePullErrorSignature(ErrorSignature):
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         try:
-            cluster = log_analyzer.metadata["cluster"]
+            cluster = log_analyzer.metadata
         except Exception:
             return None
 

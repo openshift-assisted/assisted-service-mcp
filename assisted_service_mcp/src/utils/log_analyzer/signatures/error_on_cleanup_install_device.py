@@ -18,7 +18,7 @@ class ErrorOnCleanupInstallDevice(ErrorSignature):
     LOG_PATTERN = re.compile(r'msg="(?P<message>failed to prepare install device.*)"')
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        cluster = log_analyzer.metadata.get("cluster", {})
+        cluster = log_analyzer.metadata
         hosts = []
         for host in cluster.get("hosts", []):
             host_id = host["id"]

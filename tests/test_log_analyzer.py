@@ -22,13 +22,11 @@ def test_log_analyzer_metadata_and_events_partitioning() -> None:
 
     # minimal metadata and events
     md = {
-        "cluster": {
-            "install_started_at": "2025-01-01T00:00:00Z",
-            "hosts": [
-                {"id": "h1", "deleted_at": "2024-12-31T23:00:00Z"},
-                {"id": "h2"},
-            ],
-        }
+        "install_started_at": "2025-01-01T00:00:00Z",
+        "hosts": [
+            {"id": "h1", "deleted_at": "2024-12-31T23:00:00Z"},
+            {"id": "h2"},
+        ],
     }
     events = [
         {"name": "something"},
@@ -48,7 +46,7 @@ def test_log_analyzer_metadata_and_events_partitioning() -> None:
         if path == "cluster_metadata.json":
             import json
 
-            return json.dumps(md["cluster"])  # analyzer wraps it into {"cluster":...}
+            return json.dumps(md)  # metadata is used directly without wrapping
         if path == "cluster_events.json":
             import json
 
@@ -60,7 +58,7 @@ def test_log_analyzer_metadata_and_events_partitioning() -> None:
     la = LogAnalyzer(archive)  # type: ignore[arg-type]
     m = la.metadata
     assert m is not None
-    assert "deleted_hosts" in m["cluster"] and len(m["cluster"]["deleted_hosts"]) == 1
+    assert "deleted_hosts" in m and len(m["deleted_hosts"]) == 1
     # last partition should only include post-reset events
     last_events = la.get_last_install_cluster_events()
     assert last_events and last_events[0]["name"] == "something_else"

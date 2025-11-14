@@ -22,7 +22,7 @@ class FailedRequestTriggersHostTimeout(Signature):
     )
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        cluster = log_analyzer.metadata.get("cluster", {})
+        cluster = log_analyzer.metadata
         failed_requests_hosts = set()
         timed_out_hosts = {
             h["id"]
