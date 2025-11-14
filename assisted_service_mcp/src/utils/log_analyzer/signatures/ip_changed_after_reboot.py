@@ -44,8 +44,7 @@ class IpChangedAfterReboot(ErrorSignature):
         return address_map
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        md = log_analyzer.metadata
-        cluster = md["cluster"]
+        cluster = log_analyzer.metadata
 
         for host in cluster.get("hosts", []):
             host_id = host["id"]

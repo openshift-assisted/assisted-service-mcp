@@ -16,8 +16,7 @@ class LibvirtRebootFlagSignature(ErrorSignature):
     """Detect potential libvirt _on_reboot_ flag issue (MGMT-2840)."""
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        md = log_analyzer.metadata
-        cluster = md["cluster"]
+        cluster = log_analyzer.metadata
         # not relevant for SNO
         if len(cluster.get("hosts", [])) <= 1:
             return None

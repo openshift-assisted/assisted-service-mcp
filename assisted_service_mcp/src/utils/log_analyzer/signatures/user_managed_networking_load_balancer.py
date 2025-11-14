@@ -22,12 +22,11 @@ class UserManagedNetworkingLoadBalancer(ErrorSignature):
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         metadata = log_analyzer.metadata
-        cluster_md = metadata.get("cluster", {})
 
-        if not cluster_md.get("user_managed_networking", False):
+        if not metadata.get("user_managed_networking", False):
             return None
 
-        if cluster_md.get("high_availability_mode") == "None":
+        if metadata.get("high_availability_mode") == "None":
             return None
 
         try:

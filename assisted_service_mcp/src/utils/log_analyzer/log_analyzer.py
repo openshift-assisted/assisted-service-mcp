@@ -40,9 +40,7 @@ class LogAnalyzer:
                 raw_metadata = json.loads(cast(str | bytes, metadata_content))
 
                 # The metadata file contains cluster information at the root level
-                # Wrap it in a "cluster" key to match the expected structure
-                wrapped_metadata = {"cluster": raw_metadata}
-                self._metadata = self._clean_metadata_json(wrapped_metadata)
+                self._metadata = self._clean_metadata_json(raw_metadata)
             except Exception as e:
                 logger.error("Failed to load metadata: %s", e)
                 raise
@@ -51,20 +49,18 @@ class LogAnalyzer:
     @staticmethod
     def _clean_metadata_json(md: Dict[str, Any]) -> Dict[str, Any]:
         """Clean metadata JSON by separating deleted hosts."""
-        installation_start_time = dateutil.parser.isoparse(
-            md["cluster"]["install_started_at"]
-        )
+        installation_start_time = dateutil.parser.isoparse(md["install_started_at"])
 
         def host_deleted_before_installation_started(host):
             if deleted_at := host.get("deleted_at"):
                 return dateutil.parser.isoparse(deleted_at) < installation_start_time
             return False
 
-        all_hosts = md["cluster"]["hosts"]
-        md["cluster"]["deleted_hosts"] = [
+        all_hosts = md["hosts"]
+        md["deleted_hosts"] = [
             h for h in all_hosts if host_deleted_before_installation_started(h)
         ]
-        md["cluster"]["hosts"] = [
+        md["hosts"] = [
             h for h in all_hosts if not host_deleted_before_installation_started(h)
         ]
 

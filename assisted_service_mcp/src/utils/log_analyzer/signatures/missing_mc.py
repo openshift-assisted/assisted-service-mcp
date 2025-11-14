@@ -15,7 +15,7 @@ class MissingMC(ErrorSignature):
     """Looks for missing MachineConfig error in SNO clusters."""
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        cluster = log_analyzer.metadata.get("cluster", {})
+        cluster = log_analyzer.metadata
         if cluster.get("high_availability_mode") != "None":
             return None
         path = (

@@ -58,9 +58,7 @@ class NameserverInClusterNetwork(ErrorSignature):
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         md = log_analyzer.metadata
-        cidrs = [
-            network["cidr"] for network in md["cluster"].get("cluster_networks", [])
-        ]
+        cidrs = [network["cidr"] for network in md.get("cluster_networks", [])]
         if not cidrs:
             return None
 

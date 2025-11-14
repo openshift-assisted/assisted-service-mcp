@@ -19,7 +19,7 @@ class ControllerFailedToStart(Signature):
     """Looks for controller readiness in pods.json when bootstrap is 'Waiting for controller'."""
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
-        cluster = log_analyzer.metadata.get("cluster", {})
+        cluster = log_analyzer.metadata
         bootstrap = [h for h in cluster.get("hosts", []) if h.get("bootstrap")] or []
         if not bootstrap:
             return None
