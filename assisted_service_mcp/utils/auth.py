@@ -1,10 +1,10 @@
 """Authentication utilities for Assisted Service MCP Server."""
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import requests
 from assisted_service_mcp.src.logger import log
-from assisted_service_mcp.src.settings import get_setting
+from assisted_service_mcp.src.settings import get_setting, settings
 
 
 def get_offline_token(mcp: Any) -> str:
@@ -46,28 +46,36 @@ def get_offline_token(mcp: Any) -> str:
 
 
 def get_access_token(
-    mcp: Any, offline_token_func: Callable[[], str] | None = None
+    mcp: Any,
+    oauth_token_func: Callable[[Any], Optional[str]] | None = None,
 ) -> str:
     """
     Retrieve the access token.
 
-    This function tries to get the Red Hat OpenShift Cluster Manager (OCM) access token. First
-    it tries to extract it from the authorization header, and if it isn't there then it tries
-    to generate a new one using the offline token.
+    Authentication methods are checked in the following order of priority:
+    1. Access token in the Authorization request header
+    2. OAuth flow (if OAUTH_ENABLED is true) - no fallback to offline token
+    3. Offline token via environment variable (only if OAuth is disabled)
+
+    When OAuth is enabled, offline token fallback is disabled to ensure consistent
+    OAuth-only authentication flow.
+
+    Note: OCM-Offline-Token header support is deprecated but still functional for backward compatibility.
 
     Args:
         mcp: The FastMCP instance to get request context from.
-        offline_token_func: Optional function to get offline token. If not provided,
-                           uses get_offline_token(mcp).
+        oauth_token_func: Optional function to get OAuth token. If not provided,
+                         OAuth flow will not be attempted.
 
     Returns:
         str: The access token.
 
     Raises:
-        RuntimeError: If it isn't possible to obtain or generate the access token.
+        RuntimeError: If no valid authentication method is available or authentication fails.
     """
-    log.debug("Attempting to retrieve access token")
-    # First try to get the token from the authorization header:
+    log.debug("Attempting to retrieve access token using priority order")
+
+    # 1. First try to get the token from the authorization header:
     context = mcp.get_context()
     if context and context.request_context:
         request = context.request_context.request
@@ -79,14 +87,35 @@ def get_access_token(
                     log.debug("Found access token in authorization header")
                     return parts[1]
 
-    # Now try to get the offline token, and generate a new access token from it:
-    log.debug("Generating new access token from offline token")
+    # 2. Try OAuth flow if enabled
+    if settings.OAUTH_ENABLED:
+        log.debug("OAuth is enabled, checking for OAuth access token")
+        if oauth_token_func:
+            oauth_token = oauth_token_func(mcp)
+            if oauth_token:
+                log.debug("Found OAuth access token (priority 2)")
+                return oauth_token
+            log.debug(
+                "OAuth token function returned None - OAuth flow may be in progress"
+            )
+        else:
+            log.debug(
+                "OAuth enabled but no oauth_token_func provided - skipping OAuth priority"
+            )
 
-    # Use the provided offline token function or default to get_offline_token(mcp)
-    if offline_token_func is None:
-        offline_token = get_offline_token(mcp)
-    else:
-        offline_token = offline_token_func()
+        # When OAuth is enabled, don't fall back to offline token
+        log.error(
+            "OAuth is enabled but no valid OAuth token found - offline token fallback disabled"
+        )
+        raise RuntimeError(
+            "OAuth authentication is enabled but no valid OAuth token found. "
+            "Please complete the OAuth authentication flow."
+        )
+
+    # 3. & 4. Try offline token methods (environment variable has priority over header)
+    log.debug("Generating new access token from offline token (priority 3 & 4)")
+
+    offline_token = get_offline_token(mcp)
 
     params = {
         "client_id": "cloud-services",
@@ -113,5 +142,5 @@ def get_access_token(
             "Invalid SSO response: missing or malformed access_token"
         ) from e
 
-    log.debug("Successfully generated new access token")
+    log.debug("Successfully generated new access token from offline token")
     return access_token

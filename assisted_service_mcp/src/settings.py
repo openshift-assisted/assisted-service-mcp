@@ -106,6 +106,52 @@ class Settings(BaseSettings):
         },
     )
 
+    # OAuth Configuration
+    OAUTH_ENABLED: bool = Field(
+        default=False,
+        json_schema_extra={
+            "env": "OAUTH_ENABLED",
+            "description": "Enable OAuth authentication flow",
+            "example": True,
+        },
+    )
+
+    OAUTH_URL: str = Field(
+        default="https://sso.redhat.com/auth/realms/redhat-external",
+        json_schema_extra={
+            "env": "OAUTH_URL",
+            "description": "OAuth authorization server URL",
+            "example": "https://sso.redhat.com/auth/realms/redhat-external",
+        },
+    )
+
+    OAUTH_CLIENT: str = Field(
+        default="ocm-cli",
+        json_schema_extra={
+            "env": "OAUTH_CLIENT",
+            "description": "OAuth client identifier",
+            "example": "ocm-cli",
+        },
+    )
+
+    SELF_URL: str = Field(
+        default="http://localhost:8000",
+        json_schema_extra={
+            "env": "SELF_URL",
+            "description": "Base URL that the server uses to construct URLs referencing itself",
+            "example": "https://my.host.com",
+        },
+    )
+
+    OAUTH_REDIRECT_URI: Optional[str] = Field(
+        default=None,
+        json_schema_extra={
+            "env": "OAUTH_REDIRECT_URI",
+            "description": "Override OAuth redirect URI (optional - automatically constructed from SELF_URL with 127.0.0.1 for localhost)",
+            "example": "http://127.0.0.1:8000/oauth/callback",
+        },
+    )
+
     # Logging Configuration
     LOGGING_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",

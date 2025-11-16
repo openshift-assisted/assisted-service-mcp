@@ -2,14 +2,15 @@
 
 import asyncio
 import inspect
+import time
 from functools import wraps
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Optional
 
 from mcp.server.fastmcp import FastMCP
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
-from assisted_service_mcp.utils.auth import get_offline_token, get_access_token
+from assisted_service_mcp.utils.auth import get_access_token
 from assisted_service_mcp.src.settings import settings
 
 # Import all tool modules
@@ -43,16 +44,129 @@ class AssistedServiceMCPServer:
                 host=settings.MCP_HOST,
                 stateless_http=use_stateless_http,
             )
-            # Define auth helpers bound to this MCP instance
-            self._get_offline_token = lambda: get_offline_token(self.mcp)
+            self._get_oauth_token = self._create_oauth_token()
             self._get_access_token = lambda: get_access_token(
-                self.mcp, offline_token_func=self._get_offline_token
+                self.mcp,
+                oauth_token_func=self._get_oauth_token,
             )
             self._register_mcp_tools()
             log.info("Assisted Service MCP Server initialized successfully")
         except Exception as e:
             log.exception("Failed to initialize Assisted Service MCP Server: %s", e)
             raise
+
+    def _create_oauth_token(self) -> Callable[[Any], Optional[str]]:
+        """Create OAuth token function with proper dependency injection.
+
+        This avoids circular imports by importing oauth module only when needed
+        and creating a closure that captures the import.
+
+        Returns:
+            Function that can extract OAuth tokens from MCP context
+        """
+
+        def get_oauth_token(mcp: Any) -> Optional[str]:
+            if not settings.OAUTH_ENABLED:
+                return None
+
+            try:
+                # Import only when OAuth is enabled and function is called
+                from assisted_service_mcp.src.oauth import (
+                    get_oauth_access_token_from_mcp,
+                    mcp_oauth_middleware,
+                    oauth_manager,
+                    open_browser_for_oauth,
+                )
+
+                # First check if we have a cached token
+                cached_token = get_oauth_access_token_from_mcp(mcp)
+                if cached_token:
+                    return cached_token
+
+                # Get client identifier for OAuth flow
+                client_id = self._get_mcp_client_identifier(mcp)
+
+                # Check if we have a completed OAuth token for this client
+                token = oauth_manager.token_store.get_access_token_by_client(client_id)
+                if token:
+                    log.info("Using cached OAuth token for MCP client %s", client_id)
+                    return token
+
+                # Check if OAuth flow is already in progress for this client
+                for (
+                    session_id,
+                    session_info,
+                ) in mcp_oauth_middleware.pending_auth_sessions.items():
+                    if session_info.get("client_id") == client_id:
+                        log.info(
+                            "OAuth flow already in progress for MCP client %s",
+                            client_id,
+                        )
+                        raise RuntimeError(
+                            "OAuth authentication in progress. Please complete the authentication in your browser, "
+                            "then retry this command. The browser should have opened automatically."
+                        )
+
+                # Start new OAuth flow with PKCE
+                log.info("Starting OAuth flow for MCP client %s", client_id)
+
+                # Import OAuthState for parsing
+                from assisted_service_mcp.src.oauth.models import OAuthState
+
+                # Generate OAuth URL with PKCE parameters
+                auth_url, state_json = oauth_manager.create_authorization_url(client_id)
+
+                # Parse state to extract session_id
+                state = OAuthState.from_json(state_json)
+                session_id = state.session_id
+
+                # Store session with full state_json for PKCE verification
+                mcp_oauth_middleware.pending_auth_sessions[session_id] = {
+                    "client_id": client_id,
+                    "state": state_json,  # Store full JSON state with PKCE params
+                    "auth_url": auth_url,
+                    "timestamp": time.time(),
+                }
+
+                # Open browser automatically
+                open_browser_for_oauth(auth_url)
+
+                # Provide helpful error message for OAuth requirement
+                raise RuntimeError(
+                    "OAuth authentication required. Please complete the authentication in your browser "
+                    "(it should have opened automatically), then retry this command."
+                )
+
+            except ImportError as e:
+                log.warning("Failed to import OAuth module: %s", e)
+                return None
+
+        return get_oauth_token
+
+    def _get_mcp_client_identifier(self, mcp: Any) -> str:
+        """Get a unique identifier for the MCP client."""
+        try:
+            # Try to get client info from MCP context
+            context = mcp.get_context()
+            if (
+                context
+                and hasattr(context, "request_context")
+                and context.request_context
+            ):
+                request = context.request_context.request
+                if request:
+                    user_agent = request.headers.get("user-agent", "unknown")
+                    client_ip = (
+                        getattr(request.client, "host", "unknown")
+                        if request.client
+                        else "unknown"
+                    )
+                    return f"{user_agent}_{client_ip}"
+
+            # Fallback identifier
+            return "mcp_client_unknown"
+        except Exception:
+            return "mcp_client_fallback"
 
     def _register_mcp_tools(self) -> None:
         """Register MCP tools for assisted service operations.
