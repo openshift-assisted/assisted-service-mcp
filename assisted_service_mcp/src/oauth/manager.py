@@ -23,6 +23,10 @@ from assisted_service_mcp.src.oauth.utils import (
 )
 from assisted_service_mcp.src.settings import settings
 
+# Token expiration constants
+DEFAULT_TOKEN_EXPIRES_IN = 900  # 15 minutes in seconds
+TOKEN_EXPIRY_BUFFER = 300  # 5 minutes safety margin before expiration
+
 
 class OAuthManager:
     """Manages OAuth authentication flow for the MCP server.
@@ -214,14 +218,14 @@ class OAuthManager:
 
             # Create token object
             token_id = secrets.token_hex(16)
-            expires_in = token_data.get("expires_in", 3600)
+            expires_in = token_data.get("expires_in", DEFAULT_TOKEN_EXPIRES_IN)
 
             token = OAuthToken(
                 token_id=token_id,
                 client_id=state.client_id,
                 access_token=token_data["access_token"],
                 refresh_token=token_data.get("refresh_token"),
-                expires_at=time.time() + expires_in - 300,  # 5 min safety margin
+                expires_at=time.time() + expires_in - TOKEN_EXPIRY_BUFFER,
             )
 
             # Store token
@@ -248,7 +252,8 @@ class OAuthManager:
         Returns:
             Access token if found and valid, None otherwise
         """
-        token = self.token_store.get_token_by_id(token_id)
+        # Get token including expired ones (for refresh purposes)
+        token = self.token_store.get_token_by_id(token_id, include_expired=True)
         if not token:
             return None
 
@@ -260,6 +265,8 @@ class OAuthManager:
                 token = self.token_store.get_token_by_id(token_id)
                 return token.access_token if token else None
             log.warning("Failed to refresh token %s", token_id)
+            # Clean up expired token if refresh failed
+            self.token_store.remove_token(token_id)
             return None
 
         return token.access_token
@@ -287,7 +294,8 @@ class OAuthManager:
         Returns:
             Access token if found and valid, None otherwise
         """
-        token = self.token_store.get_token_by_client(client_id)
+        # Get token including expired ones (for refresh purposes)
+        token = self.token_store.get_token_by_client(client_id, include_expired=True)
         if not token:
             return None
 
@@ -299,6 +307,8 @@ class OAuthManager:
                 token = self.token_store.get_token_by_client(client_id)
                 return token.access_token if token else None
             log.warning("Failed to refresh token for client %s", client_id)
+            # Clean up expired token if refresh failed
+            self.token_store.remove_client_token(client_id)
             return None
 
         return token.access_token
@@ -333,8 +343,8 @@ class OAuthManager:
             # Update token in store
             new_access_token = token_data["access_token"]
             new_refresh_token = token_data.get("refresh_token", token.refresh_token)
-            expires_in = token_data.get("expires_in", 3600)
-            new_expires_at = time.time() + expires_in - 300
+            expires_in = token_data.get("expires_in", DEFAULT_TOKEN_EXPIRES_IN)
+            new_expires_at = time.time() + expires_in - TOKEN_EXPIRY_BUFFER
 
             self.token_store.update_token(
                 token.token_id, new_access_token, new_refresh_token, new_expires_at
@@ -536,7 +546,7 @@ async def oauth_token_handler(request: Request) -> Dict[str, Any]:
             return {
                 "access_token": token.get("access_token"),
                 "token_type": token.get("token_type", "Bearer"),
-                "expires_in": token.get("expires_in", 3600),
+                "expires_in": token.get("expires_in", DEFAULT_TOKEN_EXPIRES_IN),
                 "refresh_token": token.get("refresh_token"),
                 "scope": token.get("scope", "openid profile email"),
             }

@@ -42,8 +42,8 @@ class MCPOAuthMiddleware:
 
         client_id = self._get_client_identifier(request)
 
-        # Try to use existing token
-        token = oauth_manager.token_store.get_access_token_by_client(client_id)
+        # Try to use existing token (with automatic refresh if expired)
+        token = await oauth_manager.get_access_token_by_client(client_id)
         if token:
             log.info("Using cached token for client %s", client_id)
             return await self._create_authenticated_request(request, call_next, token)
@@ -176,7 +176,7 @@ class MCPOAuthMiddleware:
             waited_time += poll_interval
 
             # Check if OAuth completed (token available for client)
-            token = oauth_manager.token_store.get_access_token_by_client(client_id)
+            token = await oauth_manager.get_access_token_by_client(client_id)
             if token:
                 log.info(
                     "OAuth completed for client %s, proceeding with request", client_id

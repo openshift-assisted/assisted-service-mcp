@@ -47,35 +47,41 @@ class TokenStore:
                 token.expires_at,
             )
 
-    def get_token_by_id(self, token_id: str) -> Optional[OAuthToken]:
+    def get_token_by_id(
+        self, token_id: str, include_expired: bool = False
+    ) -> Optional[OAuthToken]:
         """Get token by token ID.
 
         Args:
             token_id: Token identifier
+            include_expired: If True, return expired tokens (for refresh purposes)
 
         Returns:
-            OAuthToken if found and valid, None otherwise
+            OAuthToken if found and valid (or expired if include_expired=True), None otherwise
         """
         with self._lock:
             token = self._tokens.get(token_id)
             if not token:
                 return None
 
-            if token.is_expired():
+            if token.is_expired() and not include_expired:
                 log.debug("Token %s is expired, removing from store", token_id)
                 self._remove_token_unsafe(token_id)
                 return None
 
             return token
 
-    def get_token_by_client(self, client_id: str) -> Optional[OAuthToken]:
+    def get_token_by_client(
+        self, client_id: str, include_expired: bool = False
+    ) -> Optional[OAuthToken]:
         """Get token for a client.
 
         Args:
             client_id: Client identifier
+            include_expired: If True, return expired tokens (for refresh purposes)
 
         Returns:
-            OAuthToken if found and valid, None otherwise
+            OAuthToken if found and valid (or expired if include_expired=True), None otherwise
         """
         with self._lock:
             token_id = self._client_tokens.get(client_id)
@@ -83,7 +89,7 @@ class TokenStore:
                 return None
 
             # Re-use get_token_by_id which also acquires lock (RLock allows re-entrance)
-            return self.get_token_by_id(token_id)
+            return self.get_token_by_id(token_id, include_expired=include_expired)
 
     def get_access_token_by_id(self, token_id: str) -> Optional[str]:
         """Get access token string by token ID.

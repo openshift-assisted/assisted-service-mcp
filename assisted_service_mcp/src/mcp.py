@@ -65,7 +65,9 @@ class AssistedServiceMCPServer:
             Function that can extract OAuth tokens from MCP context
         """
 
-        def get_oauth_token(mcp: Any) -> Optional[str]:
+        def get_oauth_token(
+            mcp: Any,
+        ) -> Optional[str]:  # pylint: disable=too-many-locals
             if not settings.OAUTH_ENABLED:
                 return None
 
@@ -86,11 +88,24 @@ class AssistedServiceMCPServer:
                 # Get client identifier for OAuth flow
                 client_id = self._get_mcp_client_identifier(mcp)
 
-                # Check if we have a completed OAuth token for this client
-                token = oauth_manager.token_store.get_access_token_by_client(client_id)
-                if token:
-                    log.info("Using cached OAuth token for MCP client %s", client_id)
-                    return token
+                # Try to get token (with automatic refresh if expired)
+                # Use async method which handles refresh, wrapped in asyncio.run for sync context
+                try:
+                    token = asyncio.run(
+                        oauth_manager.get_access_token_by_client(client_id)
+                    )
+                    if token:
+                        log.info(
+                            "Using cached OAuth token for MCP client %s", client_id
+                        )
+                        return token
+                except Exception as e:
+                    log.debug(
+                        "Could not get/refresh token for client %s: %s", client_id, e
+                    )
+                    # Fall through to start new OAuth flow
+
+                # No valid token found - need to start OAuth flow
 
                 # Check if OAuth flow is already in progress for this client
                 for (
