@@ -79,7 +79,6 @@ async def test_create_cluster_invalid_platform_for_sno_returns_message() -> None
         version="4.18.0",
         base_domain="example.com",
         single_node=True,
-        ssh_public_key=None,
         cpu_architecture="x86_64",
         platform="baremetal",
     )
@@ -482,7 +481,6 @@ async def test_tool_create_cluster_module() -> None:
             version="4.18.2",
             base_domain="example.com",
             single_node=False,
-            ssh_public_key=None,
             cpu_architecture="x86_64",
             platform="baremetal",
         )
@@ -529,7 +527,6 @@ async def test_tool_create_cluster_with_none_cpu_architecture_module() -> None:
             version="4.19.0",
             base_domain="example.com",
             single_node=True,
-            ssh_public_key=None,
             cpu_architecture=None,  # Test None value
             platform=None,
         )
