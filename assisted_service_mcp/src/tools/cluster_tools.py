@@ -106,13 +106,6 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
             description="Whether to create a single-node cluster. Set to True for edge deployments or resource-constrained environments. Set to False for production high-availability clusters with multiple control plane nodes."
         ),
     ],
-    ssh_public_key: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="SSH public key for accessing cluster nodes. Allows SSH access to nodes during and after installation.",
-        ),
-    ] = None,
     cpu_architecture: Annotated[
         Helpers.VALID_CPU_ARCHITECTURES | None,
         Field(
@@ -134,10 +127,10 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
     (multi-node) or single-node (SNO) deployment. For single-node clusters, platform must be
     'none'. For multi-node clusters, platform defaults to 'baremetal' but can be vsphere,
     oci, or nutanix. This creates the cluster configuration only; use install_cluster to
-    start the actual installation. Optional parameters: ssh_public_key, cpu_architecture, platform.
+    start the actual installation. Optional parameters: cpu_architecture, platform.
 
     Examples:
-        - create_cluster("prod-cluster", "4.18.2", "example.com", False, ssh_public_key="ssh-rsa AAAA...", platform="baremetal")
+        - create_cluster("prod-cluster", "4.18.2", "example.com", False, platform="baremetal")
         - create_cluster("edge-cluster", "4.17.1", "edge.local", True)  # Single-node, platform='none' auto-selected
         - create_cluster("vsphere-cluster", "4.18.2", "vsphere.com", False, platform="vsphere", cpu_architecture="x86_64")
 
@@ -148,13 +141,12 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         str: The created cluster's UUID.
     """
     log.info(
-        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, cpu_architecture=%s, ssh_key_provided=%s, platform=%s",
+        "Creating cluster: name=%s, version=%s, base_domain=%s, single_node=%s, cpu_architecture=%s, platform=%s",
         name,
         version,
         base_domain,
         single_node,
         cpu_architecture,
-        ssh_public_key is not None,
         platform,
     )
 
@@ -180,8 +172,6 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         "cpu_architecture": cpu_architecture,
         "platform": platform,
     }
-    if ssh_public_key:
-        cluster_params["ssh_public_key"] = ssh_public_key
 
     cluster = await client.create_cluster(name, version, single_node, **cluster_params)
     if cluster.id is None:
@@ -196,8 +186,6 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         "openshift_version": cluster.openshift_version,
         "cpu_architecture": cpu_architecture,
     }
-    if ssh_public_key:
-        infraenv_params["ssh_authorized_key"] = ssh_public_key
 
     infraenv = await client.create_infra_env(name, **infraenv_params)
     log.info(
