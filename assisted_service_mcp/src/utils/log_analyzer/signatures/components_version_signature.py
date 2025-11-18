@@ -1,6 +1,5 @@
 """
-Basic information and status signature analysis.
-These signatures provide fundamental information about the cluster and installation.
+ComponentsVersionSignature for OpenShift Assisted Installer logs.
 """
 
 import logging
@@ -18,15 +17,14 @@ class ComponentsVersionSignature(Signature):
         """Analyze component versions."""
         try:
             metadata = log_analyzer.metadata
-            cluster_md = metadata.get("cluster", {})
 
             content_lines = []
 
-            release_tag = metadata.get("release_tag") or cluster_md.get("release_tag")
+            release_tag = metadata.get("release_tag")
             if release_tag:
                 content_lines.append(f"Release tag: {release_tag}")
 
-            versions = metadata.get("versions") or cluster_md.get("versions")
+            versions = metadata.get("versions")
             if versions:
                 if "assisted-installer" in versions:
                     content_lines.append(

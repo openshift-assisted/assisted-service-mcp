@@ -4,7 +4,7 @@ Core log analyzer for OpenShift Assisted Installer logs.
 
 import json
 import logging
-from typing import Dict, List, Any, cast
+from typing import Dict, List, Any, cast, Iterator, Tuple
 
 import dateutil.parser
 import nestedarchive
@@ -40,9 +40,7 @@ class LogAnalyzer:
                 raw_metadata = json.loads(cast(str | bytes, metadata_content))
 
                 # The metadata file contains cluster information at the root level
-                # Wrap it in a "cluster" key to match the expected structure
-                wrapped_metadata = {"cluster": raw_metadata}
-                self._metadata = self._clean_metadata_json(wrapped_metadata)
+                self._metadata = self._clean_metadata_json(raw_metadata)
             except Exception as e:
                 logger.error("Failed to load metadata: %s", e)
                 raise
@@ -51,20 +49,18 @@ class LogAnalyzer:
     @staticmethod
     def _clean_metadata_json(md: Dict[str, Any]) -> Dict[str, Any]:
         """Clean metadata JSON by separating deleted hosts."""
-        installation_start_time = dateutil.parser.isoparse(
-            md["cluster"]["install_started_at"]
-        )
+        installation_start_time = dateutil.parser.isoparse(md["install_started_at"])
 
         def host_deleted_before_installation_started(host):
             if deleted_at := host.get("deleted_at"):
                 return dateutil.parser.isoparse(deleted_at) < installation_start_time
             return False
 
-        all_hosts = md["cluster"]["hosts"]
-        md["cluster"]["deleted_hosts"] = [
+        all_hosts = md["hosts"]
+        md["deleted_hosts"] = [
             h for h in all_hosts if host_deleted_before_installation_started(h)
         ]
-        md["cluster"]["hosts"] = [
+        md["hosts"] = [
             h for h in all_hosts if not host_deleted_before_installation_started(h)
         ]
 
@@ -181,15 +177,42 @@ class LogAnalyzer:
             ),
         )
 
-    @staticmethod
-    def get_hostname(host: Dict[str, Any]) -> str:
-        """Extract hostname from host metadata."""
-        hostname = host.get("requested_hostname")
-        if hostname:
-            return hostname
+    def cluster_is_sno(self) -> bool:
+        """
+        Check if the cluster is a Single Node OpenShift (SNO) cluster.
 
+        Returns:
+            True if the cluster is SNO (high_availability_mode == "None"), False otherwise
+        """
         try:
-            inventory = json.loads(host["inventory"])
-            return inventory["hostname"]
-        except (KeyError, json.JSONDecodeError):
-            return host.get("id", "unknown")
+            cluster = self.metadata
+            return (
+                cluster is not None and cluster.get("high_availability_mode") == "None"
+            )
+        except Exception:
+            return False
+
+    def all_host_journal_logs(
+        self,
+    ) -> Iterator[Tuple[Dict[str, Any], str]]:
+        """
+        Iterate over hosts and their journal logs, skipping hosts where journal.logs is not found.
+
+        Yields:
+            Tuple of (host, journal_logs) for each host with available journal logs
+        """
+        try:
+            cluster = self.metadata
+        except Exception:
+            return
+
+        if cluster is None:
+            return
+
+        for host in cluster.get("hosts", []):
+            host_id = host["id"]
+            try:
+                journal_logs = self.get_host_log_file(host_id, "journal.logs")
+                yield host, journal_logs
+            except FileNotFoundError:
+                continue

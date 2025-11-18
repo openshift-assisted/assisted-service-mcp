@@ -1,12 +1,10 @@
 """
-Performance analysis signatures for OpenShift Assisted Installer logs.
-These signatures analyze installation performance and identify bottlenecks.
+SlowImageDownloadSignature for OpenShift Assisted Installer logs.
 """
 
 import logging
 import re
 from typing import Optional, List, Dict, Any
-
 
 from .base import ErrorSignature, SignatureResult
 
@@ -45,20 +43,12 @@ class SlowImageDownloadSignature(ErrorSignature):
 
         return None
 
-    @classmethod
     def _list_image_download_info(
-        cls, events: List[Dict[str, Any]]
+        self, events: List[Dict[str, Any]]
     ) -> List[Dict[str, str]]:
         """Extract image download information from events."""
-
-        def get_image_download_info(event):
-            match = cls.image_download_regex.match(event["message"])
-            if match:
-                return match.groupdict()
-            return None
-
         return [
-            info
+            match.groupdict()
             for event in events
-            if (info := get_image_download_info(event)) is not None
+            if (match := self.image_download_regex.match(event["message"])) is not None
         ]
