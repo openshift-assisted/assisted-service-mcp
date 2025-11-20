@@ -107,24 +107,6 @@ def test_main_analyze_cluster_runs_signatures() -> None:
     asyncio.run(run())
 
 
-def test_basic_info_signature_runs() -> None:
-    from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import LogAnalyzer
-    from assisted_service_mcp.src.utils.log_analyzer.signatures.components_version_signature import (
-        ComponentsVersionSignature,
-    )
-
-    archive = make_archive(
-        {
-            "cluster_metadata.json": "{}",
-            "cluster_events.json": "[]",
-        }
-    )
-    la = LogAnalyzer(archive)  # type: ignore[arg-type]
-    sig = ComponentsVersionSignature()
-    # Should not raise, may return SignatureResult or None
-    _ = sig.analyze(la)
-
-
 def test_error_detection_signature_no_crash() -> None:
     from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import LogAnalyzer
     from assisted_service_mcp.src.utils.log_analyzer.signatures.sno_hostname_has_etcd import (

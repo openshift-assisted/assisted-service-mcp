@@ -9,7 +9,6 @@ from .base import Signature, ErrorSignature, SignatureResult
 
 # Import all individual signature classes
 # These are used dynamically via inspect.getmembers(), so we suppress unused import warnings
-from .components_version_signature import ComponentsVersionSignature  # noqa: F401
 from .sno_hostname_has_etcd import SNOHostnameHasEtcd  # noqa: F401
 from .api_invalid_certificate_signature import (
     ApiInvalidCertificateSignature,  # noqa: F401
