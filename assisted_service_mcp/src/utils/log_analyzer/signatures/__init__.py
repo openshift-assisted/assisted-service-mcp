@@ -33,7 +33,6 @@ from .user_managed_networking_load_balancer import (
 from .slow_image_download_signature import SlowImageDownloadSignature  # noqa: F401
 from .libvirt_reboot_flag_signature import LibvirtRebootFlagSignature  # noqa: F401
 from .ip_changed_after_reboot import IpChangedAfterReboot  # noqa: F401
-from .events_installation_attempts import EventsInstallationAttempts  # noqa: F401
 from .controller_warnings import ControllerWarnings  # noqa: F401
 from .user_has_logged_into_cluster import UserHasLoggedIntoCluster  # noqa: F401
 from .failed_request_triggers_host_timeout import (
