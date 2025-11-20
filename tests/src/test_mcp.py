@@ -6,7 +6,6 @@ def test_mcp_registers_tools_and_auth_closures() -> None:
     server = mod.AssistedServiceMCPServer()
 
     # Check closures exist
-    assert hasattr(server, "_get_offline_token")
     assert hasattr(server, "_get_access_token")
 
     # List tools

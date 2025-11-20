@@ -104,12 +104,16 @@ def test_get_access_token_sso_request_exception() -> None:
             "assisted_service_mcp.src.settings.settings.SSO_URL",
             "https://sso.example.com",
         ),
+        patch(
+            "assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN",
+            "offline-token",
+        ),
     ):
         mock_post.side_effect = requests.exceptions.RequestException("network error")
         with pytest.raises(
             RuntimeError, match="Failed to obtain access token from SSO"
         ):
-            mod.get_access_token(mcp, offline_token_func=lambda: "offline")
+            mod.get_access_token(mcp)
 
 
 def test_get_access_token_invalid_json_response() -> None:
@@ -127,6 +131,10 @@ def test_get_access_token_invalid_json_response() -> None:
             "assisted_service_mcp.src.settings.settings.SSO_URL",
             "https://sso.example.com",
         ),
+        patch(
+            "assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN",
+            "offline-token",
+        ),
     ):
         with pytest.raises(RuntimeError, match="Invalid SSO response"):
-            mod.get_access_token(mcp, offline_token_func=lambda: "offline")
+            mod.get_access_token(mcp)
