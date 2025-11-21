@@ -86,6 +86,7 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(
             self._wrap_tool(download_tools.cluster_credentials_download_url)
         )
+        self.mcp.tool()(self._wrap_tool(download_tools.cluster_logs_download_url))
 
         # Register version tools
         self.mcp.tool()(self._wrap_tool(version_tools.list_versions))

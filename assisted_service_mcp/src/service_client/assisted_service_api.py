@@ -114,6 +114,27 @@ class InventoryClient:
         ).geturl()
 
     @sanitize_exceptions
+    async def get_presigned_cluster_logs_url(self, cluster_id: str) -> str:
+        """
+        Get presigned URL for cluster logs.
+
+        Args:
+            cluster_id: The unique identifier of the cluster.
+
+        Returns:
+            str: The presigned URL for the cluster logs.
+        """
+        log.info("Getting presigned URL for cluster %s logs", cluster_id)
+        result = await self._api_call(
+            self._installer_api().v2_get_presigned_for_cluster_files,
+            cluster_id=cluster_id,
+            file_name="logs",
+        )
+        logs_url = cast(PresignedUrl, result).url
+        log.info("Successfully retrieved presigned URL for cluster %s logs", cluster_id)
+        return logs_url
+
+    @sanitize_exceptions
     async def get_cluster(
         self, cluster_id: str, get_unregistered_clusters: bool = False
     ) -> models.Cluster:
@@ -157,13 +178,7 @@ class InventoryClient:
     async def get_cluster_logs(
         self, cluster_id: str
     ) -> nestedarchive.RemoteNestedArchive:
-        result = await self._api_call(
-            self._installer_api().v2_get_presigned_for_cluster_files,
-            cluster_id=cluster_id,
-            file_name="logs",
-        )
-
-        logs_url = cast(PresignedUrl, result).url
+        logs_url = await self.get_presigned_cluster_logs_url(cluster_id)
         log.info("Downloading logs from %s", logs_url)
         return nestedarchive.RemoteNestedArchive(
             cast(str, logs_url), init_download=True

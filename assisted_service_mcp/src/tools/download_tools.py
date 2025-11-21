@@ -176,3 +176,34 @@ async def cluster_credentials_download_url(
     )
 
     return json.dumps(format_presigned_url(result))
+
+
+@track_tool_usage()
+async def cluster_logs_download_url(
+    get_access_token_func: Callable[[], str],
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to get logs for."),
+    ],
+) -> str:
+    """Get the logs URL for a cluster.
+
+    Returns:
+        str: JSON with presigned URL for downloading cluster logs.
+    """
+    log.info("Getting presigned URL for cluster %s logs", cluster_id)
+    try:
+        client = InventoryClient(get_access_token_func())
+        logs_url = await client.get_presigned_cluster_logs_url(cluster_id)
+    except Exception as e:
+        log.error("Failed to retrieve logs URL: %s", e)
+        return json.dumps(
+            {"error": f"Failed to retrieve logs URL for cluster {cluster_id}: {str(e)}"}
+        )
+
+    if not logs_url:
+        log.warning("No logs URL available for cluster %s", cluster_id)
+        return json.dumps({"error": "No logs URL available for cluster {cluster_id}"})
+
+    log.info("Successfully retrieved logs URL for cluster %s", cluster_id)
+    return json.dumps({"url": logs_url})
