@@ -898,3 +898,25 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             mock_api.get_infra_env_download_url.assert_called_once_with(
                 infra_env_id=infra_env_id
             )
+
+    @pytest.mark.asyncio
+    async def test_get_presigned_cluster_logs_url_success(
+        self, client: InventoryClient
+    ) -> None:
+        """Test successful presigned URL retrieval for cluster logs."""
+        cluster_id = "test-cluster-id"
+        presigned_url = create_test_presigned_url(
+            url="https://example.com/cluster-logs"
+        )
+
+        with patch.object(client, "_installer_api") as mock_installer_api:
+            mock_api = Mock()
+            mock_api.v2_get_presigned_for_cluster_files.return_value = presigned_url
+            mock_installer_api.return_value = mock_api
+
+            result = await client.get_presigned_cluster_logs_url(cluster_id)
+
+            assert result == presigned_url.url
+            mock_api.v2_get_presigned_for_cluster_files.assert_called_once_with(
+                cluster_id=cluster_id, file_name="logs"
+            )
