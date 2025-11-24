@@ -22,4 +22,14 @@ ENV LOG_TO_FILE=false
 
 EXPOSE 8000
 
+LABEL com.redhat.component="assisted-service-mcp" \
+      name="assisted-service-mcp" \
+      description="MCP server for OpenShift Assisted Installer Service" \
+      io.k8s.description="MCP server for OpenShift Assisted Installer Service" \
+      distribution-scope="public" \
+      release="main" \
+      version="latest" \
+      url="https://github.com/openshift-assisted/assisted-service-mcp" \
+      vendor="Red Hat, Inc."
+
 CMD ["uv", "--cache-dir", "/tmp/uv-cache", "run", "python", "-m", "assisted_service_mcp.src.main"]
