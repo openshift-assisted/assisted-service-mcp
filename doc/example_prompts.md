@@ -67,6 +67,50 @@ Set or update the SSH public key for a cluster to allow SSH access to nodes.
 **Example Prompts:**
 - "Set the SSH key for my-cluster to ssh-rsa AAAAB3NzaC1yc2E..."
 
+### `set_cluster_platform`
+Set or update the infrastructure platform type for a cluster.
+
+**Example Prompts:**
+- "Set the platform for my-cluster to vsphere"
+
+### `analyze_cluster_logs`
+Analyze Assisted Installer logs for a cluster and summarize findings.
+
+**Example Prompts:**
+- "Analyze the logs for my-cluster and tell me what issues you find"
+- "Check the logs for cluster my-cluster and summarize any problems"
+- "Review the installation logs for my-cluster"
+
+## Network Configuration
+
+### `validate_nmstate_yaml`
+Validate an NMState YAML document before applying to hosts.
+
+**Example Prompts:**
+- "Validate this NMState YAML configuration"
+- "Check if this network configuration YAML is valid"
+
+### `generate_nmstate_yaml`
+Generate NMState YAML from structured network parameters.
+
+**Example Prompts:**
+- "Create a network configuration YAML for a host with static IP 10.0.0.5"
+
+### `alter_static_network_config_nmstate_for_host`
+Add, replace, or delete static network configuration for a host.
+
+**Example Prompts:**
+- "Add a new static network configuration for a host in my-cluster"
+- "Update the network config for mac address c5:d6:bc:f0:05:20 to set ip address 10.0.0.5 with CIDR length 24
+- "Remove the static network configuration for my-cluster"
+
+### `list_static_network_config`
+List all static network configurations for cluster hosts.
+
+**Example Prompts:**
+- "Show me all static network configurations for my-cluster"
+- "List the network configs configured for hosts in my-cluster"
+
 ## Downloads and Resources
 
 ### `cluster_iso_download_url`
