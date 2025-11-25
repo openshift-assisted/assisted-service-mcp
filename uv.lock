@@ -143,7 +143,10 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "assisted-service-client" },
+    { name = "authlib" },
+    { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "mcp" },
     { name = "nestedarchive" },
@@ -156,6 +159,7 @@ dependencies = [
     { name = "requests" },
     { name = "retry" },
     { name = "tabulate" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -183,7 +187,10 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "assisted-service-client", specifier = ">=2.41.0.post3" },
+    { name = "authlib", specifier = ">=1.3.0" },
+    { name = "cryptography", specifier = ">=41.0.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "mcp", specifier = ">=1.15.0" },
     { name = "nestedarchive", specifier = ">=0.2.4" },
@@ -196,6 +203,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "retry", specifier = ">=0.9.2" },
     { name = "tabulate", specifier = ">=0.9.0" },
+    { name = "uvicorn", specifier = ">=0.30.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -234,6 +242,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/6b/5c/685e6633917e101e5dcb62b9dd76946cbb57c26e133bae9e0cd36033c0a9/attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11", size = 934251, upload-time = "2025-10-06T13:54:44.725Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3a/2a/7cc015f5b9f5db42b7d48157e23356022889fc354a2813c15934b7cb5c0e/attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373", size = 67615, upload-time = "2025-10-06T13:54:43.17Z" },
+]
+
+[[package]]
+name = "authlib"
+version = "1.6.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cd/3f/1d3bbd0bf23bdd99276d4def22f29c27a914067b4cf66f753ff9b8bbd0f3/authlib-1.6.5.tar.gz", hash = "sha256:6aaf9c79b7cc96c900f0b284061691c5d4e61221640a948fe690b556a6d6d10b", size = 164553, upload-time = "2025-10-02T13:36:09.489Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/aa/5082412d1ee302e9e7d80b6949bc4d2a8fa1149aaab610c5fc24709605d6/authlib-1.6.5-py2.py3-none-any.whl", hash = "sha256:3e0e0507807f842b02175507bdee8957a1d5707fd4afb17c32fb43fee90b6e3a", size = 243608, upload-time = "2025-10-02T13:36:07.637Z" },
 ]
 
 [[package]]

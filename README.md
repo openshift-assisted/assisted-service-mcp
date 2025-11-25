@@ -4,18 +4,90 @@ MCP server for interacting with the OpenShift assisted installer API.
 
 Diagnose cluster failures and find out how to fix them.
 
-Try it out:
+## Quick Start
 
-1. Clone the repo:
+### Option 1: Simple Token Setup
+
+1. **Get your OpenShift API token** from https://cloud.redhat.com/openshift/token
+
+2. **Clone and run**:
+  ```bash
+  git clone git@github.com:openshift-assisted/assisted-service-mcp.git
+  cd assisted-service-mcp
+  OFFLINE_TOKEN=<your token> uv run python -m assisted_service_mcp.src.main
+  ```
+
+3. **Configure your MCP client** (Cursor/Copilot):
+  ```json
+  {
+    "assisted-service-mcp": {
+      "transport": "streamable-http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+  ```
+
+### Option 2: OAuth Authentication (Advanced)
+
+For automatic token management with Red Hat SSO:
+
+1. **Clone the repo**:
+  ```bash
+  git clone git@github.com:openshift-assisted/assisted-service-mcp.git
+  cd assisted-service-mcp
+  ```
+
+2. **Start the OAuth-enabled server**:
+  ```bash
+  ./start-oauth-server.sh
+  ```
+
+3. **Configure your MCP client** (Cursor/Copilot):
+  ```json
+  {
+    "assisted-service-mcp": {
+      "transport": "streamable-http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+  ```
+
+4. **Connect and authenticate**: When you connect from Cursor, a browser will open automatically for Red Hat SSO authentication.
+
+**For detailed OAuth setup instructions, see [OAUTH_SETUP.md](doc/OAUTH_SETUP.md)**
+
+### Option 3: OCM-Offline-Token Header
+#### Note: this option is available only when OAuth is disabled 
+
+1. **Get your OpenShift API token** from https://cloud.redhat.com/openshift/token
+
+2. **Clone and run**:
+  ```bash
+  git clone git@github.com:openshift-assisted/assisted-service-mcp.git
+  cd assisted-service-mcp
+  uv run python -m assisted_service_mcp.src.main
+  ```
+
+```json
+    "mcpServers": {
+      "assisted": {
+        "transport": "streamable-http",
+        "url": "http://127.0.0.1:8000/mcp",
+        "headers": {
+          "OCM-Offline-Token": "<offline token>"
+        }
+      }
+    }
 ```
-git clone git@github.com:openshift-assisted/assisted-service-mcp.git
-```
 
-2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
+## Advanced Transport Options
 
-3. The server is started and configured differently depending on what transport you want to use
+The recommended transport is streamable-http as shown in the examples above.
+Other transport methods or detailed configuration:
 
-For STDIO:
+**Configure the server** depending on your preferred transport:
+
+#### STDIO Transport
 
 In VSCode for example:
 ```json
@@ -32,44 +104,49 @@ In VSCode for example:
                     "/path/to/assisted-service-mcp/assisted_service_mcp/src/main.py"
                 ],
                 "env": {
-                    "OFFLINE_TOKEN": <your token>
+                    "OFFLINE_TOKEN": "<your token>"
                 }
             }
         }
     }
 ```
 
-For SSE (recommended):
+#### Server-Sent Events (SSE) Transport (Alternative)
+#### Note: SSE is supported for backward compatibility, Streamable HTTP is the recommended transport
+Start the server with SSE transport:
 
-Start the server in a terminal:
+`OFFLINE_TOKEN=<your token> TRANSPORT=sse uv run python -m assisted_service_mcp.src.main`
 
-`OFFLINE_TOKEN=<your token> uv run assisted_service_mcp.src.main`
-
-Configure the server in the client:
-
-```json
-    "assisted-sse": {
-      "transport": "sse",
-      "url": "http://localhost:8000/sse"
-    }
-```
-
-### Providing the Offline Token via Request Header
-
-If you do not set the `OFFLINE_TOKEN` environment variable, you can provide the token as a request header.
-When configuring your MCP client, add the `OCM-Offline-Token` header:
+Configure the client:
 
 ```json
-    "assisted-sse": {
-      "transport": "sse",
-      "url": "http://localhost:8000/sse",
-      "headers": {
-        "OCM-Offline-Token": "<your token>"
-      }
-    }
+{
+  "assisted-sse": {
+    "transport": "sse",
+    "url": "http://127.0.0.1:8000/sse"
+  }
+}
 ```
 
-4. Ask about your clusters:
+## Authentication Methods
+
+The server supports multiple authentication methods with automatic priority handling:
+
+1. **Authorization Header** - `Bearer <token>` in request headers
+2. **OAuth Flow** (when `OAUTH_ENABLED=true`) - Automatic browser-based authentication
+3. **Environment Variable** - `OFFLINE_TOKEN` environment variable
+4. **OCM-Offline-Token Header** - `OCM-Offline-Token: <token>` in request headers 
+
+### OAuth Benefits (Advanced Users)
+
+**No Manual Token Management** - Tokens are obtained and cached automatically
+**Secure PKCE Flow** - Enhanced OAuth security with Proof Key for Code Exchange
+**Automatic Token Refresh** - Expired tokens are refreshed transparently using refresh tokens
+**Multi-Client Support** - Different MCP clients can authenticate independently
+
+## Usage
+
+Ask about your clusters:
 ![Example prompt asking about a cluster](images/cluster-prompt-example.png)
 
 ## Available Tools
