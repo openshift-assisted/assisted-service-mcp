@@ -33,5 +33,6 @@ def test_mcp_registers_tools_and_auth_closures() -> None:
         "generate_nmstate_yaml",
         "alter_static_network_config_nmstate_for_host",
         "list_static_network_config",
+        "cluster_logs_download_url",
     }
     assert expected.issubset(set(tool_names))
