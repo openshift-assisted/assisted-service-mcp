@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-311:9.7-1764607342
+FROM registry.access.redhat.com/ubi9/python-311:9.7-1765312003
 
 ENV APP_HOME=/opt/app-root/src
 WORKDIR ${APP_HOME}
