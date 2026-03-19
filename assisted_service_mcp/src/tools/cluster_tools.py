@@ -26,6 +26,10 @@ async def cluster_info(
     installation progress, and host information. Use this to check cluster state, verify
     configuration, or monitor installation progress.
 
+    Automatically detects cluster type based on the configured INVENTORY_URL:
+    - Assisted Installer API → Returns self-managed cluster info (OCP, SNO)
+    - OCM API → Returns managed service cluster info (ROSA, ARO, OSD)
+
     Prerequisites:
         - Valid cluster UUID (from list_clusters or create_cluster)
 
@@ -40,7 +44,35 @@ async def cluster_info(
     client = InventoryClient(get_access_token_func())
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
-    return result.to_str()
+
+    # Handle both Assisted Installer (models.Cluster) and OCM (dict) responses
+    if isinstance(result, dict):
+        # OCM cluster - format manually
+        formatted_output = f"OCM Cluster Details: {result.get('name', 'Unknown')}\n\n"
+        formatted_output += f"Basic Information:\n"
+        formatted_output += f"- Cluster ID: {result.get('id', 'Unknown')}\n"
+        formatted_output += f"- State: {result.get('state', 'Unknown')}\n"
+        formatted_output += f"- OpenShift Version: {result.get('version', {}).get('raw_id', 'Unknown')}\n"
+        formatted_output += f"- Created: {result.get('creation_timestamp', 'Unknown')}\n\n"
+
+        formatted_output += f"Cloud Configuration:\n"
+        formatted_output += f"- Cloud Provider: {result.get('cloud_provider', {}).get('id', 'Unknown')}\n"
+        formatted_output += f"- Region: {result.get('region', {}).get('id', 'Unknown')}\n"
+        formatted_output += f"- Multi-AZ: {result.get('multi_az', False)}\n\n"
+
+        formatted_output += f"Access:\n"
+        formatted_output += f"- API URL: {result.get('api', {}).get('url', 'Unknown')}\n"
+        formatted_output += f"- Console URL: {result.get('console', {}).get('url', 'Unknown')}\n\n"
+
+        formatted_output += f"Node Information:\n"
+        nodes = result.get('nodes', {})
+        formatted_output += f"- Compute nodes: {nodes.get('compute', 0)}\n"
+        formatted_output += f"- Compute machine type: {nodes.get('compute_machine_type', {}).get('id', 'Unknown')}\n"
+
+        return formatted_output
+    else:
+        # Assisted Installer cluster - use to_str() method
+        return result.to_str()
 
 
 @track_tool_usage()
@@ -51,36 +83,48 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     basic information about each cluster (name, ID, version, status) without detailed
     configuration. Use cluster_info() to get comprehensive details about a specific cluster.
 
+    Automatically detects cluster type based on the configured INVENTORY_URL:
+    - Assisted Installer API → Lists self-managed clusters (OCP, SNO)
+    - OCM API → Lists managed service clusters (ROSA, ARO, OSD)
+
     Returns:
         str: A formatted list of clusters, each containing:
             - Cluster name
             - Unique cluster ID
             - OpenShift version
             - Current cluster status (e.g., "ready", "installing", "error")
+            - Cloud provider and region (for OCM managed clusters)
     """
     log.info("Retrieving list of all clusters")
     client = InventoryClient(get_access_token_func())
     clusters = await client.list_clusters()
-    resp = [
-        {
-            "name": cluster["name"],
-            "id": cluster["id"],
-            "openshift_version": cluster.get("openshift_version", "Unknown"),
-            "status": cluster["status"],
-        }
-        for cluster in clusters
-    ]
-    log.info("Successfully retrieved %s clusters", len(resp))
-    if not resp:
+
+    if not clusters:
         return "No clusters found."
 
     formatted_output = ""
-    for cluster in resp:
-        formatted_output += f"{cluster['name']}\n"
-        formatted_output += f"- ID: {cluster['id']}\n"
-        formatted_output += f"- Openshift version: {cluster['openshift_version']}\n"
-        formatted_output += f"- Status: {cluster['status']}\n\n"
+    for cluster in clusters:
+        # Extract common fields
+        name = cluster.get("name", "Unknown")
+        cluster_id = cluster.get("id", "Unknown")
+        version = cluster.get("openshift_version") or cluster.get("version", {}).get("raw_id", "Unknown")
+        status = cluster.get("status") if isinstance(cluster.get("status"), str) else cluster.get("status", {}).get("state", cluster.get("state", "Unknown"))
 
+        # Format output
+        formatted_output += f"{name}\n"
+        formatted_output += f"- ID: {cluster_id}\n"
+        formatted_output += f"- Openshift version: {version}\n"
+        formatted_output += f"- Status: {status}\n"
+
+        # Add OCM-specific fields if present
+        if "cloud_provider" in cluster:
+            formatted_output += f"- Cloud provider: {cluster.get('cloud_provider', {}).get('id', 'Unknown')}\n"
+        if "region" in cluster:
+            formatted_output += f"- Region: {cluster.get('region', {}).get('id', 'Unknown')}\n"
+
+        formatted_output += "\n"
+
+    log.info("Successfully retrieved %s clusters", len(clusters))
     return formatted_output
 
 
@@ -398,3 +442,11 @@ async def analyze_cluster_logs(
     client = InventoryClient(get_access_token_func())
     results = await analyze_cluster(cluster_id=cluster_id, api_client=client)
     return "\n\n".join([str(r) for r in results])
+
+
+# NOTE: ocm_list_clusters() has been removed as list_clusters() now handles both
+# Assisted Installer and OCM clusters automatically via auto-detection based on INVENTORY_URL
+
+
+# NOTE: ocm_cluster_info() has been removed as cluster_info() now handles both
+# Assisted Installer and OCM clusters automatically via auto-detection based on INVENTORY_URL
