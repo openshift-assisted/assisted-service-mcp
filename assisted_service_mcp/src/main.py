@@ -10,7 +10,8 @@ from assisted_service_mcp.src.logger import log
 def main() -> None:
     """Start the MCP server.
 
-    Initializes the server, sets up metrics, and starts the uvicorn server.
+    Initializes the server, sets up metrics, and starts the server with
+    the configured transport (stdio, sse, or streamable-http).
     """
     try:
         log.info("Starting Assisted Service MCP Server")
@@ -26,12 +27,18 @@ def main() -> None:
         initiate_metrics(tool_names)
         log.info("Initialized metrics for %s tools", len(tool_names))
 
-        # Add metrics endpoint
-        app.add_route("/metrics", metrics)
-        log.info("Metrics endpoint available at /metrics")
+        # Handle stdio transport differently - no HTTP server needed
+        if settings.TRANSPORT == "stdio":
+            log.info("Running in stdio mode")
+            # Run the MCP server directly with stdio transport
+            server.mcp.run()
+        else:
+            # Add metrics endpoint for HTTP transports
+            app.add_route("/metrics", metrics)
+            log.info("Metrics endpoint available at /metrics")
 
-        # Start the server using settings
-        uvicorn.run(app, host=settings.MCP_HOST, port=settings.MCP_PORT)
+            # Start the HTTP server using uvicorn
+            uvicorn.run(app, host=settings.MCP_HOST, port=settings.MCP_PORT)
 
     except KeyboardInterrupt:
         log.info("Received keyboard interrupt, shutting down")
