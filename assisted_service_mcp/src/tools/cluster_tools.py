@@ -113,7 +113,7 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
         # Format output
         formatted_output += f"{name}\n"
         formatted_output += f"- ID: {cluster_id}\n"
-        formatted_output += f"- Openshift version: {version}\n"
+        formatted_output += f"- OpenShift version: {version}\n"
         formatted_output += f"- Status: {status}\n"
 
         # Add OCM-specific fields if present
@@ -442,11 +442,3 @@ async def analyze_cluster_logs(
     client = InventoryClient(get_access_token_func())
     results = await analyze_cluster(cluster_id=cluster_id, api_client=client)
     return "\n\n".join([str(r) for r in results])
-
-
-# NOTE: ocm_list_clusters() has been removed as list_clusters() now handles both
-# Assisted Installer and OCM clusters automatically via auto-detection based on INVENTORY_URL
-
-
-# NOTE: ocm_cluster_info() has been removed as cluster_info() now handles both
-# Assisted Installer and OCM clusters automatically via auto-detection based on INVENTORY_URL

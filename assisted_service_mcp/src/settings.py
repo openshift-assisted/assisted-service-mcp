@@ -68,15 +68,6 @@ class Settings(BaseSettings):
         },
     )
 
-    OCM_URL: str = Field(
-        default="https://api.openshift.com/api/clusters_mgmt/v1",
-        json_schema_extra={
-            "env": "OCM_URL",
-            "description": "OCM Clusters Management API base URL for managed clusters (ROSA, ARO, OSD)",
-            "example": "https://api.openshift.com/api/clusters_mgmt/v1",
-        },
-    )
-
     PULL_SECRET_URL: str = Field(
         default="https://api.openshift.com/api/accounts_mgmt/v1/access_token",
         json_schema_extra={

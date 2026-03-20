@@ -42,7 +42,6 @@ class InventoryClient:
         self._pull_secret: Optional[str] = None
         # Read configuration at construction time so tests can patch settings
         self.inventory_url: str = get_setting("INVENTORY_URL")
-        self.ocm_url: str = get_setting("OCM_URL")
         self.client_debug: bool = bool(get_setting("CLIENT_DEBUG"))
 
     async def _api_call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
@@ -605,14 +604,13 @@ class InventoryClient:
         """
         List all OCM managed clusters (ROSA, ARO, OSD).
 
-        Uses INVENTORY_URL when it points to clusters_mgmt API.
+        This method should only be called when INVENTORY_URL points to the OCM API.
+        Uses the clusters_mgmt API endpoint to retrieve managed clusters.
 
         Returns:
             list[dict[str, Any]]: A list of OCM cluster dictionaries containing cluster information.
         """
-        # Use INVENTORY_URL if it points to OCM, otherwise fall back to OCM_URL
-        base_url = self.inventory_url if "clusters_mgmt" in self.inventory_url else self.ocm_url
-        url = f"{base_url}/clusters"
+        url = f"{self.inventory_url}/clusters"
         headers = {"Authorization": f"Bearer {self.access_token}"}
 
         log.info("Listing OCM clusters from %s", url)
@@ -634,7 +632,8 @@ class InventoryClient:
         """
         Get detailed information about an OCM managed cluster.
 
-        Uses INVENTORY_URL when it points to clusters_mgmt API.
+        This method should only be called when INVENTORY_URL points to the OCM API.
+        Uses the clusters_mgmt API endpoint to retrieve managed cluster details.
 
         Args:
             cluster_id: The unique identifier of the OCM cluster.
@@ -642,9 +641,7 @@ class InventoryClient:
         Returns:
             dict[str, Any]: OCM cluster information dictionary.
         """
-        # Use INVENTORY_URL if it points to OCM, otherwise fall back to OCM_URL
-        base_url = self.inventory_url if "clusters_mgmt" in self.inventory_url else self.ocm_url
-        url = f"{base_url}/clusters/{cluster_id}"
+        url = f"{self.inventory_url}/clusters/{cluster_id}"
         headers = {"Authorization": f"Bearer {self.access_token}"}
 
         log.info("Getting OCM cluster %s from %s", cluster_id, url)
