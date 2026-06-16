@@ -149,7 +149,8 @@
       padding: 0.45rem 0.55rem;
     }
     thead th {
-      background: #f3f3f3;
+      background: var(--bg-surface);
+      color: var(--text-muted);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -162,6 +163,16 @@
       font: inherit;
       font-size: 0.85rem;
       padding: 0.25rem 0.4rem;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      -webkit-appearance: none;
+      appearance: none;
+      border-radius: 0.25rem;
+    }
+    .role-select option {
+      background: var(--bg-surface);
+      color: var(--text-primary);
       border: 1px solid var(--border);
       border-radius: 0.25rem;
       background: #fff;
@@ -202,6 +213,7 @@
       padding: 0.5rem 0.65rem;
       font: inherit;
       color: var(--text-primary);
+      background: var(--bg-surface);
       background: #fff;
     }
     .input:focus {
@@ -445,33 +457,35 @@
       window.mcpApp = app;
 
       function trySetCluster(id) {
-        if (id && typeof id === "string" && id.length > 8 && !state.clusterId) {
+        if (id && typeof id === "string" && id.length > 8) {
           state.clusterId = id;
           render();
           loadHosts();
+          return true;
         }
+        return false;
       }
 
-      app.ontoolinput = (params) => {
-        const args = params.arguments || params.params?.arguments || {};
-        trySetCluster(args.cluster_id);
-      };
-
-      app.ontoolresult = (params) => {
-        const sc = params.structuredContent || {};
-        trySetCluster(sc.cluster_id);
-        if (!state.clusterId && sc.result) {
+      function extractClusterId(obj) {
+        if (!obj || typeof obj !== "object") return;
+        if (trySetCluster(obj.cluster_id)) return;
+        if (trySetCluster(obj.arguments?.cluster_id)) return;
+        if (trySetCluster(obj.params?.arguments?.cluster_id)) return;
+        const sc = obj.structuredContent || {};
+        if (trySetCluster(sc.cluster_id)) return;
+        if (sc.result) {
           try {
             const parsed = typeof sc.result === "string" ? JSON.parse(sc.result) : sc.result;
-            trySetCluster(parsed.cluster_id);
+            if (trySetCluster(parsed.cluster_id)) return;
           } catch {}
         }
-        if (!state.clusterId) {
-          const content = params.content || sc.content || [];
-          const txt = (Array.isArray(content) ? content : []).find(c => c.type === "text")?.text || "";
-          try { trySetCluster(JSON.parse(txt).cluster_id); } catch {}
-        }
-      };
+        const content = obj.content || sc.content || [];
+        const txt = (Array.isArray(content) ? content : []).find(c => c.type === "text")?.text || "";
+        try { trySetCluster(JSON.parse(txt).cluster_id); } catch {}
+      }
+
+      app.ontoolinput = (params) => { if (!state.clusterId) extractClusterId(params); };
+      app.ontoolresult = (params) => { if (!state.clusterId) extractClusterId(params); };
     }).catch(() => {});
 
     async function callTool(name, args = {}) {
@@ -515,6 +529,7 @@
       state.discoveryIsoUrl = data.discovery_iso_url || null;
       setStatus("Loaded " + state.hosts.length + " host(s).", "success");
       render();
+      refreshProgress();
     }
 
     async function setHostRole(hostId, role) {
@@ -618,6 +633,16 @@
     }
 
     /* ---------- Readiness checks ---------- */
+    const IN_PROGRESS_STATUSES = new Set([
+      "installing", "preparing-for-installation", "finalizing",
+      "update-image-started", "installing-pending-user-action",
+    ]);
+    function isInstallInProgress() {
+      return state.isStartingInstallation || IN_PROGRESS_STATUSES.has(state.installationStatus);
+    }
+    function isSno() {
+      return state.hosts.length <= 1;
+    }
     function hostsWithRoles() {
       return state.hosts.filter(h => h.role && h.role !== "auto-assign");
     }
@@ -627,9 +652,8 @@
     function canInstall() {
       return state.hosts.length > 0
         && hostsWithRoles().length === state.hosts.length
-        && vipsConfigured()
-        && !state.isStartingInstallation
-        && state.installationStatus !== "installing"
+        && (isSno() || vipsConfigured())
+        && !isInstallInProgress()
         && state.installationStatus !== "installed";
     }
 
@@ -787,6 +811,7 @@
     }
 
     function renderVipsSection() {
+      if (isSno()) return "";
       return `
         <div class="card">
           <h2>Virtual IPs (VIPs)</h2>
@@ -841,7 +866,7 @@
           </div>`;
       }
 
-      if (state.installationStatus === "installing" || state.isStartingInstallation) {
+      if (isInstallInProgress()) {
         return `
           <div class="card">
             <h2>Installation</h2>
@@ -863,8 +888,7 @@
           <h2>Installation</h2>
           <p class="readiness">
             <strong>${assigned} of ${total}</strong> host(s) with roles assigned
-            &nbsp;&middot;&nbsp;
-            VIPs: <strong>${vipsOk ? "configured" : "not configured"}</strong>
+            ${isSno() ? "" : `&nbsp;&middot;&nbsp; VIPs: <strong>${vipsOk ? "configured" : "not configured"}</strong>`}
           </p>
           <div class="btn-row">
             <button class="btn btn--primary" data-action="show-confirm"

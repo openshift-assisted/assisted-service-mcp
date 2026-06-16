@@ -820,8 +820,8 @@ function renderDetailView(details, title) {
   const actionsDiv = document.getElementById("detail-actions");
   actionsDiv.innerHTML = "";
 
-  const status = (details["Status"] || "").toLowerCase();
-  if (SETUP_STATUSES.includes(status)) {
+  const clusterStatus = (details["Status"] || "").toLowerCase();
+  if (SETUP_STATUSES.includes(clusterStatus)) {
     const setupBtn = document.createElement("button");
     setupBtn.className = "success";
     setupBtn.textContent = "Setup Cluster";
@@ -842,12 +842,12 @@ function renderDetailView(details, title) {
 
   const fu = document.getElementById("detail-follow-ups");
   fu.innerHTML = "";
-  const status = (details["Status"] || "").toLowerCase();
+  const detailStatus = (details["Status"] || "").toLowerCase();
   const prompts = [];
-  if (["pending-for-input", "insufficient", "ready"].includes(status)) {
+  if (["pending-for-input", "insufficient", "ready"].includes(detailStatus)) {
     prompts.push("Set up this cluster");
   }
-  if (["installing"].includes(status)) {
+  if (["installing"].includes(detailStatus)) {
     prompts.push("Check the installation progress");
   }
   prompts.push("Show cluster events for troubleshooting");
@@ -1032,12 +1032,10 @@ function initMcp(module) {
   const App = module.App || module.default?.App || module.default;
   const AppClass = App.App || App;
   const app = new AppClass({ name: "Cluster Inventory", version: "1.0.0" });
+  app.connect().then(() => applyTheme(module, app));
   window.mcpApp = app;
-  app.connect().then(() => {
-    applyTheme(module, app);
-    mcpReady = true;
-    loadClusters();
-  });
+  mcpReady = true;
+  loadClusters();
 }
 
 import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(initMcp).catch(err => {

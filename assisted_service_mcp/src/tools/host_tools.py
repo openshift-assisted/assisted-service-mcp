@@ -56,7 +56,7 @@ async def get_cluster_hosts(
     except Exception as exc:
         log.warning("Could not get ISO URL for cluster %s: %s", cluster_id, exc)
 
-    result = {"hosts": hosts, "discovery_iso_url": iso_url}
+    result = {"cluster_id": cluster_id, "hosts": hosts, "discovery_iso_url": iso_url}
     log.info("Found %d host(s) for cluster %s", len(hosts), cluster_id)
     return json.dumps(result)
 

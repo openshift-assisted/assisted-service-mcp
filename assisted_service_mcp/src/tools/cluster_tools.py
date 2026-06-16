@@ -428,7 +428,7 @@ async def get_installation_progress(
     progress_pct = 0
     if hasattr(cluster, "progress") and cluster.progress:
         progress_pct = getattr(
-            cluster.progress, "installing_stage_percentage", 0
+            cluster.progress, "total_percentage", 0
         ) or 0
 
     result = {

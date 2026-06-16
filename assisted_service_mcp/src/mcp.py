@@ -118,29 +118,35 @@ class AssistedServiceMCPServer:
         _cre = AppConfig(resource_uri=CREATOR_RESOURCE_URI)
         _set = AppConfig(resource_uri=SETUP_RESOURCE_URI)
 
-        # Cluster management tools
-        self.mcp.tool(app=_inv)(self._wrap_tool(cluster_tools.cluster_info))
+        # Widget-opening tools (app= makes them render a UI dashboard)
         self.mcp.tool(app=_inv)(self._wrap_tool(cluster_tools.list_clusters))
-        self.mcp.tool(app=_cre)(self._wrap_tool(cluster_tools.create_cluster))
-        self.mcp.tool(app=_set)(self._wrap_tool(cluster_tools.set_cluster_vips))
+        self.mcp.tool(app=_cre)(
+            self._wrap_tool(cluster_tools.load_creator_dashboard)
+        )
+        self.mcp.tool(app=_set)(self._wrap_tool(host_tools.get_cluster_hosts))
+
+        # Cluster management tools (called from within widgets or by LLM)
+        self.mcp.tool()(self._wrap_tool(cluster_tools.cluster_info))
+        self.mcp.tool()(self._wrap_tool(cluster_tools.create_cluster))
+        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_vips))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
-        self.mcp.tool(app=_set)(self._wrap_tool(cluster_tools.install_cluster))
+        self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_ssh_key))
         if settings.ENABLE_TROUBLESHOOTING_TOOLS:
             self.mcp.tool()(self._wrap_tool(cluster_tools.analyze_cluster_logs))
 
         # Event monitoring tools
-        self.mcp.tool(app=_inv)(self._wrap_tool(event_tools.cluster_events))
+        self.mcp.tool()(self._wrap_tool(event_tools.cluster_events))
         self.mcp.tool()(self._wrap_tool(event_tools.host_events))
 
         # Download/URL tools
-        self.mcp.tool(app=_set)(
+        self.mcp.tool()(
             self._wrap_tool(download_tools.cluster_iso_download_url)
         )
         self.mcp.tool()(
             self._wrap_tool(download_tools.cluster_credentials_download_url)
         )
-        self.mcp.tool(app=_inv)(
+        self.mcp.tool()(
             self._wrap_tool(download_tools.cluster_logs_download_url)
         )
 
@@ -152,21 +158,15 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(self._wrap_tool(operator_tools.add_operator_bundle_to_cluster))
 
         # Host management tools
-        self.mcp.tool(app=_set)(self._wrap_tool(host_tools.set_host_role))
-        self.mcp.tool(app=_set)(self._wrap_tool(host_tools.get_cluster_hosts))
+        self.mcp.tool()(self._wrap_tool(host_tools.set_host_role))
 
         # Installation progress
-        self.mcp.tool(app=_set)(
+        self.mcp.tool()(
             self._wrap_tool(cluster_tools.get_installation_progress)
         )
 
         # Health check
         self.mcp.tool()(self._wrap_tool(health_tools.check_prerequisites))
-
-        # UI dashboard trigger
-        self.mcp.tool(app=_cre)(
-            self._wrap_tool(cluster_tools.load_creator_dashboard)
-        )
 
         # Network configuration tools
         self.mcp.tool()(self._wrap_tool(network_tools.validate_nmstate_yaml))
@@ -203,9 +203,11 @@ class AssistedServiceMCPServer:
 
         @wraps(tool_func)
         async def wrapped(*args: Any, **kwargs: Any) -> Any:
-            # Generate token off the event loop; pass a cheap closure to tools
             token = await asyncio.to_thread(self._get_access_token)
-            return await tool_func(lambda: token, *args, **kwargs)
+            result = await tool_func(lambda: token, *args, **kwargs)
+            if isinstance(result, bytes):
+                result = result.decode("utf-8", errors="replace")
+            return result
 
         # Get the original function signature
         sig = inspect.signature(tool_func)
