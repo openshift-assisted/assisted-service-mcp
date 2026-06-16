@@ -104,6 +104,23 @@ async def list_clusters(
     return formatted_output
 
 
+async def open_cluster_creator(
+    _get_access_token_func: Callable[[], str],
+    ui_supported: bool,
+) -> str:
+    """Open the Cluster Creator dashboard.
+
+    Use when the user wants to create a new self-managed OpenShift cluster.
+    This opens the interactive creation form where the user can configure
+    all cluster parameters. After calling this, call create_cluster to
+    open the interactive Creator UI form.
+
+    Returns:
+        str: Instruction to proceed with create_cluster.
+    """
+    return "Cluster Creator dashboard loaded."
+
+
 @track_tool_usage()
 async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     get_access_token_func: Callable[[], str],

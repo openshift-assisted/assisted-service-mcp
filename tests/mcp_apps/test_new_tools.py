@@ -6,7 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from assisted_service_mcp.src.tools.host_tools import get_cluster_hosts
-from assisted_service_mcp.src.tools.cluster_tools import get_installation_progress
+from assisted_service_mcp.src.tools.cluster_tools import (
+    get_installation_progress,
+    open_cluster_creator,
+)
 from assisted_service_mcp.src.tools.health_tools import check_prerequisites
 
 
@@ -162,3 +165,17 @@ class TestCheckPrerequisites:
         assert data["offline_token_set"] is True
         assert data["api_reachable"] is False
         assert "SSO unreachable" in data["api_error"]
+
+
+class TestOpenClusterCreator:
+    """Tests for open_cluster_creator tool."""
+
+    @pytest.mark.asyncio
+    async def test_ui_supported_returns_dashboard_loaded(self) -> None:
+        result = await open_cluster_creator(_mock_token, True)
+        assert "dashboard loaded" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_text_only_also_returns_dashboard_loaded(self) -> None:
+        result = await open_cluster_creator(_mock_token, False)
+        assert "dashboard loaded" in result.lower()

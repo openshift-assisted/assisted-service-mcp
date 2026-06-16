@@ -114,18 +114,20 @@ class AssistedServiceMCPServer:
         - Host management tools
         - Network configuration tools
         """
-        _inv = AppConfig(resource_uri=INVENTORY_RESOURCE_URI)
-        _cre = AppConfig(resource_uri=CREATOR_RESOURCE_URI)
-        _set = AppConfig(resource_uri=SETUP_RESOURCE_URI)
+        _model_and_app = ["app", "model"]
+        _inv = AppConfig(resource_uri=INVENTORY_RESOURCE_URI, visibility=_model_and_app)
+        _cre = AppConfig(resource_uri=CREATOR_RESOURCE_URI, visibility=_model_and_app)
+        _set = AppConfig(resource_uri=SETUP_RESOURCE_URI, visibility=_model_and_app)
 
-        # Unified tools: app= opens the UI widget for clients that
-        # support it; the tool function itself branches on ui_supported
-        # to decide whether to append text follow-ups.
+        # Widget-opening tools (app= renders a UI dashboard)
         self.mcp.tool(app=_inv)(self._wrap_tool(cluster_tools.list_clusters))
-        self.mcp.tool(app=_cre)(self._wrap_tool(cluster_tools.create_cluster))
+        self.mcp.tool(app=_cre)(
+            self._wrap_tool(cluster_tools.open_cluster_creator)
+        )
         self.mcp.tool(app=_set)(self._wrap_tool(host_tools.get_cluster_hosts))
 
         # Cluster management tools
+        self.mcp.tool()(self._wrap_tool(cluster_tools.create_cluster))
         self.mcp.tool()(self._wrap_tool(cluster_tools.cluster_info))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_vips))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
