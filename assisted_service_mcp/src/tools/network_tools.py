@@ -21,6 +21,7 @@ from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env
 @track_tool_usage()
 async def validate_nmstate_yaml(
     _get_access_token_func: Callable[[], str],
+    _ui_supported: bool,
     nmstate_yaml: Annotated[
         str,
         Field(
@@ -47,6 +48,7 @@ async def validate_nmstate_yaml(
 @track_tool_usage()
 async def generate_nmstate_yaml(
     _get_access_token_func: Callable[[], str],
+    _ui_supported: bool,
     params: Annotated[
         NMStateTemplateParams,
         Field(
@@ -83,6 +85,7 @@ async def generate_nmstate_yaml(
 @track_tool_usage()
 async def alter_static_network_config_nmstate_for_host(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to configure."),
@@ -149,6 +152,7 @@ async def alter_static_network_config_nmstate_for_host(
 @track_tool_usage()
 async def list_static_network_config(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to query."),

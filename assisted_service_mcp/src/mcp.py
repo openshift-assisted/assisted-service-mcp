@@ -7,8 +7,8 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from fastmcp import FastMCP
-from fastmcp.apps import AppConfig, ResourceCSP
+from fastmcp import Context, FastMCP
+from fastmcp.apps import AppConfig, ResourceCSP, UI_EXTENSION_ID
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
@@ -118,16 +118,15 @@ class AssistedServiceMCPServer:
         _cre = AppConfig(resource_uri=CREATOR_RESOURCE_URI)
         _set = AppConfig(resource_uri=SETUP_RESOURCE_URI)
 
-        # Widget-opening tools (app= makes them render a UI dashboard)
+        # Unified tools: app= opens the UI widget for clients that
+        # support it; the tool function itself branches on ui_supported
+        # to decide whether to append text follow-ups.
         self.mcp.tool(app=_inv)(self._wrap_tool(cluster_tools.list_clusters))
-        self.mcp.tool(app=_cre)(
-            self._wrap_tool(cluster_tools.load_creator_dashboard)
-        )
+        self.mcp.tool(app=_cre)(self._wrap_tool(cluster_tools.create_cluster))
         self.mcp.tool(app=_set)(self._wrap_tool(host_tools.get_cluster_hosts))
 
-        # Cluster management tools (called from within widgets or by LLM)
+        # Cluster management tools
         self.mcp.tool()(self._wrap_tool(cluster_tools.cluster_info))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.create_cluster))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_vips))
         self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
         self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
@@ -192,33 +191,43 @@ class AssistedServiceMCPServer:
     def _wrap_tool(
         self, tool_func: Callable[..., Awaitable[Any]]
     ) -> Callable[..., Awaitable[Any]]:
-        """Wrap a tool function to inject mcp and auth dependencies.
+        """Wrap a tool function to inject auth and UI-support dependencies.
+
+        The wrapper accepts a FastMCP ``Context`` (auto-injected by the
+        framework), resolves the access token and whether the connected
+        client supports MCP Apps UI, then forwards both to the inner
+        tool function as the first two positional args.
 
         Args:
-            tool_func: The tool function to wrap.
+            tool_func: The tool function to wrap.  Its signature must
+                start with ``(get_access_token_func, ui_supported, ...)``.
 
         Returns:
-            A wrapped async function that injects mcp and get_access_token.
+            A wrapped async function whose exposed signature has the
+            first two internal params stripped.
         """
 
         @wraps(tool_func)
-        async def wrapped(*args: Any, **kwargs: Any) -> Any:
+        async def wrapped(ctx: Context, *args: Any, **kwargs: Any) -> Any:
             token = await asyncio.to_thread(self._get_access_token)
-            result = await tool_func(lambda: token, *args, **kwargs)
+            ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
+            result = await tool_func(lambda: token, ui_supported, *args, **kwargs)
             if isinstance(result, bytes):
                 result = result.decode("utf-8", errors="replace")
             return result
 
-        # Get the original function signature
         sig = inspect.signature(tool_func)
         params = list(sig.parameters.values())
 
-        # Remove the first parameter (auth token provider) since it's injected by the wrapper
-        if len(params) >= 1:
-            params = params[1:]
+        # Remove the first two parameters (auth token + ui_supported)
+        if len(params) >= 2:
+            params = params[2:]
 
-        # Create new signature with remaining parameters
-        new_sig = sig.replace(parameters=params)
+        # Prepend ctx: Context so FastMCP auto-injects it
+        ctx_param = inspect.Parameter(
+            "ctx", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Context
+        )
+        new_sig = sig.replace(parameters=[ctx_param, *params])
         wrapped.__signature__ = new_sig  # type: ignore[attr-defined]
 
         return wrapped

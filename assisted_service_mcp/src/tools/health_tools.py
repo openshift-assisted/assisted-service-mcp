@@ -11,6 +11,7 @@ from assisted_service_mcp.src.logger import log
 @track_tool_usage()
 async def check_prerequisites(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
 ) -> str:
     """Check environment prerequisites for cluster operations.
 

@@ -45,6 +45,7 @@ def format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
 @track_tool_usage()
 async def cluster_iso_download_url(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(
@@ -120,6 +121,7 @@ async def cluster_iso_download_url(
 @track_tool_usage()
 async def cluster_credentials_download_url(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(
@@ -181,6 +183,7 @@ async def cluster_credentials_download_url(
 @track_tool_usage()
 async def cluster_logs_download_url(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to get logs for."),

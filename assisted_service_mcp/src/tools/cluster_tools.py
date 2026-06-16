@@ -20,6 +20,7 @@ from assisted_service_mcp.src.tools.followups import (
 @track_tool_usage()
 async def cluster_info(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(
@@ -48,11 +49,17 @@ async def cluster_info(
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
     status = getattr(result, "status", "")
-    return result.to_str() + cluster_info_followups(status)
+    output = result.to_str()
+    if not ui_supported:
+        output += cluster_info_followups(status)
+    return output
 
 
 @track_tool_usage()
-async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
+async def list_clusters(
+    get_access_token_func: Callable[[], str],
+    ui_supported: bool,
+) -> str:
     """List all clusters for the current user.
 
     Retrieves a summary of all OpenShift clusters associated with your account. This provides
@@ -80,7 +87,10 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     ]
     log.info("Successfully retrieved %s clusters", len(resp))
     if not resp:
-        return "No clusters found." + list_clusters_followups(resp)
+        output = "No clusters found."
+        if not ui_supported:
+            output += list_clusters_followups(resp)
+        return output
 
     formatted_output = ""
     for cluster in resp:
@@ -89,12 +99,15 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
         formatted_output += f"- Openshift version: {cluster['openshift_version']}\n"
         formatted_output += f"- Status: {cluster['status']}\n\n"
 
-    return formatted_output + list_clusters_followups(resp)
+    if not ui_supported:
+        formatted_output += list_clusters_followups(resp)
+    return formatted_output
 
 
 @track_tool_usage()
 async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     name: Annotated[str, Field(description="The name of the new cluster.")],
     version: Annotated[
         str,
@@ -166,12 +179,10 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         platform,
     )
 
-    # Set default cpu_architecture if not provided
     if cpu_architecture is None:
         cpu_architecture = "x86_64"
 
     if platform:
-        # Check for invalid combination: single_node = true and platform is specified and not "none"
         if single_node is True and platform != "none":
             return "Platform must be set to 'none' for single-node clusters"
     else:
@@ -181,7 +192,6 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
 
     client = InventoryClient(get_access_token_func())
 
-    # Prepare cluster parameters
     cluster_params = {
         "base_dns_domain": base_domain,
         "tags": "chatbot",
@@ -198,7 +208,6 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
 
     log.info("Successfully created cluster %s with ID: %s", name, cluster.id)
 
-    # Prepare infra env parameters
     infraenv_params = {
         "cluster_id": cluster.id,
         "openshift_version": cluster.openshift_version,
@@ -213,12 +222,16 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         cluster.id,
         infraenv.id,
     )
-    return cluster.id + create_cluster_followups()
+    output = cluster.id
+    if not ui_supported:
+        output += create_cluster_followups()
+    return output
 
 
 @track_tool_usage()
 async def set_cluster_vips(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to configure.")
     ],
@@ -266,6 +279,7 @@ async def set_cluster_vips(
 @track_tool_usage()
 async def set_cluster_platform(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to configure.")
     ],
@@ -300,6 +314,7 @@ async def set_cluster_platform(
 @track_tool_usage()
 async def install_cluster(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to install.")
     ],
@@ -330,6 +345,7 @@ async def install_cluster(
 @track_tool_usage()
 async def set_cluster_ssh_key(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to update.")
     ],
@@ -357,14 +373,11 @@ async def set_cluster_ssh_key(
     log.info("Setting SSH public key for cluster %s", cluster_id)
     client = InventoryClient(get_access_token_func())
 
-    # Import helper function here to avoid circular imports
     from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
 
-    # Update the cluster with the new SSH public key
     result = await client.update_cluster(cluster_id, ssh_public_key=ssh_public_key)
     log.info("Successfully updated cluster %s with new SSH key", cluster_id)
 
-    # Get the InfraEnv ID and update it
     try:
         infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
     except ValueError as e:
@@ -387,11 +400,12 @@ async def set_cluster_ssh_key(
 @track_tool_usage()
 async def analyze_cluster_logs(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[str, Field(description="The ID of the cluster")],
 ) -> str:
     """Analyze Assisted Installer logs for a cluster and summarize findings.
 
-    Runs a set of built‑in log analysis signatures against the cluster’s collected
+    Runs a set of built‑in log analysis signatures against the cluster's collected
     logs (controller logs, bootstrap/control‑plane logs, and must‑gather content
     when available). The results highlight common misconfigurations and known
     error patterns to speed up triage of failed or degraded installations.
@@ -411,6 +425,7 @@ async def analyze_cluster_logs(
 @track_tool_usage()
 async def get_installation_progress(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to check."),
@@ -449,18 +464,7 @@ async def get_installation_progress(
         result["status"],
         result["progress"],
     )
-    return json.dumps(result) + installation_progress_followups(result["status"])
-
-
-async def load_creator_dashboard(
-    _get_access_token_func: Callable[[], str],
-) -> str:
-    """Open the Cluster Creator dashboard.
-
-    Use when the user wants to create a new self-managed OpenShift cluster.
-    This opens the interactive creation form.
-
-    Returns:
-        str: Confirmation that the dashboard loaded.
-    """
-    return "Cluster Creator dashboard loaded."
+    output = json.dumps(result)
+    if not ui_supported:
+        output += installation_progress_followups(result["status"])
+    return output

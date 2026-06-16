@@ -14,6 +14,7 @@ from assisted_service_mcp.src.tools.followups import get_cluster_hosts_followups
 @track_tool_usage()
 async def get_cluster_hosts(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to get hosts for."),
@@ -60,12 +61,16 @@ async def get_cluster_hosts(
 
     result = {"cluster_id": cluster_id, "hosts": hosts, "discovery_iso_url": iso_url}
     log.info("Found %d host(s) for cluster %s", len(hosts), cluster_id)
-    return json.dumps(result) + get_cluster_hosts_followups(hosts, cluster_status)
+    output = json.dumps(result)
+    if not ui_supported:
+        output += get_cluster_hosts_followups(hosts, cluster_status)
+    return output
 
 
 @track_tool_usage()
 async def set_host_role(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     host_id: Annotated[
         str, Field(description="The unique identifier of the host to configure.")
     ],

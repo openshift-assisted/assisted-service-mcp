@@ -35,7 +35,7 @@ async def test_tool_set_cluster_platform_module() -> None:
         ),
     ):
         resp = await cluster_tools.set_cluster_platform(
-            lambda: "test-access-token", "cid", "vsphere"
+            lambda: "test-access-token", True, "cid", "vsphere"
         )
         assert resp == "UPDATED"
 
@@ -62,7 +62,7 @@ async def test_tool_set_cluster_vips_module() -> None:
         ),
     ):
         resp = await cluster_tools.set_cluster_vips(
-            lambda: "test-access-token", "cid", "10.0.0.2", "10.0.0.3"
+            lambda: "test-access-token", True, "cid", "10.0.0.2", "10.0.0.3"
         )
         assert resp == "VIPS-UPDATED"
 
@@ -75,6 +75,7 @@ async def test_create_cluster_invalid_platform_for_sno_returns_message() -> None
     AssistedServiceMCPServer()
     resp = await cluster_tools.create_cluster(
         lambda: "t",
+        True,
         name="n",
         version="4.18.0",
         base_domain="example.com",
@@ -107,7 +108,7 @@ async def test_tool_install_cluster_module() -> None:
             return_value="test-access-token",
         ),
     ):
-        resp = await cluster_tools.install_cluster(lambda: "test-access-token", "cid")
+        resp = await cluster_tools.install_cluster(lambda: "test-access-token", True, "cid")
         assert resp == "INSTALL-TRIGGERED"
 
 
@@ -130,7 +131,7 @@ async def test_tool_cluster_events_module() -> None:
             return_value="test-access-token",
         ),
     ):
-        resp = await event_tools.cluster_events(lambda: "test-access-token", "cid")
+        resp = await event_tools.cluster_events(lambda: "test-access-token", True, "cid")
         assert json.loads(resp)["events"] == ["e1", "e2"]
 
 
@@ -153,7 +154,7 @@ async def test_tool_host_events_module() -> None:
             return_value="test-access-token",
         ),
     ):
-        resp = await event_tools.host_events(lambda: "test-access-token", "cid", "hid")
+        resp = await event_tools.host_events(lambda: "test-access-token", True, "cid", "hid")
         assert json.loads(resp)["events"] == ["h1"]
 
 
@@ -189,7 +190,7 @@ async def test_tool_cluster_iso_download_url_module() -> None:
         ),
     ):
         resp = await download_tools.cluster_iso_download_url(
-            lambda: "test-access-token", "cid"
+            lambda: "test-access-token", True, "cid"
         )
         data = json.loads(resp)
         assert data[0]["url"] == "https://u/iso"
@@ -223,7 +224,7 @@ async def test_tool_cluster_credentials_download_url_module() -> None:
         ),
     ):
         resp = await download_tools.cluster_credentials_download_url(
-            lambda: "test-access-token", "cid", "kubeconfig"
+            lambda: "test-access-token", True, "cid", "kubeconfig"
         )
         data = json.loads(resp)
         assert data["url"] == "https://u/kubeconfig"
@@ -255,7 +256,7 @@ async def test_tool_set_host_role_module() -> None:
         ),
     ):
         resp = await host_tools.set_host_role(
-            lambda: "test-access-token", "hid", "cid", "worker"
+            lambda: "test-access-token", True, "hid", "cid", "worker"
         )
         assert resp == "HOST-UPDATED"
 
@@ -282,7 +283,7 @@ async def test_tool_add_operator_bundle_module() -> None:
         ),
     ):
         resp = await operator_tools.add_operator_bundle_to_cluster(
-            lambda: "test-access-token", "cid", "virtualization"
+            lambda: "test-access-token", True, "cid", "virtualization"
         )
         assert resp == "OP-ADDED"
 
@@ -307,7 +308,7 @@ async def test_tool_list_operator_bundles_module() -> None:
             return_value="test-access-token",
         ),
     ):
-        resp = await operator_tools.list_operator_bundles(lambda: "test-access-token")
+        resp = await operator_tools.list_operator_bundles(lambda: "test-access-token", True)
         assert json.loads(resp) == bundles
 
 
@@ -321,7 +322,7 @@ async def test_tool_network_validate_nmstate_yaml_module() -> None:
     ):
         AssistedServiceMCPServer()
         resp = await network_tools.validate_nmstate_yaml(
-            lambda: "test-access-token", "interfaces: []\n"
+            lambda: "test-access-token", True, "interfaces: []\n"
         )
         assert resp == "YAML is valid"
 
@@ -348,7 +349,7 @@ async def test_alter_static_network_remove_with_none_index_raises() -> None:
     ):
         with pytest.raises(ValueError, match="index cannot be null"):
             await network_tools.alter_static_network_config_nmstate_for_host(
-                lambda: "t", "cid", None, None
+                lambda: "t", True, "cid", None, None
             )
 
 
@@ -374,7 +375,7 @@ async def test_alter_static_network_remove_with_empty_existing_raises() -> None:
     ):
         with pytest.raises(ValueError, match="empty existing static network config"):
             await network_tools.alter_static_network_config_nmstate_for_host(
-                lambda: "t", "cid", 0, None
+                lambda: "t", True, "cid", 0, None
             )
 
 
@@ -390,7 +391,7 @@ async def test_list_static_network_config_invalid_infraenv_count() -> None:
         "assisted_service_mcp.src.tools.network_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await network_tools.list_static_network_config(lambda: "t", "cid")
+        resp = await network_tools.list_static_network_config(lambda: "t", True, "cid")
         assert resp.startswith("ERROR:")
 
 
@@ -411,7 +412,7 @@ async def test_list_versions_happy_path() -> None:
         "assisted_service_mcp.src.tools.version_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await version_tools.list_versions(lambda: "t")
+        resp = await version_tools.list_versions(lambda: "t", True)
         assert "4.18.1" in resp and "Full Support" in resp
 
 
@@ -438,7 +439,7 @@ async def test_tool_network_generate_nmstate_yaml_module() -> None:
         return_value="yaml",
     ):
         resp = await network_tools.generate_nmstate_yaml(
-            lambda: "test-access-token", params
+            lambda: "test-access-token", True, params
         )
         assert resp == "yaml"
 
@@ -478,6 +479,7 @@ async def test_tool_create_cluster_module() -> None:
     ):
         resp = await cluster_tools.create_cluster(
             lambda: "test-access-token",
+            False,
             name="n",
             version="4.18.2",
             base_domain="example.com",
@@ -526,6 +528,7 @@ async def test_tool_create_cluster_with_none_cpu_architecture_module() -> None:
     ):
         resp = await cluster_tools.create_cluster(
             lambda: "test-access-token",
+            False,
             name="test-cluster",
             version="4.19.0",
             base_domain="example.com",
@@ -576,7 +579,7 @@ async def test_tool_set_cluster_ssh_key_partial_failure_module() -> None:
         ),
     ):
         resp = await cluster_tools.set_cluster_ssh_key(
-            lambda: "test-access-token", "cid", "ssh-rsa AAAA"
+            lambda: "test-access-token", True, "cid", "ssh-rsa AAAA"
         )
         assert "Cluster key updated, but boot image key update failed" in resp
 
@@ -588,7 +591,7 @@ def test_list_versions_error_branch() -> None:  # type: ignore[no-untyped-def]
             side_effect=Exception("boom"),
         ):
             try:
-                await list_versions(lambda: "token")
+                await list_versions(lambda: "token", True)
             except Exception as e:  # noqa: BLE001
                 assert "boom" in str(e)
 
@@ -602,7 +605,7 @@ def test_list_operator_bundles_error_branch() -> None:  # type: ignore[no-untype
             side_effect=Exception("boom2"),
         ):
             try:
-                await list_operator_bundles(lambda: "token")
+                await list_operator_bundles(lambda: "token", True)
             except Exception as e:  # noqa: BLE001
                 assert "boom2" in str(e)
 
@@ -622,7 +625,7 @@ def test_add_operator_bundle_to_cluster_happy() -> None:  # type: ignore[no-unty
             "assisted_service_mcp.src.tools.operator_tools.InventoryClient",
             return_value=mock_client,
         ):
-            s = await add_operator_bundle_to_cluster(lambda: "token", "cid", "bundle")
+            s = await add_operator_bundle_to_cluster(lambda: "token", True, "cid", "bundle")
             assert s == "cluster-str"
 
     asyncio.run(run())
@@ -643,7 +646,7 @@ async def test_tool_cluster_info_success() -> None:
         "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await cluster_tools.cluster_info(lambda: "t", "cid-123")
+        resp = await cluster_tools.cluster_info(lambda: "t", False, "cid-123")
         assert resp.startswith(cluster.to_str())
         assert "[IMPORTANT" in resp
 
@@ -676,7 +679,7 @@ async def test_tool_list_clusters_formats_fields_and_defaults_version() -> None:
         "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await cluster_tools.list_clusters(lambda: "t")
+        resp = await cluster_tools.list_clusters(lambda: "t", True)
         assert "Openshift version: 4.18.2" in resp
         assert "Openshift version: Unknown" in resp
 
@@ -713,7 +716,7 @@ async def test_tool_cluster_iso_download_url_multiple_and_zero_expiration() -> N
         "assisted_service_mcp.src.tools.download_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await download_tools.cluster_iso_download_url(lambda: "t", "cid")
+        resp = await download_tools.cluster_iso_download_url(lambda: "t", True, "cid")
         data = json.loads(resp)
         assert data[0]["url"] == "https://u/iso1"
         assert "expires_at" not in data[0]
@@ -734,7 +737,7 @@ async def test_tool_cluster_iso_download_url_no_infraenvs_returns_message() -> N
         "assisted_service_mcp.src.tools.download_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await download_tools.cluster_iso_download_url(lambda: "t", "cid")
+        resp = await download_tools.cluster_iso_download_url(lambda: "t", True, "cid")
         assert resp == "No ISO download URLs found for this cluster."
 
 
@@ -754,7 +757,7 @@ async def test_tool_cluster_credentials_download_url_error_shaping() -> None:
         return_value=mock_client,
     ):
         resp = await download_tools.cluster_credentials_download_url(
-            lambda: "t", "cid", "kubeconfig"
+            lambda: "t", True, "cid", "kubeconfig"
         )
         data = json.loads(resp)
         assert "error" in data
@@ -784,7 +787,7 @@ async def test_tool_set_cluster_ssh_key_success_path() -> None:
         ),
     ):
         resp = await cluster_tools.set_cluster_ssh_key(
-            lambda: "t", "cid", "ssh-rsa AAAA"
+            lambda: "t", True, "cid", "ssh-rsa AAAA"
         )
         assert resp == cluster.to_str()
 
@@ -804,7 +807,7 @@ async def test_tool_list_static_network_config_success() -> None:
         "assisted_service_mcp.src.tools.network_tools.InventoryClient",
         return_value=mock_client,
     ):
-        resp = await network_tools.list_static_network_config(lambda: "t", "cid")
+        resp = await network_tools.list_static_network_config(lambda: "t", True, "cid")
         arr = json.loads(resp)
         assert arr == ["cfg1", "cfg2"]
 
@@ -842,7 +845,7 @@ async def test_tool_alter_static_network_add_or_replace_success() -> None:
         ),
     ):
         resp = await network_tools.alter_static_network_config_nmstate_for_host(
-            lambda: "t", "cid", None, "interfaces: []\n"
+            lambda: "t", True, "cid", None, "interfaces: []\n"
         )
         assert resp == "UPDATED-INFRA"
         mock_client.update_infra_env.assert_awaited_once_with(

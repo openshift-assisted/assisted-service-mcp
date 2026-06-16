@@ -62,7 +62,7 @@ def format_version_list(versions_data: models.OpenshiftVersions) -> str:
 
 
 @track_tool_usage()
-async def list_versions(get_access_token_func: Callable[[], str]) -> str:
+async def list_versions(get_access_token_func: Callable[[], str], ui_supported: bool) -> str:
     """List all available OpenShift versions for installation as a formatted markdown table.
 
     Retrieves the latest OpenShift versions that can be installed using the Red Hat

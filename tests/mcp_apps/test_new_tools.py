@@ -6,23 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from assisted_service_mcp.src.tools.host_tools import get_cluster_hosts
-from assisted_service_mcp.src.tools.cluster_tools import (
-    get_installation_progress,
-    load_creator_dashboard,
-)
+from assisted_service_mcp.src.tools.cluster_tools import get_installation_progress
 from assisted_service_mcp.src.tools.health_tools import check_prerequisites
-
-FOLLOWUP_SEPARATOR = "\n\n[IMPORTANT"
 
 
 def _mock_token() -> str:
     return "mock-access-token"
-
-
-def _parse_json_before_followups(text: str) -> dict:
-    """Extract and parse the JSON portion before the follow-up separator."""
-    json_part = text.split(FOLLOWUP_SEPARATOR, 1)[0]
-    return json.loads(json_part)
 
 
 class TestGetClusterHosts:
@@ -56,15 +45,14 @@ class TestGetClusterHosts:
                 return_value=mock_presigned
             )
 
-            result = await get_cluster_hosts(_mock_token, "cluster-1")
+            result = await get_cluster_hosts(_mock_token, True, "cluster-1")
 
-        data = _parse_json_before_followups(result)
+        data = json.loads(result)
         assert len(data["hosts"]) == 1
         assert data["hosts"][0]["id"] == "host-1"
         assert data["hosts"][0]["hostname"] == "master-0"
         assert data["hosts"][0]["role"] == "master"
         assert data["discovery_iso_url"] == "https://example.com/iso.iso"
-        assert FOLLOWUP_SEPARATOR in result
 
     @pytest.mark.asyncio
     async def test_returns_empty_hosts_when_none(self) -> None:
@@ -79,12 +67,11 @@ class TestGetClusterHosts:
             client.get_cluster = AsyncMock(return_value=mock_cluster)
             client.list_infra_envs = AsyncMock(return_value=[])
 
-            result = await get_cluster_hosts(_mock_token, "cluster-1")
+            result = await get_cluster_hosts(_mock_token, True, "cluster-1")
 
-        data = _parse_json_before_followups(result)
+        data = json.loads(result)
         assert data["hosts"] == []
         assert data["discovery_iso_url"] == ""
-        assert FOLLOWUP_SEPARATOR in result
 
 
 class TestGetInstallationProgress:
@@ -106,13 +93,12 @@ class TestGetInstallationProgress:
             client = MockClient.return_value
             client.get_cluster = AsyncMock(return_value=mock_cluster)
 
-            result = await get_installation_progress(_mock_token, "cluster-1")
+            result = await get_installation_progress(_mock_token, True, "cluster-1")
 
-        data = _parse_json_before_followups(result)
+        data = json.loads(result)
         assert data["status"] == "installing"
         assert data["progress"] == 65
         assert data["status_info"] == "Bootstrap complete"
-        assert FOLLOWUP_SEPARATOR in result
 
     @pytest.mark.asyncio
     async def test_returns_zero_progress_when_no_progress_attr(self) -> None:
@@ -127,9 +113,9 @@ class TestGetInstallationProgress:
             client = MockClient.return_value
             client.get_cluster = AsyncMock(return_value=mock_cluster)
 
-            result = await get_installation_progress(_mock_token, "cluster-1")
+            result = await get_installation_progress(_mock_token, True, "cluster-1")
 
-        data = _parse_json_before_followups(result)
+        data = json.loads(result)
         assert data["status"] == "pending-for-input"
         assert data["progress"] == 0
 
@@ -143,7 +129,7 @@ class TestCheckPrerequisites:
             "assisted_service_mcp.src.tools.health_tools.get_setting",
             return_value="some-token",
         ):
-            result = await check_prerequisites(_mock_token)
+            result = await check_prerequisites(_mock_token, True)
 
         data = json.loads(result)
         assert data["offline_token_set"] is True
@@ -155,7 +141,7 @@ class TestCheckPrerequisites:
             "assisted_service_mcp.src.tools.health_tools.get_setting",
             return_value=None,
         ):
-            result = await check_prerequisites(_mock_token)
+            result = await check_prerequisites(_mock_token, True)
 
         data = json.loads(result)
         assert data["offline_token_set"] is False
@@ -170,18 +156,9 @@ class TestCheckPrerequisites:
             "assisted_service_mcp.src.tools.health_tools.get_setting",
             return_value="some-token",
         ):
-            result = await check_prerequisites(failing_token)
+            result = await check_prerequisites(failing_token, True)
 
         data = json.loads(result)
         assert data["offline_token_set"] is True
         assert data["api_reachable"] is False
         assert "SSO unreachable" in data["api_error"]
-
-
-class TestLoadCreatorDashboard:
-    """Tests for load_creator_dashboard tool."""
-
-    @pytest.mark.asyncio
-    async def test_returns_success_text(self) -> None:
-        result = await load_creator_dashboard(_mock_token)
-        assert "dashboard loaded" in result.lower() or "loaded" in result.lower()

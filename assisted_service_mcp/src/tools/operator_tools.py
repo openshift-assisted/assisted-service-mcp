@@ -10,7 +10,7 @@ from assisted_service_mcp.src.logger import log
 
 
 @track_tool_usage()
-async def list_operator_bundles(get_access_token_func: Callable[[], str]) -> str:
+async def list_operator_bundles(get_access_token_func: Callable[[], str], ui_supported: bool) -> str:
     """List available operator bundles that can be added to clusters.
 
     Retrieves operator bundles that extend OpenShift cluster functionality with additional
@@ -35,6 +35,7 @@ async def list_operator_bundles(get_access_token_func: Callable[[], str]) -> str
 @track_tool_usage()
 async def add_operator_bundle_to_cluster(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str, Field(description="The unique identifier of the cluster to configure.")
     ],

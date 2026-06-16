@@ -11,6 +11,7 @@ from assisted_service_mcp.src.logger import log
 @track_tool_usage()
 async def cluster_events(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster to get events for."),
@@ -44,6 +45,7 @@ async def cluster_events(
 @track_tool_usage()
 async def host_events(
     get_access_token_func: Callable[[], str],
+    ui_supported: bool,
     cluster_id: Annotated[
         str,
         Field(description="The unique identifier of the cluster containing the host."),

@@ -45,7 +45,6 @@ class TestToolRegistration:
         "get_cluster_hosts",
         "get_installation_progress",
         "check_prerequisites",
-        "load_creator_dashboard",
     }
 
     def test_all_original_tools_registered(self, tool_names: list[str]) -> None:
