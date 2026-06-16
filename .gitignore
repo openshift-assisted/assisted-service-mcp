@@ -11,3 +11,12 @@ wheels/
 
 # Performance test output
 performance_test_results*
+
+# Deployment manifests (contain secrets)
+deploy/
+
+# Test coverage data
+.coverage
+
+# Server log file
+assisted-service-mcp.log

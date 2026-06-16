@@ -1,5 +1,6 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
+import json
 from typing import Annotated, Callable
 from pydantic import Field
 
@@ -398,3 +399,61 @@ async def analyze_cluster_logs(
     client = InventoryClient(get_access_token_func())
     results = await analyze_cluster(cluster_id=cluster_id, api_client=client)
     return "\n\n".join([str(r) for r in results])
+
+
+@track_tool_usage()
+async def get_installation_progress(
+    get_access_token_func: Callable[[], str],
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to check."),
+    ],
+) -> str:
+    """Get installation status and progress for a cluster.
+
+    Returns the current installation status, progress percentage, and
+    descriptive status info. Use this to monitor a running installation
+    after calling install_cluster. Typical installations take 45-60 minutes.
+
+    Prerequisites:
+        - Cluster with installation started (from install_cluster)
+
+    Returns:
+        str: JSON with status, progress (0-100), and status_info.
+    """
+    log.info("Getting installation progress for cluster %s", cluster_id)
+    client = InventoryClient(get_access_token_func())
+    cluster = await client.get_cluster(cluster_id)
+
+    progress_pct = 0
+    if hasattr(cluster, "progress") and cluster.progress:
+        progress_pct = getattr(
+            cluster.progress, "installing_stage_percentage", 0
+        ) or 0
+
+    result = {
+        "status": getattr(cluster, "status", "unknown"),
+        "progress": progress_pct,
+        "status_info": getattr(cluster, "status_info", ""),
+    }
+    log.info(
+        "Cluster %s: status=%s progress=%d%%",
+        cluster_id,
+        result["status"],
+        result["progress"],
+    )
+    return json.dumps(result)
+
+
+async def load_creator_dashboard(
+    _get_access_token_func: Callable[[], str],
+) -> str:
+    """Open the Cluster Creator dashboard.
+
+    Use when the user wants to create a new self-managed OpenShift cluster.
+    This opens the interactive creation form.
+
+    Returns:
+        str: Confirmation that the dashboard loaded.
+    """
+    return "Cluster Creator dashboard loaded."

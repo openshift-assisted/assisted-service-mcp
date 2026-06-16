@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cluster Inventory</title>
+<style>
+:root {
+  --font-family: var(--pf-v5-global--FontFamily--text, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --color-primary: #06c;
+  --color-success: #3e8635;
+  --color-error: #c9190b;
+  --color-warning: #f0ab00;
+  --color-bg: #ffffff;
+  --color-bg-alt: #f5f5f5;
+  --color-border: #d2d2d2;
+  --color-text: #151515;
+  --color-text-secondary: #6a6e73;
+  --color-hover-row: #f0f0f0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.banner {
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  display: none;
+}
+
+.banner.visible {
+  display: block;
+}
+
+.banner.loading {
+  background: #e7f1fa;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.banner.success {
+  background: #e9f7e9;
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.banner.error {
+  background: #fce8e8;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+
+.banner.warning {
+  background: #fef6e0;
+  border: 1px solid var(--color-warning);
+  color: #795600;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: var(--font-family);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+button {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  font-size: 13px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+button:hover {
+  background: var(--color-bg-alt);
+  border-color: #8a8d90;
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+button.primary:hover {
+  background: #004d99;
+  border-color: #004d99;
+}
+
+button.success {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}
+
+button.success:hover {
+  background: #2e6b28;
+  border-color: #2e6b28;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+th {
+  background: var(--color-bg-alt);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-secondary);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: var(--color-hover-row);
+}
+
+.cluster-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.cluster-link:hover {
+  text-decoration: underline;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-ready, .status-installed, .status-adding-hosts {
+  background: #e9f7e9;
+  color: var(--color-success);
+}
+
+.status-error, .status-cancelled {
+  background: #fce8e8;
+  color: var(--color-error);
+}
+
+.status-pending-for-input, .status-insufficient {
+  background: #fef6e0;
+  color: #795600;
+}
+
+.status-installing, .status-preparing-for-installation, .status-finalizing {
+  background: #e7f1fa;
+  color: var(--color-primary);
+}
+
+.id-cell {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.id-cell:hover {
+  max-width: none;
+  overflow: visible;
+}
+
+.detail-view {
+  display: none;
+}
+
+.detail-view.visible {
+  display: block;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, auto) 1fr;
+  gap: 6px 16px;
+}
+
+.detail-key {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.detail-value {
+  word-break: break-all;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.events-list {
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.events-list li {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.events-list li:last-child {
+  border-bottom: none;
+}
+
+.event-time {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-right: 8px;
+  font-family: monospace;
+}
+
+.event-severity-error {
+  border-left: 3px solid var(--color-error);
+}
+
+.event-severity-warning {
+  border-left: 3px solid var(--color-warning);
+}
+
+.event-severity-info {
+  border-left: 3px solid var(--color-primary);
+}
+
+.logs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.logs-link:hover {
+  background: #e7f1fa;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-secondary);
+}
+
+.empty-state p {
+  margin-top: 8px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.count-badge {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-left: 8px;
+  font-weight: 400;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Cluster Inventory</h1>
+  <div class="header-actions">
+    <button onclick="loadClusters()" id="refresh-btn">Refresh</button>
+  </div>
+</div>
+
+<div class="banner" id="banner"></div>
+
+<!-- List View -->
+<div id="list-view">
+  <div class="toolbar">
+    <input type="text" class="search-input" id="search-input"
+           placeholder="Search by name or ID..." oninput="filterClusters()">
+    <button class="primary" onclick="lookupCluster()" id="lookup-btn">Lookup by ID</button>
+  </div>
+
+  <div class="table-container" id="table-container">
+    <div class="empty-state" id="empty-state">
+      <p>Loading clusters...</p>
+    </div>
+    <table id="cluster-table" style="display:none">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Version</th>
+          <th>ID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="cluster-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Detail View -->
+<div class="detail-view" id="detail-view">
+  <div class="detail-header">
+    <button onclick="showListView()">&#8592; Back</button>
+    <h2 id="detail-title">Cluster Detail</h2>
+  </div>
+
+  <div class="detail-actions" id="detail-actions"></div>
+
+  <div class="detail-section">
+    <h3>Cluster Information</h3>
+    <div class="detail-grid" id="detail-info"></div>
+  </div>
+
+  <div class="detail-section">
+    <h3>Events</h3>
+    <button onclick="loadEvents()" id="load-events-btn">Load Events</button>
+    <ul class="events-list" id="events-list" style="display:none; margin-top:8px"></ul>
+  </div>
+
+  <div class="detail-section">
+    <h3>Logs</h3>
+    <button onclick="loadLogs()" id="load-logs-btn">Download Logs</button>
+    <div id="logs-container" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script type="module">
+
+let clusters = [];
+let filteredClusters = [];
+let currentClusterId = null;
+let mcpReady = false;
+
+const SETUP_STATUSES = ["pending-for-input", "insufficient", "ready"];
+
+function showBanner(message, type = "loading") {
+  const banner = document.getElementById("banner");
+  banner.textContent = message;
+  banner.className = `banner visible ${type}`;
+  if (type === "success") {
+    setTimeout(() => { banner.classList.remove("visible"); }, 3000);
+  }
+}
+
+function hideBanner() {
+  document.getElementById("banner").classList.remove("visible");
+}
+
+async function callTool(name, args = {}) {
+  if (!window.mcpApp) {
+    throw new Error("MCP App not connected");
+  }
+  const result = await window.mcpApp.callServerTool({ name, arguments: args });
+  const text = result.content?.find(c => c.type === "text")?.text;
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+function parseClusterList(text) {
+  if (!text) return [];
+
+  if (typeof text === "object" && Array.isArray(text)) {
+    return text;
+  }
+
+  const lines = text.split("\n");
+  const parsed = [];
+
+  try {
+    for (const line of lines) {
+      if (line.trim()) {
+        const obj = JSON.parse(line.trim());
+        if (obj && obj.name) parsed.push(obj);
+      }
+    }
+    if (parsed.length > 0) return parsed;
+  } catch {}
+
+  let current = null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (current && current.name) {
+        parsed.push(current);
+        current = null;
+      }
+      continue;
+    }
+
+    if (!trimmed.startsWith("-") && !trimmed.startsWith("*")) {
+      if (current && current.name) {
+        parsed.push(current);
+      }
+      current = { name: trimmed, id: "", openshift_version: "", status: "unknown" };
+    } else if (current) {
+      const cleaned = trimmed.replace(/^[-*]\s*/, "");
+      const idMatch = cleaned.match(/^ID:\s*(.+)/i);
+      const versionMatch = cleaned.match(/^(?:Openshift\s+)?[Vv]ersion:\s*(.+)/i);
+      const statusMatch = cleaned.match(/^Status:\s*(.+)/i);
+
+      if (idMatch) current.id = idMatch[1].trim();
+      else if (versionMatch) current.openshift_version = versionMatch[1].trim();
+      else if (statusMatch) current.status = statusMatch[1].trim();
+    }
+  }
+
+  if (current && current.name) {
+    parsed.push(current);
+  }
+
+  return parsed;
+}
+
+function parseClusterDetail(text) {
+  if (!text) return {};
+  if (typeof text === "object") return text;
+
+  const details = {};
+  const lines = text.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const colonIdx = trimmed.indexOf(":");
+    if (colonIdx > 0) {
+      let key = trimmed.substring(0, colonIdx).replace(/^[-*]\s*/, "").trim();
+      const value = trimmed.substring(colonIdx + 1).trim();
+      if (key && value) {
+        details[key] = value;
+      }
+    }
+  }
+
+  return details;
+}
+
+function getStatusClass(status) {
+  const normalized = (status || "unknown").toLowerCase().replace(/\s+/g, "-");
+  return `status-${normalized}`;
+}
+
+function truncateId(id) {
+  if (!id) return "";
+  return id.length > 12 ? id.substring(0, 8) + "..." : id;
+}
+
+function renderTable() {
+  const tbody = document.getElementById("cluster-tbody");
+  const table = document.getElementById("cluster-table");
+  const emptyState = document.getElementById("empty-state");
+
+  if (filteredClusters.length === 0) {
+    table.style.display = "none";
+    emptyState.innerHTML = clusters.length === 0
+      ? "<p>No clusters found.</p>"
+      : "<p>No clusters match your search.</p>";
+    emptyState.style.display = "block";
+    return;
+  }
+
+  emptyState.style.display = "none";
+  table.style.display = "table";
+  tbody.innerHTML = "";
+
+  for (const cluster of filteredClusters) {
+    const tr = document.createElement("tr");
+
+    const nameTd = document.createElement("td");
+    const nameLink = document.createElement("a");
+    nameLink.className = "cluster-link";
+    nameLink.textContent = cluster.name || "(unnamed)";
+    nameLink.onclick = () => showDetail(cluster);
+    nameTd.appendChild(nameLink);
+
+    const statusTd = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = `status-badge ${getStatusClass(cluster.status)}`;
+    badge.textContent = cluster.status || "unknown";
+    statusTd.appendChild(badge);
+
+    const versionTd = document.createElement("td");
+    versionTd.textContent = cluster.openshift_version || "-";
+
+    const idTd = document.createElement("td");
+    idTd.className = "id-cell";
+    idTd.textContent = cluster.id || "-";
+    idTd.title = cluster.id || "";
+
+    const actionsTd = document.createElement("td");
+    if (SETUP_STATUSES.includes((cluster.status || "").toLowerCase())) {
+      const setupBtn = document.createElement("button");
+      setupBtn.className = "success";
+      setupBtn.textContent = "Setup";
+      setupBtn.onclick = (e) => {
+        e.stopPropagation();
+        sendSetupMessage(cluster);
+      };
+      actionsTd.appendChild(setupBtn);
+    }
+
+    tr.appendChild(nameTd);
+    tr.appendChild(statusTd);
+    tr.appendChild(versionTd);
+    tr.appendChild(idTd);
+    tr.appendChild(actionsTd);
+    tbody.appendChild(tr);
+  }
+}
+
+function sendSetupMessage(cluster) {
+  if (!window.mcpApp) return;
+  const msg = `Set up cluster ${cluster.name} (ID: ${cluster.id})`;
+  window.mcpApp.sendMessage({
+    role: "user",
+    content: [{ type: "text", text: msg }]
+  });
+  showBanner(`Setup request sent for "${cluster.name}"`, "success");
+}
+
+window.filterClusters = function() {
+  const query = document.getElementById("search-input").value.toLowerCase().trim();
+  if (!query) {
+    filteredClusters = [...clusters];
+  } else {
+    filteredClusters = clusters.filter(c =>
+      (c.name || "").toLowerCase().includes(query) ||
+      (c.id || "").toLowerCase().includes(query)
+    );
+  }
+  renderTable();
+};
+
+window.loadClusters = async function() {
+  showBanner("Loading clusters...", "loading");
+  document.getElementById("refresh-btn").disabled = true;
+
+  try {
+    const result = await callTool("list_clusters");
+    clusters = parseClusterList(result);
+    filteredClusters = [...clusters];
+    renderTable();
+
+    if (clusters.length > 0) {
+      showBanner(`Loaded ${clusters.length} cluster(s)`, "success");
+    } else {
+      showBanner("No clusters found", "warning");
+    }
+  } catch (err) {
+    showBanner(`Failed to load clusters: ${err.message}`, "error");
+    document.getElementById("empty-state").innerHTML =
+      `<p>Error loading clusters. Check connection and try again.</p>`;
+    document.getElementById("empty-state").style.display = "block";
+    document.getElementById("cluster-table").style.display = "none";
+  } finally {
+    document.getElementById("refresh-btn").disabled = false;
+  }
+};
+
+window.lookupCluster = async function() {
+  const query = document.getElementById("search-input").value.trim();
+  if (!query) {
+    showBanner("Enter a cluster ID in the search box first", "warning");
+    return;
+  }
+
+  showBanner(`Looking up cluster "${query}"...`, "loading");
+  document.getElementById("lookup-btn").disabled = true;
+
+  try {
+    const result = await callTool("cluster_info", { cluster_id: query });
+    if (!result) {
+      showBanner("No data returned for that cluster ID", "warning");
+      return;
+    }
+
+    const details = parseClusterDetail(result);
+    currentClusterId = query;
+    renderDetailView(details, query);
+    showDetailView();
+    hideBanner();
+  } catch (err) {
+    showBanner(`Lookup failed: ${err.message}`, "error");
+  } finally {
+    document.getElementById("lookup-btn").disabled = false;
+  }
+};
+
+function showDetail(cluster) {
+  currentClusterId = cluster.id;
+  showBanner(`Loading details for "${cluster.name}"...`, "loading");
+
+  callTool("cluster_info", { cluster_id: cluster.id })
+    .then(result => {
+      const details = parseClusterDetail(result);
+      if (!details["Name"]) details["Name"] = cluster.name;
+      if (!details["ID"]) details["ID"] = cluster.id;
+      if (!details["Status"]) details["Status"] = cluster.status;
+      if (!details["Version"]) details["Version"] = cluster.openshift_version;
+      renderDetailView(details, cluster.name);
+      showDetailView();
+      hideBanner();
+    })
+    .catch(err => {
+      showBanner(`Failed to load details: ${err.message}`, "error");
+    });
+}
+
+function renderDetailView(details, title) {
+  document.getElementById("detail-title").textContent = title || "Cluster Detail";
+
+  const infoGrid = document.getElementById("detail-info");
+  infoGrid.innerHTML = "";
+
+  for (const [key, value] of Object.entries(details)) {
+    const keyEl = document.createElement("span");
+    keyEl.className = "detail-key";
+    keyEl.textContent = key;
+
+    const valueEl = document.createElement("span");
+    valueEl.className = "detail-value";
+    valueEl.textContent = value;
+
+    infoGrid.appendChild(keyEl);
+    infoGrid.appendChild(valueEl);
+  }
+
+  const actionsDiv = document.getElementById("detail-actions");
+  actionsDiv.innerHTML = "";
+
+  const status = (details["Status"] || "").toLowerCase();
+  if (SETUP_STATUSES.includes(status)) {
+    const setupBtn = document.createElement("button");
+    setupBtn.className = "success";
+    setupBtn.textContent = "Setup Cluster";
+    setupBtn.onclick = () => {
+      sendSetupMessage({
+        name: details["Name"] || title,
+        id: currentClusterId
+      });
+    };
+    actionsDiv.appendChild(setupBtn);
+  }
+
+  document.getElementById("events-list").style.display = "none";
+  document.getElementById("events-list").innerHTML = "";
+  document.getElementById("load-events-btn").disabled = false;
+  document.getElementById("logs-container").innerHTML = "";
+  document.getElementById("load-logs-btn").disabled = false;
+}
+
+function showDetailView() {
+  document.getElementById("list-view").style.display = "none";
+  document.getElementById("detail-view").classList.add("visible");
+}
+
+window.showListView = function() {
+  document.getElementById("detail-view").classList.remove("visible");
+  document.getElementById("list-view").style.display = "block";
+  currentClusterId = null;
+};
+
+window.loadEvents = async function() {
+  if (!currentClusterId) return;
+
+  const btn = document.getElementById("load-events-btn");
+  btn.disabled = true;
+  btn.textContent = "Loading...";
+
+  try {
+    const result = await callTool("cluster_events", { cluster_id: currentClusterId });
+    const eventsList = document.getElementById("events-list");
+    eventsList.innerHTML = "";
+
+    let events = [];
+    if (Array.isArray(result)) {
+      events = result;
+    } else if (typeof result === "string") {
+      try {
+        events = JSON.parse(result);
+      } catch {
+        eventsList.innerHTML = `<li>${result}</li>`;
+        eventsList.style.display = "block";
+        btn.textContent = "Reload Events";
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    if (!events || events.length === 0) {
+      eventsList.innerHTML = "<li>No events found.</li>";
+    } else {
+      for (const event of events) {
+        const li = document.createElement("li");
+        const severity = (event.severity || event.level || "info").toLowerCase();
+        li.className = `event-severity-${severity}`;
+
+        const time = event.event_time || event.timestamp || event.time || "";
+        if (time) {
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "event-time";
+          timeSpan.textContent = formatTime(time);
+          li.appendChild(timeSpan);
+        }
+
+        const msg = document.createTextNode(event.message || event.msg || JSON.stringify(event));
+        li.appendChild(msg);
+        eventsList.appendChild(li);
+      }
+    }
+
+    eventsList.style.display = "block";
+    btn.textContent = "Reload Events";
+  } catch (err) {
+    showBanner(`Failed to load events: ${err.message}`, "error");
+    btn.textContent = "Retry Events";
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+window.loadLogs = async function() {
+  if (!currentClusterId) return;
+
+  const btn = document.getElementById("load-logs-btn");
+  btn.disabled = true;
+  btn.textContent = "Fetching URL...";
+
+  try {
+    const result = await callTool("cluster_logs_download_url", { cluster_id: currentClusterId });
+    const container = document.getElementById("logs-container");
+    container.innerHTML = "";
+
+    let url = null;
+    if (typeof result === "object" && result !== null) {
+      url = result.url || result.download_url || result.logs_url;
+    } else if (typeof result === "string") {
+      if (result.startsWith("http")) {
+        url = result;
+      } else {
+        try {
+          const parsed = JSON.parse(result);
+          url = parsed.url || parsed.download_url || parsed.logs_url;
+        } catch {
+          url = result;
+        }
+      }
+    }
+
+    if (url) {
+      const link = document.createElement("a");
+      link.className = "logs-link";
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Download Cluster Logs";
+      container.appendChild(link);
+    } else {
+      container.textContent = "No download URL available.";
+    }
+
+    btn.textContent = "Refresh Logs URL";
+  } catch (err) {
+    showBanner(`Failed to get logs URL: ${err.message}`, "error");
+    btn.textContent = "Retry";
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+function formatTime(ts) {
+  if (!ts) return "";
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  } catch {
+    return ts;
+  }
+}
+
+// MCP App initialization
+import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+  const App = module.App || module.default?.App || module.default;
+  const AppClass = App.App || App;
+  const app = new AppClass({ name: "Cluster Inventory", version: "1.0.0" });
+  app.connect();
+  window.mcpApp = app;
+  mcpReady = true;
+  loadClusters();
+}).catch(err => {
+  console.error("Failed to load MCP Apps SDK:", err);
+  showBanner("Failed to connect to MCP. Retrying in 3s...", "error");
+  setTimeout(() => {
+    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+      const App = module.App || module.default?.App || module.default;
+      const AppClass = App.App || App;
+      const app = new AppClass({ name: "Cluster Inventory", version: "1.0.0" });
+      app.connect();
+      window.mcpApp = app;
+      mcpReady = true;
+      loadClusters();
+    }).catch(err2 => {
+      showBanner("MCP connection failed. Please reload.", "error");
+    });
+  }, 3000);
+});
+
+</script>
+</body>
+</html>

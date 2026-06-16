@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCP Admin — Cluster Setup</title>
+  <style>
+    :root {
+      --font-body: "Red Hat Text", "Noto Sans", "Segoe UI", sans-serif;
+      --font-heading: "Red Hat Display", "Noto Sans", "Segoe UI", sans-serif;
+      --sp-2xs: 0.25rem;
+      --sp-xs: 0.5rem;
+      --sp-sm: 0.75rem;
+      --sp-md: 1rem;
+      --sp-lg: 1.5rem;
+      --sp-xl: 2rem;
+      --bg-shell: #f8f8f8;
+      --bg-surface: #ffffff;
+      --text-primary: #151515;
+      --text-muted: #4f5255;
+      --border: #d2d2d2;
+      --color-primary: #06c;
+      --color-success: #3e8635;
+      --color-error: #c9190b;
+      --color-warning: #f0ab00;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg-shell);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #app {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: var(--sp-lg);
+    }
+
+    h1 {
+      margin: 0 0 var(--sp-xs);
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    h2 {
+      margin: 0 0 var(--sp-sm);
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      margin: 0 0 var(--sp-lg);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Status banner */
+    .banner {
+      border-left: 3px solid var(--color-primary);
+      background: #f0f8ff;
+      border-radius: 0.25rem;
+      padding: var(--sp-sm) var(--sp-md);
+      margin-bottom: var(--sp-md);
+      font-size: 0.9rem;
+    }
+    .banner--success { border-left-color: var(--color-success); background: #edf8ef; }
+    .banner--error   { border-left-color: var(--color-error);   background: #faeae8; }
+    .banner--warning { border-left-color: var(--color-warning); background: #fff8e7; }
+    .banner[hidden] { display: none; }
+
+    /* Card sections */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      box-shadow: 0 1px 2px rgba(21,21,21,0.08);
+      padding: var(--sp-lg);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* Empty / placeholder state */
+    .empty-state {
+      text-align: center;
+      padding: var(--sp-xl) var(--sp-lg);
+    }
+    .empty-state h2 { font-size: 1.1rem; color: var(--text-primary); }
+    .empty-state p  { color: var(--text-muted); margin: var(--sp-xs) 0 0; }
+
+    /* Cluster ID display */
+    .cluster-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      background: #f3f3f3;
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.2rem;
+      word-break: break-all;
+    }
+
+    /* Discovery ISO */
+    .iso-link {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-xs);
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .iso-link:hover { text-decoration: underline; }
+    .iso-link::before { content: "\2B07"; font-size: 1.1em; }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      text-align: left;
+      padding: 0.45rem 0.55rem;
+    }
+    thead th {
+      background: #f3f3f3;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    td.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+    }
+
+    .role-select {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.25rem 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+    .badge--assigned { background: #edf8ef; color: var(--color-success); }
+    .badge--pending  { background: #fff8e7; color: #8a6d00; }
+
+    /* Form elements */
+    .form-row {
+      display: flex;
+      gap: var(--sp-sm);
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-2xs);
+      flex: 1;
+      min-width: 160px;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .input {
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      padding: 0.5rem 0.65rem;
+      font: inherit;
+      color: var(--text-primary);
+      background: #fff;
+    }
+    .input:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -1px;
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      border-radius: 0.25rem;
+      border: 1px solid transparent;
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn:disabled { cursor: not-allowed; opacity: 0.55; }
+
+    .btn--primary {
+      color: #fff;
+      background: var(--color-primary);
+    }
+    .btn--primary:hover:not(:disabled) { background: #004d99; }
+
+    .btn--secondary {
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border-color: var(--border);
+    }
+    .btn--secondary:hover:not(:disabled) { background: #f3f3f3; }
+
+    .btn--danger {
+      color: #fff;
+      background: var(--color-error);
+    }
+    .btn--danger:hover:not(:disabled) { background: #a11509; }
+
+    .btn--ghost {
+      color: var(--color-primary);
+      background: transparent;
+      border-color: transparent;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .btn--ghost:hover:not(:disabled) { text-decoration: underline; }
+
+    .btn-row {
+      display: flex;
+      gap: var(--sp-sm);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* Progress bar */
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: var(--sp-sm) 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Readiness summary */
+    .readiness {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: var(--sp-sm);
+    }
+    .readiness strong { color: var(--text-primary); }
+
+    /* Confirmation dialog overlay */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(21,21,21,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .confirm-dialog {
+      background: var(--bg-surface);
+      border-radius: 0.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      padding: var(--sp-lg);
+      max-width: 420px;
+      width: 90%;
+    }
+    .confirm-dialog h2 { margin-bottom: var(--sp-sm); }
+    .confirm-dialog p {
+      margin: 0 0 var(--sp-lg);
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .confirm-dialog .btn-row { justify-content: flex-end; }
+
+    /* Installed banner */
+    .success-banner {
+      background: #edf8ef;
+      border: 1px solid var(--color-success);
+      border-radius: 0.375rem;
+      padding: var(--sp-md) var(--sp-lg);
+      text-align: center;
+      color: var(--color-success);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .error-banner {
+      background: #faeae8;
+      border: 1px solid var(--color-error);
+      border-radius: 0.375rem;
+      padding: var(--sp-md) var(--sp-lg);
+      text-align: center;
+      color: var(--color-error);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* Spacing helpers */
+    .mt-sm  { margin-top: var(--sp-sm); }
+    .mt-md  { margin-top: var(--sp-md); }
+    .mb-sm  { margin-bottom: var(--sp-sm); }
+    .muted  { color: var(--text-muted); }
+    .small  { font-size: 0.85rem; }
+
+    .spinner::after {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-left: var(--sp-xs);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    const state = {
+      clusterId: null,
+      hosts: [],
+      isLoadingHosts: false,
+      discoveryIsoUrl: null,
+      apiVip: "",
+      ingressVip: "",
+      installationStatus: null,
+      installationProgress: 0,
+      installationStatusInfo: null,
+      isStartingInstallation: false,
+      showInstallConfirm: false,
+      statusMessage: "",
+      statusVariant: "info",
+    };
+
+    const root = document.getElementById("app");
+
+    function esc(str) {
+      const d = document.createElement("div");
+      d.textContent = str ?? "";
+      return d.innerHTML;
+    }
+
+    /* ---------- MCP SDK ---------- */
+    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+      const App = module.App || module.default?.App || module.default;
+      const app = new (App.App || App)({ name: "Cluster Setup", version: "1.0.0" });
+      app.connect();
+      window.mcpApp = app;
+
+      app.ontoolinput = (params) => {
+        const args = params.arguments;
+        if (args?.cluster_id && typeof args.cluster_id === "string") {
+          state.clusterId = args.cluster_id;
+          render();
+          loadHosts();
+        }
+      };
+      app.ontoolresult = (params) => {
+        const sc = params.structuredContent;
+        if (sc?.cluster_id && typeof sc.cluster_id === "string" && !state.clusterId) {
+          state.clusterId = sc.cluster_id;
+          render();
+          loadHosts();
+        }
+      };
+    }).catch(() => {});
+
+    async function callTool(name, args = {}) {
+      if (!window.mcpApp) return null;
+      try {
+        const result = await window.mcpApp.callServerTool({ name, arguments: args });
+        const text = result.content?.find(c => c.type === "text")?.text;
+        if (!text) return null;
+        try { return JSON.parse(text); } catch { return text; }
+      } catch (err) {
+        setStatus("Tool call failed: " + (err?.message || err), "error");
+        render();
+        return null;
+      }
+    }
+
+    /* ---------- Status helpers ---------- */
+    function setStatus(msg, variant) {
+      state.statusMessage = msg;
+      state.statusVariant = variant || "info";
+    }
+
+    /* ---------- Actions ---------- */
+    async function loadHosts() {
+      if (!state.clusterId) return;
+      state.isLoadingHosts = true;
+      state.hosts = [];
+      setStatus("Loading hosts\u2026", "info");
+      render();
+
+      const data = await callTool("get_cluster_hosts", { cluster_id: state.clusterId });
+      state.isLoadingHosts = false;
+
+      if (!data || typeof data !== "object") {
+        setStatus("Failed to load hosts.", "error");
+        render();
+        return;
+      }
+
+      state.hosts = Array.isArray(data.hosts) ? data.hosts : [];
+      state.discoveryIsoUrl = data.discovery_iso_url || null;
+      setStatus("Loaded " + state.hosts.length + " host(s).", "success");
+      render();
+    }
+
+    async function setHostRole(hostId, role) {
+      if (!state.clusterId) return;
+      setStatus("Setting role\u2026", "info");
+      render();
+
+      const data = await callTool("set_host_role", {
+        host_id: hostId,
+        cluster_id: state.clusterId,
+        role,
+      });
+
+      if (data === null) {
+        setStatus("Failed to set host role.", "error");
+        render();
+        return;
+      }
+
+      state.hosts = state.hosts.map(h =>
+        h.id === hostId ? { ...h, role } : h
+      );
+      setStatus("Host role set to " + role + ".", "success");
+      render();
+    }
+
+    async function setVips() {
+      if (!state.clusterId) return;
+      if (!state.apiVip.trim() || !state.ingressVip.trim()) {
+        setStatus("Both API VIP and Ingress VIP are required.", "warning");
+        render();
+        return;
+      }
+
+      setStatus("Setting VIPs\u2026", "info");
+      render();
+
+      const data = await callTool("set_cluster_vips", {
+        cluster_id: state.clusterId,
+        api_vip: state.apiVip.trim(),
+        ingress_vip: state.ingressVip.trim(),
+      });
+
+      if (data === null) {
+        setStatus("Failed to set VIPs.", "error");
+        render();
+        return;
+      }
+
+      setStatus("VIPs configured. API: " + state.apiVip + ", Ingress: " + state.ingressVip + ".", "success");
+      render();
+    }
+
+    async function startInstallation() {
+      if (!state.clusterId) return;
+      state.showInstallConfirm = false;
+      state.isStartingInstallation = true;
+      setStatus("Starting installation\u2026", "info");
+      render();
+
+      const data = await callTool("install_cluster", { cluster_id: state.clusterId });
+      state.isStartingInstallation = false;
+
+      if (data === null) {
+        setStatus("Failed to start installation.", "error");
+        render();
+        return;
+      }
+
+      state.installationStatus = "installing";
+      state.installationProgress = 0;
+      setStatus("Installation started.", "success");
+      render();
+    }
+
+    async function refreshProgress() {
+      if (!state.clusterId) return;
+      setStatus("Refreshing progress\u2026", "info");
+      render();
+
+      const data = await callTool("get_installation_progress", { cluster_id: state.clusterId });
+
+      if (!data || typeof data !== "object") {
+        setStatus("Failed to get installation progress.", "warning");
+        render();
+        return;
+      }
+
+      state.installationStatus = data.status || "unknown";
+      state.installationProgress = typeof data.progress === "number" ? data.progress : 0;
+      state.installationStatusInfo = data.status_info || null;
+
+      if (state.installationStatus === "installed") {
+        setStatus("Installation complete!", "success");
+      } else if (state.installationStatus === "error") {
+        setStatus("Installation failed.", "error");
+      } else {
+        setStatus("Installing\u2026 " + state.installationProgress + "%", "info");
+      }
+      render();
+    }
+
+    /* ---------- Readiness checks ---------- */
+    function hostsWithRoles() {
+      return state.hosts.filter(h => h.role && h.role !== "auto-assign");
+    }
+    function vipsConfigured() {
+      return state.apiVip.trim() !== "" && state.ingressVip.trim() !== "";
+    }
+    function canInstall() {
+      return state.hosts.length > 0
+        && hostsWithRoles().length === state.hosts.length
+        && vipsConfigured()
+        && !state.isStartingInstallation
+        && state.installationStatus !== "installing"
+        && state.installationStatus !== "installed";
+    }
+
+    /* ---------- Event delegation ---------- */
+    root.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === "load-hosts")       loadHosts();
+      if (action === "set-vips")         setVips();
+      if (action === "show-confirm")     { state.showInstallConfirm = true; render(); }
+      if (action === "cancel-confirm")   { state.showInstallConfirm = false; render(); }
+      if (action === "confirm-install")  startInstallation();
+      if (action === "refresh-progress") refreshProgress();
+    });
+
+    root.addEventListener("change", (e) => {
+      if (e.target.matches(".role-select")) {
+        setHostRole(e.target.dataset.hostId, e.target.value);
+      }
+    });
+
+    root.addEventListener("input", (e) => {
+      if (e.target.id === "api-vip")     state.apiVip = e.target.value;
+      if (e.target.id === "ingress-vip") state.ingressVip = e.target.value;
+    });
+
+    /* ---------- Render ---------- */
+    function render() {
+      if (!state.clusterId) {
+        root.innerHTML = renderEmpty();
+        return;
+      }
+      root.innerHTML = renderDashboard();
+    }
+
+    function renderEmpty() {
+      return `
+        <div class="card empty-state">
+          <h2>No cluster selected for setup</h2>
+          <p>Use a tool that provides a <code>cluster_id</code> to get started,
+             or ask the assistant to set up a specific cluster.</p>
+        </div>`;
+    }
+
+    function renderBanner() {
+      if (!state.statusMessage) return "";
+      const cls = state.statusVariant === "success" ? "banner--success"
+                : state.statusVariant === "error"   ? "banner--error"
+                : state.statusVariant === "warning" ? "banner--warning"
+                : "";
+      return `<div class="banner ${cls}">${esc(state.statusMessage)}</div>`;
+    }
+
+    function renderDashboard() {
+      return `
+        <h1>Cluster Setup</h1>
+        <p class="subtitle">Setting up cluster <span class="cluster-id">${esc(state.clusterId)}</span></p>
+        ${renderBanner()}
+        ${renderDiscoveryIso()}
+        ${renderHostsSection()}
+        ${renderVipsSection()}
+        ${renderInstallSection()}
+        ${state.showInstallConfirm ? renderConfirmDialog() : ""}`;
+    }
+
+    function renderDiscoveryIso() {
+      if (!state.discoveryIsoUrl) return "";
+      return `
+        <div class="card">
+          <h2>Discovery ISO</h2>
+          <a class="iso-link" href="${esc(state.discoveryIsoUrl)}" target="_blank" rel="noopener">
+            Download Discovery ISO
+          </a>
+          <p class="small muted mt-sm">Boot hosts with this ISO to register them for the cluster.</p>
+        </div>`;
+    }
+
+    function renderHostsSection() {
+      let body;
+      if (state.isLoadingHosts) {
+        body = `<p class="muted">Loading hosts<span class="spinner"></span></p>`;
+      } else if (state.hosts.length === 0) {
+        body = `<p class="muted">No hosts loaded yet. Click <strong>Load Hosts</strong> to fetch registered hosts.</p>`;
+      } else {
+        body = `
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Hostname</th>
+                  <th>Status</th>
+                  <th>Role</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.hosts.map(renderHostRow).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      return `
+        <div class="card">
+          <h2>Hosts</h2>
+          ${body}
+          <div class="btn-row mt-md">
+            <button class="btn btn--secondary" data-action="load-hosts"
+              ${state.isLoadingHosts ? "disabled" : ""}>
+              ${state.isLoadingHosts ? "Loading\u2026" : state.hosts.length ? "Refresh Hosts" : "Load Hosts"}
+            </button>
+          </div>
+        </div>`;
+    }
+
+    function renderHostRow(host) {
+      const roles = ["auto-assign", "master", "worker"];
+      const currentRole = host.role || "auto-assign";
+      const isAssigned = currentRole !== "auto-assign";
+
+      const options = roles.map(r =>
+        `<option value="${r}" ${r === currentRole ? "selected" : ""}>${r}</option>`
+      ).join("");
+
+      return `
+        <tr>
+          <td class="mono">${esc(host.hostname || host.id)}</td>
+          <td>${esc(host.status || "unknown")}</td>
+          <td>
+            <select class="role-select" data-host-id="${esc(host.id)}">
+              ${options}
+            </select>
+          </td>
+          <td>
+            <span class="badge ${isAssigned ? "badge--assigned" : "badge--pending"}">
+              ${isAssigned ? "Assigned" : "Pending"}
+            </span>
+          </td>
+        </tr>`;
+    }
+
+    function renderVipsSection() {
+      return `
+        <div class="card">
+          <h2>Virtual IPs (VIPs)</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="api-vip">API VIP</label>
+              <input class="input" type="text" id="api-vip"
+                placeholder="e.g. 192.168.1.100"
+                value="${esc(state.apiVip)}" />
+            </div>
+            <div class="form-group">
+              <label for="ingress-vip">Ingress VIP</label>
+              <input class="input" type="text" id="ingress-vip"
+                placeholder="e.g. 192.168.1.101"
+                value="${esc(state.ingressVip)}" />
+            </div>
+          </div>
+          <div class="btn-row mt-md">
+            <button class="btn btn--primary" data-action="set-vips"
+              ${(!state.apiVip.trim() || !state.ingressVip.trim()) ? "disabled" : ""}>
+              Set VIPs
+            </button>
+          </div>
+        </div>`;
+    }
+
+    function renderInstallSection() {
+      const assigned = hostsWithRoles().length;
+      const total = state.hosts.length;
+      const vipsOk = vipsConfigured();
+
+      if (state.installationStatus === "installed") {
+        return `
+          <div class="card">
+            <h2>Installation</h2>
+            <div class="success-banner">OpenShift cluster installed successfully</div>
+            ${state.installationStatusInfo
+              ? `<p class="small muted mt-sm">${esc(state.installationStatusInfo)}</p>` : ""}
+          </div>`;
+      }
+
+      if (state.installationStatus === "error") {
+        return `
+          <div class="card">
+            <h2>Installation</h2>
+            <div class="error-banner">Installation failed</div>
+            ${state.installationStatusInfo
+              ? `<p class="small muted mt-sm">${esc(state.installationStatusInfo)}</p>` : ""}
+            <div class="btn-row mt-md">
+              <button class="btn btn--secondary" data-action="refresh-progress">Refresh Progress</button>
+            </div>
+          </div>`;
+      }
+
+      if (state.installationStatus === "installing" || state.isStartingInstallation) {
+        return `
+          <div class="card">
+            <h2>Installation</h2>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${state.installationProgress}%"></div>
+            </div>
+            <p class="progress-label">
+              ${state.installationProgress}% complete
+              ${state.installationStatusInfo ? " \u2014 " + esc(state.installationStatusInfo) : ""}
+            </p>
+            <div class="btn-row mt-sm">
+              <button class="btn btn--secondary" data-action="refresh-progress">Refresh Progress</button>
+            </div>
+          </div>`;
+      }
+
+      return `
+        <div class="card">
+          <h2>Installation</h2>
+          <p class="readiness">
+            <strong>${assigned} of ${total}</strong> host(s) with roles assigned
+            &nbsp;&middot;&nbsp;
+            VIPs: <strong>${vipsOk ? "configured" : "not configured"}</strong>
+          </p>
+          <div class="btn-row">
+            <button class="btn btn--primary" data-action="show-confirm"
+              ${canInstall() ? "" : "disabled"}>
+              Start Installation
+            </button>
+          </div>
+          ${!canInstall() ? `<p class="small muted mt-sm">Assign roles to all hosts and configure VIPs before installing.</p>` : ""}
+        </div>`;
+    }
+
+    function renderConfirmDialog() {
+      return `
+        <div class="confirm-overlay">
+          <div class="confirm-dialog">
+            <h2>Confirm Installation</h2>
+            <p>This will begin installing OpenShift on the cluster. This action cannot be undone.</p>
+            <div class="btn-row">
+              <button class="btn btn--secondary" data-action="cancel-confirm">Cancel</button>
+              <button class="btn btn--danger" data-action="confirm-install">Confirm</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    /* ---------- Initial render ---------- */
+    render();
+  </script>
+</body>
+</html>

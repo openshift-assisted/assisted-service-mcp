@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cluster Creator</title>
+  <style>
+    :root {
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --color-primary: #06c;
+      --color-success: #3e8635;
+      --color-error: #c9190b;
+      --color-text: #151515;
+      --color-muted: #6a6e73;
+      --color-border: #d2d2d2;
+      --color-bg: #f8f8f8;
+      --color-surface: #ffffff;
+      --radius: 0.375rem;
+      --radius-sm: 0.25rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.5;
+    }
+
+    .shell {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .header { margin-bottom: 1rem; }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group:last-of-type {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .hint {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--color-muted);
+      margin-bottom: 0.3rem;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.65rem;
+      font: inherit;
+      color: var(--color-text);
+      background: var(--color-surface);
+    }
+
+    input[type="text"]:focus, select:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -1px;
+      border-color: var(--color-primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 1rem;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: var(--color-surface);
+      color: var(--color-text);
+      border-color: var(--color-border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--color-bg);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .error-banner {
+      background: #faeae8;
+      border-left: 3px solid var(--color-error);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.85rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--color-error);
+    }
+
+    .success-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .success-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .success-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #edf8ef;
+      color: var(--color-success);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .success-header h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-success);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.35rem 1rem;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }
+
+    .detail-grid dt {
+      font-weight: 600;
+      color: var(--color-muted);
+      white-space: nowrap;
+    }
+
+    .detail-grid dd {
+      margin: 0;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      background: var(--color-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: #edf8ef;
+      color: var(--color-success);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="header">
+      <h1>Create Cluster</h1>
+    </div>
+
+    <div id="error-banner" class="error-banner hidden"></div>
+
+    <!-- Creation Form -->
+    <div id="view-form" class="card">
+      <div class="form-group">
+        <label for="cluster-name">Cluster Name</label>
+        <span class="hint">Lowercase letters, numbers, and hyphens (max 54 chars)</span>
+        <input type="text" id="cluster-name" maxlength="54" placeholder="my-cluster" required>
+      </div>
+
+      <div class="form-group">
+        <label for="ocp-version">OpenShift Version</label>
+        <select id="ocp-version">
+          <option value="4.21" selected>4.21</option>
+          <option value="4.20">4.20</option>
+          <option value="4.19">4.19</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="base-domain">Base DNS Domain</label>
+        <span class="hint">e.g. example.com</span>
+        <input type="text" id="base-domain" placeholder="example.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="deploy-type">Deployment Type</label>
+        <select id="deploy-type">
+          <option value="false" selected>Full HA (3+ control planes)</option>
+          <option value="true">Single Node (SNO)</option>
+        </select>
+      </div>
+
+      <div class="actions">
+        <button id="btn-create" class="btn btn-primary" disabled>Create Cluster</button>
+      </div>
+    </div>
+
+    <!-- Success View -->
+    <div id="view-success" class="success-card hidden">
+      <div class="success-header">
+        <div class="success-icon">&#10003;</div>
+        <h2>Cluster Created</h2>
+      </div>
+
+      <dl class="detail-grid">
+        <dt>Name</dt>
+        <dd id="res-name"></dd>
+        <dt>Cluster ID</dt>
+        <dd><span id="res-id" class="mono"></span></dd>
+        <dt>Status</dt>
+        <dd><span id="res-status" class="status-badge"></span></dd>
+      </dl>
+
+      <div class="actions">
+        <button id="btn-setup" class="btn btn-primary">Continue to Setup</button>
+        <button id="btn-inventory" class="btn btn-secondary">View in Inventory</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const $ = (sel) => document.querySelector(sel);
+
+    const elName     = $("#cluster-name");
+    const elVersion  = $("#ocp-version");
+    const elDomain   = $("#base-domain");
+    const elDeploy   = $("#deploy-type");
+    const elBtnCreate = $("#btn-create");
+    const elError    = $("#error-banner");
+    const elFormView = $("#view-form");
+    const elSuccessView = $("#view-success");
+    const elResName  = $("#res-name");
+    const elResId    = $("#res-id");
+    const elResStatus = $("#res-status");
+    const elBtnSetup = $("#btn-setup");
+    const elBtnInventory = $("#btn-inventory");
+
+    let createdClusterId = null;
+
+    // --- MCP SDK ---
+    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+      const App = module.App || module.default?.App || module.default;
+      const app = new (App.App || App)({ name: "Cluster Creator", version: "1.0.0" });
+      app.connect();
+      window.mcpApp = app;
+    });
+
+    async function callTool(name, args = {}) {
+      const result = await window.mcpApp.callServerTool({ name, arguments: args });
+      const text = result.content?.find(c => c.type === "text")?.text;
+      if (!text) return null;
+      try { return JSON.parse(text); } catch { return text; }
+    }
+
+    // --- Validation ---
+    function updateCreateBtn() {
+      const valid = elName.value.trim().length > 0 && elDomain.value.trim().length > 0;
+      elBtnCreate.disabled = !valid;
+    }
+
+    elName.addEventListener("input", updateCreateBtn);
+    elDomain.addEventListener("input", updateCreateBtn);
+
+    function showError(msg) {
+      elError.textContent = msg;
+      elError.classList.remove("hidden");
+    }
+
+    function hideError() {
+      elError.classList.add("hidden");
+      elError.textContent = "";
+    }
+
+    // --- Create ---
+    elBtnCreate.addEventListener("click", async () => {
+      hideError();
+
+      const name       = elName.value.trim();
+      const version    = elVersion.value;
+      const baseDomain = elDomain.value.trim();
+      const singleNode = elDeploy.value === "true";
+
+      elBtnCreate.disabled = true;
+      elBtnCreate.innerHTML = '<span class="spinner"></span> Creating\u2026';
+
+      try {
+        const result = await callTool("create_cluster", {
+          name,
+          version,
+          base_domain: baseDomain,
+          single_node: singleNode,
+        });
+
+        if (!result) {
+          showError("No response from cluster creation tool.");
+          elBtnCreate.textContent = "Create Cluster";
+          updateCreateBtn();
+          return;
+        }
+
+        const clusterId = typeof result === "string"
+          ? result
+          : result.id || result.cluster_id || result.uuid || JSON.stringify(result);
+
+        createdClusterId = clusterId;
+
+        elResName.textContent = name;
+        elResId.textContent = clusterId;
+        elResStatus.textContent = "pending-for-input";
+
+        elFormView.classList.add("hidden");
+        elSuccessView.classList.remove("hidden");
+        hideError();
+      } catch (err) {
+        showError(err.message || "Cluster creation failed. Please try again.");
+        elBtnCreate.textContent = "Create Cluster";
+        updateCreateBtn();
+      }
+    });
+
+    // --- Post-creation actions ---
+    elBtnSetup.addEventListener("click", async () => {
+      if (!createdClusterId || !window.mcpApp) return;
+      try {
+        await window.mcpApp.sendMessage({
+          role: "user",
+          content: [{ type: "text", text: `Set up cluster (ID: ${createdClusterId})` }],
+        });
+      } catch { /* user can type it manually */ }
+    });
+
+    elBtnInventory.addEventListener("click", async () => {
+      if (!window.mcpApp) return;
+      try {
+        await window.mcpApp.sendMessage({
+          role: "user",
+          content: [{ type: "text", text: "Show cluster inventory" }],
+        });
+      } catch { /* user can type it manually */ }
+    });
+  </script>
+</body>
+</html>
