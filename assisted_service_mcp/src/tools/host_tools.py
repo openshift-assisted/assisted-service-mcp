@@ -8,6 +8,7 @@ from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
+from assisted_service_mcp.src.tools.followups import get_cluster_hosts_followups
 
 
 @track_tool_usage()
@@ -35,6 +36,7 @@ async def get_cluster_hosts(
     client = InventoryClient(get_access_token_func())
 
     cluster = await client.get_cluster(cluster_id)
+    cluster_status = getattr(cluster, "status", "")
     hosts = []
     for host in getattr(cluster, "hosts", []) or []:
         hosts.append({
@@ -58,7 +60,7 @@ async def get_cluster_hosts(
 
     result = {"cluster_id": cluster_id, "hosts": hosts, "discovery_iso_url": iso_url}
     log.info("Found %d host(s) for cluster %s", len(hosts), cluster_id)
-    return json.dumps(result)
+    return json.dumps(result) + get_cluster_hosts_followups(hosts, cluster_status)
 
 
 @track_tool_usage()

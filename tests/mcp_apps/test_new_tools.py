@@ -12,9 +12,17 @@ from assisted_service_mcp.src.tools.cluster_tools import (
 )
 from assisted_service_mcp.src.tools.health_tools import check_prerequisites
 
+FOLLOWUP_SEPARATOR = "\n\n[IMPORTANT"
+
 
 def _mock_token() -> str:
     return "mock-access-token"
+
+
+def _parse_json_before_followups(text: str) -> dict:
+    """Extract and parse the JSON portion before the follow-up separator."""
+    json_part = text.split(FOLLOWUP_SEPARATOR, 1)[0]
+    return json.loads(json_part)
 
 
 class TestGetClusterHosts:
@@ -31,6 +39,7 @@ class TestGetClusterHosts:
 
         mock_cluster = MagicMock()
         mock_cluster.hosts = [mock_host]
+        mock_cluster.status = "pending-for-input"
 
         mock_presigned = MagicMock()
         mock_presigned.url = "https://example.com/iso.iso"
@@ -49,17 +58,19 @@ class TestGetClusterHosts:
 
             result = await get_cluster_hosts(_mock_token, "cluster-1")
 
-        data = json.loads(result)
+        data = _parse_json_before_followups(result)
         assert len(data["hosts"]) == 1
         assert data["hosts"][0]["id"] == "host-1"
         assert data["hosts"][0]["hostname"] == "master-0"
         assert data["hosts"][0]["role"] == "master"
         assert data["discovery_iso_url"] == "https://example.com/iso.iso"
+        assert FOLLOWUP_SEPARATOR in result
 
     @pytest.mark.asyncio
     async def test_returns_empty_hosts_when_none(self) -> None:
         mock_cluster = MagicMock()
         mock_cluster.hosts = []
+        mock_cluster.status = "pending-for-input"
 
         with patch(
             "assisted_service_mcp.src.tools.host_tools.InventoryClient"
@@ -70,9 +81,10 @@ class TestGetClusterHosts:
 
             result = await get_cluster_hosts(_mock_token, "cluster-1")
 
-        data = json.loads(result)
+        data = _parse_json_before_followups(result)
         assert data["hosts"] == []
         assert data["discovery_iso_url"] == ""
+        assert FOLLOWUP_SEPARATOR in result
 
 
 class TestGetInstallationProgress:
@@ -81,7 +93,7 @@ class TestGetInstallationProgress:
     @pytest.mark.asyncio
     async def test_returns_progress_json(self) -> None:
         mock_progress = MagicMock()
-        mock_progress.installing_stage_percentage = 65
+        mock_progress.total_percentage = 65
 
         mock_cluster = MagicMock()
         mock_cluster.status = "installing"
@@ -96,10 +108,11 @@ class TestGetInstallationProgress:
 
             result = await get_installation_progress(_mock_token, "cluster-1")
 
-        data = json.loads(result)
+        data = _parse_json_before_followups(result)
         assert data["status"] == "installing"
         assert data["progress"] == 65
         assert data["status_info"] == "Bootstrap complete"
+        assert FOLLOWUP_SEPARATOR in result
 
     @pytest.mark.asyncio
     async def test_returns_zero_progress_when_no_progress_attr(self) -> None:
@@ -116,7 +129,7 @@ class TestGetInstallationProgress:
 
             result = await get_installation_progress(_mock_token, "cluster-1")
 
-        data = json.loads(result)
+        data = _parse_json_before_followups(result)
         assert data["status"] == "pending-for-input"
         assert data["progress"] == 0
 

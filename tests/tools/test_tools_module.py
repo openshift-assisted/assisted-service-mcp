@@ -486,7 +486,8 @@ async def test_tool_create_cluster_module() -> None:
             cpu_architecture="x86_64",
             platform="baremetal",
         )
-        assert resp == "cid-1"
+        assert resp.startswith("cid-1")
+        assert "[IMPORTANT" in resp
 
 
 @pytest.mark.asyncio
@@ -533,7 +534,8 @@ async def test_tool_create_cluster_with_none_cpu_architecture_module() -> None:
             cpu_architecture=None,  # Test None value
             platform=None,
         )
-        assert resp == "cid-2"
+        assert resp.startswith("cid-2")
+        assert "[IMPORTANT" in resp
 
         # Verify that the create_cluster was called with the default x86_64
         mock_client.create_cluster.assert_called_once()
@@ -642,7 +644,8 @@ async def test_tool_cluster_info_success() -> None:
         return_value=mock_client,
     ):
         resp = await cluster_tools.cluster_info(lambda: "t", "cid-123")
-        assert resp == cluster.to_str()
+        assert resp.startswith(cluster.to_str())
+        assert "[IMPORTANT" in resp
 
 
 @pytest.mark.asyncio

@@ -9,6 +9,12 @@ from assisted_service_mcp.src.service_client.assisted_service_api import Invento
 from assisted_service_mcp.src.service_client.helpers import Helpers
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
+from assisted_service_mcp.src.tools.followups import (
+    cluster_info_followups,
+    create_cluster_followups,
+    installation_progress_followups,
+    list_clusters_followups,
+)
 
 
 @track_tool_usage()
@@ -41,7 +47,8 @@ async def cluster_info(
     client = InventoryClient(get_access_token_func())
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
-    return result.to_str()
+    status = getattr(result, "status", "")
+    return result.to_str() + cluster_info_followups(status)
 
 
 @track_tool_usage()
@@ -73,7 +80,7 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     ]
     log.info("Successfully retrieved %s clusters", len(resp))
     if not resp:
-        return "No clusters found."
+        return "No clusters found." + list_clusters_followups(resp)
 
     formatted_output = ""
     for cluster in resp:
@@ -82,7 +89,7 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
         formatted_output += f"- Openshift version: {cluster['openshift_version']}\n"
         formatted_output += f"- Status: {cluster['status']}\n\n"
 
-    return formatted_output
+    return formatted_output + list_clusters_followups(resp)
 
 
 @track_tool_usage()
@@ -206,7 +213,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         cluster.id,
         infraenv.id,
     )
-    return cluster.id
+    return cluster.id + create_cluster_followups()
 
 
 @track_tool_usage()
@@ -442,7 +449,7 @@ async def get_installation_progress(
         result["status"],
         result["progress"],
     )
-    return json.dumps(result)
+    return json.dumps(result) + installation_progress_followups(result["status"])
 
 
 async def load_creator_dashboard(

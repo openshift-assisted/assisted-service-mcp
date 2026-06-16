@@ -380,9 +380,16 @@
       window.mcpApp = app;
     });
 
+    function stripFollowUps(raw) {
+      if (!raw) return raw;
+      const idx = raw.indexOf("\n\n[IMPORTANT");
+      return idx !== -1 ? raw.substring(0, idx) : raw;
+    }
+
     async function callTool(name, args = {}) {
       const result = await window.mcpApp.callServerTool({ name, arguments: args });
-      const text = result.content?.find(c => c.type === "text")?.text;
+      const raw = result.content?.find(c => c.type === "text")?.text;
+      const text = stripFollowUps(raw);
       if (!text) return null;
       try { return JSON.parse(text); } catch { return text; }
     }
