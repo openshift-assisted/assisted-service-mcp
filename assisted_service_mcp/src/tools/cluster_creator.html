@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark" />
   <title>Cluster Creator</title>
   <style>
     :root {
+      color-scheme: light dark;
       --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --color-primary: #06c;
@@ -20,14 +22,28 @@
       --radius-sm: 0.25rem;
     }
 
+    [data-theme="dark"] {
+      --color-primary: #4da3ff;
+      --color-success: #5cb85c;
+      --color-error: #f06560;
+      --color-text: #e0e0e0;
+      --color-muted: #a0a0a0;
+      --color-border: #444;
+      --color-bg: #1e1e1e;
+      --color-surface: #2a2a2a;
+      --bg-banner-success: #1a2e1a;
+      --bg-banner-error: #2e1a1a;
+    }
+
     *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { background: transparent; }
 
     body {
       margin: 0;
       font-family: var(--font-body);
       font-size: 14px;
       color: var(--color-text);
-      background: var(--color-bg);
       line-height: 1.5;
     }
 
@@ -137,7 +153,7 @@
     }
 
     .error-banner {
-      background: #faeae8;
+      background: var(--bg-banner-error, #faeae8);
       border-left: 3px solid var(--color-error);
       border-radius: var(--radius-sm);
       padding: 0.6rem 0.85rem;
@@ -165,7 +181,7 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: #edf8ef;
+      background: var(--bg-banner-success, #edf8ef);
       color: var(--color-success);
       display: flex;
       align-items: center;
@@ -213,7 +229,7 @@
       border-radius: 999px;
       font-size: 0.78rem;
       font-weight: 600;
-      background: #edf8ef;
+      background: var(--bg-banner-success, #edf8ef);
       color: var(--color-success);
     }
 
@@ -230,6 +246,31 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .hidden { display: none !important; }
+
+    .follow-ups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .follow-ups button {
+      background: var(--color-surface);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .follow-ups button:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
   </style>
 </head>
 <body>
@@ -296,6 +337,7 @@
         <button id="btn-setup" class="btn btn-primary">Continue to Setup</button>
         <button id="btn-inventory" class="btn btn-secondary">View in Inventory</button>
       </div>
+      <div id="creator-follow-ups"></div>
     </div>
   </div>
 
@@ -322,7 +364,19 @@
     import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
       const App = module.App || module.default?.App || module.default;
       const app = new (App.App || App)({ name: "Cluster Creator", version: "1.0.0" });
-      app.connect();
+      const applyDocTheme = module.applyDocumentTheme || module.default?.applyDocumentTheme;
+      const applyStyles = module.applyHostStyleVariables || module.default?.applyHostStyleVariables;
+      app.connect().then(() => {
+        try {
+          const ctx = app.getHostContext?.();
+          if (ctx?.theme && applyDocTheme) applyDocTheme(ctx.theme);
+          if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+        } catch {}
+      });
+      app.onhostcontextchanged = (ctx) => {
+        if (ctx.theme && applyDocTheme) applyDocTheme(ctx.theme);
+        if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+      };
       window.mcpApp = app;
     });
 
@@ -392,6 +446,13 @@
         elFormView.classList.add("hidden");
         elSuccessView.classList.remove("hidden");
         hideError();
+
+        const fu = document.getElementById("creator-follow-ups");
+        fu.innerHTML = "";
+        renderFollowUps(fu, [
+          "Continue to the cluster setup wizard to register hosts and configure networking",
+          "Show this cluster in the inventory",
+        ]);
       } catch (err) {
         showError(err.message || "Cluster creation failed. Please try again.");
         elBtnCreate.textContent = "Create Cluster";
@@ -405,7 +466,7 @@
       try {
         await window.mcpApp.sendMessage({
           role: "user",
-          content: [{ type: "text", text: `Set up cluster (ID: ${createdClusterId})` }],
+          content: [{ type: "text", text: `Call get_cluster_hosts with cluster_id ${createdClusterId} to open the cluster setup dashboard` }],
         });
       } catch { /* user can type it manually */ }
     });
@@ -419,6 +480,29 @@
         });
       } catch { /* user can type it manually */ }
     });
+
+    async function suggestFollowUp(promptText) {
+      if (window.openai?.sendFollowUpMessage) {
+        await window.openai.sendFollowUpMessage({ prompt: promptText });
+      } else if (window.mcpApp) {
+        await window.mcpApp.sendMessage({
+          role: "user",
+          content: [{ type: "text", text: promptText }]
+        });
+      }
+    }
+
+    function renderFollowUps(container, prompts) {
+      const div = document.createElement("div");
+      div.className = "follow-ups";
+      for (const prompt of prompts) {
+        const btn = document.createElement("button");
+        btn.textContent = prompt;
+        btn.onclick = () => suggestFollowUp(prompt);
+        div.appendChild(btn);
+      }
+      container.appendChild(div);
+    }
   </script>
 </body>
 </html>

@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
   <title>OCP Admin — Cluster Setup</title>
   <style>
     :root {
+      color-scheme: light dark;
       --font-body: "Red Hat Text", "Noto Sans", "Segoe UI", sans-serif;
       --font-heading: "Red Hat Display", "Noto Sans", "Segoe UI", sans-serif;
       --sp-2xs: 0.25rem;
@@ -25,11 +27,28 @@
       --color-warning: #f0ab00;
     }
 
+    [data-theme="dark"] {
+      --bg-shell: #1e1e1e;
+      --bg-surface: #2a2a2a;
+      --text-primary: #e0e0e0;
+      --text-muted: #a0a0a0;
+      --border: #444;
+      --color-primary: #4da3ff;
+      --color-success: #5cb85c;
+      --color-error: #f06560;
+      --color-warning: #f5c242;
+      --bg-banner: #1a2a3a;
+      --bg-banner-success: #1a2e1a;
+      --bg-banner-error: #2e1a1a;
+      --bg-banner-warning: #2e2a1a;
+    }
+
     *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { background: transparent; }
 
     body {
       margin: 0;
-      background: var(--bg-shell);
       color: var(--text-primary);
       font-family: var(--font-body);
       font-size: 14px;
@@ -65,15 +84,15 @@
     /* Status banner */
     .banner {
       border-left: 3px solid var(--color-primary);
-      background: #f0f8ff;
+      background: var(--bg-banner, #f0f8ff);
       border-radius: 0.25rem;
       padding: var(--sp-sm) var(--sp-md);
       margin-bottom: var(--sp-md);
       font-size: 0.9rem;
     }
-    .banner--success { border-left-color: var(--color-success); background: #edf8ef; }
-    .banner--error   { border-left-color: var(--color-error);   background: #faeae8; }
-    .banner--warning { border-left-color: var(--color-warning); background: #fff8e7; }
+    .banner--success { border-left-color: var(--color-success); background: var(--bg-banner-success, #edf8ef); color: var(--text-primary); }
+    .banner--error   { border-left-color: var(--color-error);   background: var(--bg-banner-error, #faeae8); color: var(--text-primary); }
+    .banner--warning { border-left-color: var(--color-warning); background: var(--bg-banner-warning, #fff8e7); color: var(--text-primary); }
     .banner[hidden] { display: none; }
 
     /* Card sections */
@@ -156,8 +175,8 @@
       border-radius: 999px;
       font-weight: 500;
     }
-    .badge--assigned { background: #edf8ef; color: var(--color-success); }
-    .badge--pending  { background: #fff8e7; color: #8a6d00; }
+    .badge--assigned { background: var(--bg-banner-success, #edf8ef); color: var(--color-success); }
+    .badge--pending  { background: var(--bg-banner-warning, #fff8e7); color: var(--color-warning); }
 
     /* Form elements */
     .form-row {
@@ -292,9 +311,8 @@
     }
     .confirm-dialog .btn-row { justify-content: flex-end; }
 
-    /* Installed banner */
     .success-banner {
-      background: #edf8ef;
+      background: var(--bg-banner-success, #edf8ef);
       border: 1px solid var(--color-success);
       border-radius: 0.375rem;
       padding: var(--sp-md) var(--sp-lg);
@@ -304,7 +322,7 @@
       font-size: 1rem;
     }
     .error-banner {
-      background: #faeae8;
+      background: var(--bg-banner-error, #faeae8);
       border: 1px solid var(--color-error);
       border-radius: 0.375rem;
       padding: var(--sp-md) var(--sp-lg);
@@ -334,6 +352,31 @@
       margin-left: var(--sp-xs);
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .follow-ups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: var(--sp-md);
+      padding-top: var(--sp-sm);
+      border-top: 1px solid var(--border);
+    }
+
+    .follow-ups button {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .follow-ups button:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
   </style>
 </head>
 <body>
@@ -364,27 +407,69 @@
       return d.innerHTML;
     }
 
+    async function suggestFollowUp(promptText) {
+      if (window.openai?.sendFollowUpMessage) {
+        await window.openai.sendFollowUpMessage({ prompt: promptText });
+      } else if (window.mcpApp) {
+        await window.mcpApp.sendMessage({
+          role: "user",
+          content: [{ type: "text", text: promptText }]
+        });
+      }
+    }
+
+    function followUpHtml(prompts) {
+      return `<div class="follow-ups">${prompts.map(p =>
+        `<button onclick="suggestFollowUp('${p.replace(/'/g, "\\'")}')">${esc(p)}</button>`
+      ).join("")}</div>`;
+    }
+    window.suggestFollowUp = suggestFollowUp;
+
     /* ---------- MCP SDK ---------- */
     import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
       const App = module.App || module.default?.App || module.default;
       const app = new (App.App || App)({ name: "Cluster Setup", version: "1.0.0" });
-      app.connect();
+      const applyDocTheme = module.applyDocumentTheme || module.default?.applyDocumentTheme;
+      const applyStyles = module.applyHostStyleVariables || module.default?.applyHostStyleVariables;
+      app.connect().then(() => {
+        try {
+          const ctx = app.getHostContext?.();
+          if (ctx?.theme && applyDocTheme) applyDocTheme(ctx.theme);
+          if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+        } catch {}
+      });
+      app.onhostcontextchanged = (ctx) => {
+        if (ctx.theme && applyDocTheme) applyDocTheme(ctx.theme);
+        if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+      };
       window.mcpApp = app;
 
-      app.ontoolinput = (params) => {
-        const args = params.arguments;
-        if (args?.cluster_id && typeof args.cluster_id === "string") {
-          state.clusterId = args.cluster_id;
+      function trySetCluster(id) {
+        if (id && typeof id === "string" && id.length > 8 && !state.clusterId) {
+          state.clusterId = id;
           render();
           loadHosts();
         }
+      }
+
+      app.ontoolinput = (params) => {
+        const args = params.arguments || params.params?.arguments || {};
+        trySetCluster(args.cluster_id);
       };
+
       app.ontoolresult = (params) => {
-        const sc = params.structuredContent;
-        if (sc?.cluster_id && typeof sc.cluster_id === "string" && !state.clusterId) {
-          state.clusterId = sc.cluster_id;
-          render();
-          loadHosts();
+        const sc = params.structuredContent || {};
+        trySetCluster(sc.cluster_id);
+        if (!state.clusterId && sc.result) {
+          try {
+            const parsed = typeof sc.result === "string" ? JSON.parse(sc.result) : sc.result;
+            trySetCluster(parsed.cluster_id);
+          } catch {}
+        }
+        if (!state.clusterId) {
+          const content = params.content || sc.content || [];
+          const txt = (Array.isArray(content) ? content : []).find(c => c.type === "text")?.text || "";
+          try { trySetCluster(JSON.parse(txt).cluster_id); } catch {}
         }
       };
     }).catch(() => {});
@@ -599,6 +684,19 @@
       return `<div class="banner ${cls}">${esc(state.statusMessage)}</div>`;
     }
 
+    function renderSetupFollowUps() {
+      const prompts = [];
+      if (state.installationStatus === "installed") {
+        prompts.push("Show this cluster in the inventory");
+      } else if (state.installationStatus === "installing") {
+        prompts.push("Show cluster events for troubleshooting");
+      } else if (state.hosts.length > 0 && !state.installationStatus) {
+        prompts.push("Check if hosts have registered after booting from the discovery ISO");
+        prompts.push("Monitor the installation progress");
+      }
+      return prompts.length ? followUpHtml(prompts) : "";
+    }
+
     function renderDashboard() {
       return `
         <h1>Cluster Setup</h1>
@@ -608,7 +706,8 @@
         ${renderHostsSection()}
         ${renderVipsSection()}
         ${renderInstallSection()}
-        ${state.showInstallConfirm ? renderConfirmDialog() : ""}`;
+        ${state.showInstallConfirm ? renderConfirmDialog() : ""}
+        ${renderSetupFollowUps()}`;
     }
 
     function renderDiscoveryIso() {

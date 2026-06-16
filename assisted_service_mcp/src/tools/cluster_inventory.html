@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark" />
 <title>Cluster Inventory</title>
 <style>
 :root {
+  color-scheme: light dark;
   --font-family: var(--pf-v5-global--FontFamily--text, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   --color-primary: #06c;
   --color-success: #3e8635;
@@ -19,10 +21,31 @@
   --color-hover-row: #f0f0f0;
 }
 
+[data-theme="dark"] {
+  --color-bg: #1e1e1e;
+  --color-bg-alt: #2a2a2a;
+  --color-border: #444;
+  --color-text: #e0e0e0;
+  --color-text-secondary: #a0a0a0;
+  --color-hover-row: #333;
+  --color-primary: #4da3ff;
+  --color-success: #5cb85c;
+  --color-error: #f06560;
+  --color-warning: #f5c242;
+  --bg-banner-info: #1a2a3a;
+  --bg-banner-success: #1a2e1a;
+  --bg-banner-error: #2e1a1a;
+  --bg-banner-warning: #2e2a1a;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html, body {
+  background: transparent;
 }
 
 body {
@@ -30,7 +53,6 @@ body {
   font-size: 14px;
   line-height: 1.5;
   color: var(--color-text);
-  background: var(--color-bg);
   padding: 16px;
 }
 
@@ -66,25 +88,25 @@ body {
 }
 
 .banner.loading {
-  background: #e7f1fa;
+  background: var(--bg-banner-info, #e7f1fa);
   border: 1px solid var(--color-primary);
   color: var(--color-primary);
 }
 
 .banner.success {
-  background: #e9f7e9;
+  background: var(--bg-banner-success, #e9f7e9);
   border: 1px solid var(--color-success);
   color: var(--color-success);
 }
 
 .banner.error {
-  background: #fce8e8;
+  background: var(--bg-banner-error, #fce8e8);
   border: 1px solid var(--color-error);
   color: var(--color-error);
 }
 
 .banner.warning {
-  background: #fef6e0;
+  background: var(--bg-banner-warning, #fef6e0);
   border: 1px solid var(--color-warning);
   color: #795600;
 }
@@ -212,22 +234,22 @@ tr:hover td {
 }
 
 .status-ready, .status-installed, .status-adding-hosts {
-  background: #e9f7e9;
+  background: var(--bg-banner-success, #e9f7e9);
   color: var(--color-success);
 }
 
 .status-error, .status-cancelled {
-  background: #fce8e8;
+  background: var(--bg-banner-error, #fce8e8);
   color: var(--color-error);
 }
 
 .status-pending-for-input, .status-insufficient {
-  background: #fef6e0;
-  color: #795600;
+  background: var(--bg-banner-warning, #fef6e0);
+  color: var(--color-warning);
 }
 
 .status-installing, .status-preparing-for-installation, .status-finalizing {
-  background: #e7f1fa;
+  background: var(--bg-banner-info, #e7f1fa);
   color: var(--color-primary);
 }
 
@@ -350,7 +372,7 @@ tr:hover td {
 }
 
 .logs-link:hover {
-  background: #e7f1fa;
+  background: var(--bg-banner-info, #e7f1fa);
 }
 
 .empty-state {
@@ -385,6 +407,32 @@ tr:hover td {
   margin-left: 8px;
   font-weight: 400;
 }
+
+.follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.follow-ups button {
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.follow-ups button:hover {
+  background: var(--color-hover-row);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
 </style>
 </head>
 <body>
@@ -415,14 +463,12 @@ tr:hover td {
         <tr>
           <th>Name</th>
           <th>Status</th>
-          <th>Version</th>
-          <th>ID</th>
-          <th>Actions</th>
         </tr>
       </thead>
       <tbody id="cluster-tbody"></tbody>
     </table>
   </div>
+  <div id="list-follow-ups"></div>
 </div>
 
 <!-- Detail View -->
@@ -450,6 +496,7 @@ tr:hover td {
     <button onclick="loadLogs()" id="load-logs-btn">Download Logs</button>
     <div id="logs-container" style="margin-top:8px"></div>
   </div>
+  <div id="detail-follow-ups"></div>
 </div>
 
 <script type="module">
@@ -541,26 +588,60 @@ function parseClusterList(text) {
 
 function parseClusterDetail(text) {
   if (!text) return {};
-  if (typeof text === "object") return text;
+  if (typeof text === "object" && !Array.isArray(text)) {
+    return extractKnownFields(text);
+  }
 
-  const details = {};
-  const lines = text.split("\n");
+  const raw = String(text);
+  const fields = {};
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+  const patterns = [
+    ["Version", /'openshift_version'\s*:\s*'([^']+)'/],
+    ["Base DNS Domain", /'base_dns_domain'\s*:\s*'([^']+)'/],
+    ["HA Mode", /'high_availability_mode'\s*:\s*'([^']+)'/],
+    ["CPU Architecture", /'cpu_architecture'\s*:\s*'([^']+)'/],
+    ["Network Type", /'network_type'\s*:\s*'([^']+)'/],
+    ["User", /'user_name'\s*:\s*'([^']+)'/],
+    ["Created", /'created_at'\s*:\s*datetime\.datetime\(([^)]+)\)/],
+    ["Control Plane Count", /'control_plane_count'\s*:\s*(\d+)/],
+    ["User Managed Networking", /'user_managed_networking'\s*:\s*(True|False)/],
+    ["Hyperthreading", /'hyperthreading'\s*:\s*'([^']+)'/],
+  ];
 
-    const colonIdx = trimmed.indexOf(":");
-    if (colonIdx > 0) {
-      let key = trimmed.substring(0, colonIdx).replace(/^[-*]\s*/, "").trim();
-      const value = trimmed.substring(colonIdx + 1).trim();
-      if (key && value) {
-        details[key] = value;
+  for (const [label, regex] of patterns) {
+    const match = raw.match(regex);
+    if (match && match[1]) {
+      let val = match[1];
+      if (label === "Created") {
+        const parts = val.split(",").map(s => s.trim());
+        if (parts.length >= 3) val = `${parts[0]}-${parts[1].padStart(2,"0")}-${parts[2].padStart(2,"0")}`;
       }
+      fields[label] = val;
     }
   }
 
-  return details;
+  const cidrMatch = raw.match(/'cluster_networks'\s*:\s*\[\{[^}]*'cidr'\s*:\s*'([^']+)'/);
+  if (cidrMatch) fields["Cluster Network CIDR"] = cidrMatch[1];
+  const svcMatch = raw.match(/'service_networks'\s*:\s*\[\{[^}]*'cidr'\s*:\s*'([^']+)'/);
+  if (svcMatch) fields["Service Network CIDR"] = svcMatch[1];
+
+  return fields;
+}
+
+function extractKnownFields(obj) {
+  const fields = {};
+  const map = {
+    name: "Name", id: "ID", status: "Status", openshift_version: "Version",
+    base_dns_domain: "Base DNS Domain", high_availability_mode: "HA Mode",
+    cpu_architecture: "CPU Architecture", network_type: "Network Type",
+    user_name: "User", control_plane_count: "Control Plane Count",
+  };
+  for (const [k, label] of Object.entries(map)) {
+    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== "") {
+      fields[label] = String(obj[k]);
+    }
+  }
+  return fields;
 }
 
 function getStatusClass(status) {
@@ -607,38 +688,15 @@ function renderTable() {
     badge.textContent = cluster.status || "unknown";
     statusTd.appendChild(badge);
 
-    const versionTd = document.createElement("td");
-    versionTd.textContent = cluster.openshift_version || "-";
-
-    const idTd = document.createElement("td");
-    idTd.className = "id-cell";
-    idTd.textContent = cluster.id || "-";
-    idTd.title = cluster.id || "";
-
-    const actionsTd = document.createElement("td");
-    if (SETUP_STATUSES.includes((cluster.status || "").toLowerCase())) {
-      const setupBtn = document.createElement("button");
-      setupBtn.className = "success";
-      setupBtn.textContent = "Setup";
-      setupBtn.onclick = (e) => {
-        e.stopPropagation();
-        sendSetupMessage(cluster);
-      };
-      actionsTd.appendChild(setupBtn);
-    }
-
     tr.appendChild(nameTd);
     tr.appendChild(statusTd);
-    tr.appendChild(versionTd);
-    tr.appendChild(idTd);
-    tr.appendChild(actionsTd);
     tbody.appendChild(tr);
   }
 }
 
 function sendSetupMessage(cluster) {
   if (!window.mcpApp) return;
-  const msg = `Set up cluster ${cluster.name} (ID: ${cluster.id})`;
+  const msg = `Call get_cluster_hosts with cluster_id ${cluster.id} to open the cluster setup dashboard for ${cluster.name}`;
   window.mcpApp.sendMessage({
     role: "user",
     content: [{ type: "text", text: msg }]
@@ -671,6 +729,12 @@ window.loadClusters = async function() {
 
     if (clusters.length > 0) {
       showBanner(`Loaded ${clusters.length} cluster(s)`, "success");
+      const fu = document.getElementById("list-follow-ups");
+      fu.innerHTML = "";
+      renderFollowUps(fu, [
+        "Set up a cluster that is pending configuration",
+        "Create a new OpenShift cluster",
+      ]);
     } else {
       showBanner("No clusters found", "warning");
     }
@@ -721,10 +785,10 @@ function showDetail(cluster) {
   callTool("cluster_info", { cluster_id: cluster.id })
     .then(result => {
       const details = parseClusterDetail(result);
-      if (!details["Name"]) details["Name"] = cluster.name;
-      if (!details["ID"]) details["ID"] = cluster.id;
-      if (!details["Status"]) details["Status"] = cluster.status;
-      if (!details["Version"]) details["Version"] = cluster.openshift_version;
+      details["Name"] = cluster.name;
+      details["ID"] = cluster.id;
+      details["Status"] = cluster.status;
+      if (cluster.openshift_version) details["Version"] = cluster.openshift_version;
       renderDetailView(details, cluster.name);
       showDetailView();
       hideBanner();
@@ -775,6 +839,19 @@ function renderDetailView(details, title) {
   document.getElementById("load-events-btn").disabled = false;
   document.getElementById("logs-container").innerHTML = "";
   document.getElementById("load-logs-btn").disabled = false;
+
+  const fu = document.getElementById("detail-follow-ups");
+  fu.innerHTML = "";
+  const status = (details["Status"] || "").toLowerCase();
+  const prompts = [];
+  if (["pending-for-input", "insufficient", "ready"].includes(status)) {
+    prompts.push("Set up this cluster");
+  }
+  if (["installing"].includes(status)) {
+    prompts.push("Check the installation progress");
+  }
+  prompts.push("Show cluster events for troubleshooting");
+  renderFollowUps(fu, prompts);
 }
 
 function showDetailView() {
@@ -913,28 +990,61 @@ function formatTime(ts) {
   }
 }
 
+async function suggestFollowUp(promptText) {
+  if (window.openai?.sendFollowUpMessage) {
+    await window.openai.sendFollowUpMessage({ prompt: promptText });
+  } else if (window.mcpApp) {
+    await window.mcpApp.sendMessage({
+      role: "user",
+      content: [{ type: "text", text: promptText }]
+    });
+  }
+}
+
+function renderFollowUps(container, prompts) {
+  const div = document.createElement("div");
+  div.className = "follow-ups";
+  for (const prompt of prompts) {
+    const btn = document.createElement("button");
+    btn.textContent = prompt;
+    btn.onclick = () => suggestFollowUp(prompt);
+    div.appendChild(btn);
+  }
+  container.appendChild(div);
+}
+
 // MCP App initialization
-import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+function applyTheme(mod, app) {
+  const applyDocTheme = mod.applyDocumentTheme || mod.default?.applyDocumentTheme;
+  const applyStyles = mod.applyHostStyleVariables || mod.default?.applyHostStyleVariables;
+  try {
+    const ctx = app.getHostContext?.();
+    if (ctx?.theme && applyDocTheme) applyDocTheme(ctx.theme);
+    if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+  } catch {}
+  app.onhostcontextchanged = (ctx) => {
+    if (ctx.theme && applyDocTheme) applyDocTheme(ctx.theme);
+    if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+  };
+}
+
+function initMcp(module) {
   const App = module.App || module.default?.App || module.default;
   const AppClass = App.App || App;
   const app = new AppClass({ name: "Cluster Inventory", version: "1.0.0" });
-  app.connect();
   window.mcpApp = app;
-  mcpReady = true;
-  loadClusters();
-}).catch(err => {
+  app.connect().then(() => {
+    applyTheme(module, app);
+    mcpReady = true;
+    loadClusters();
+  });
+}
+
+import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(initMcp).catch(err => {
   console.error("Failed to load MCP Apps SDK:", err);
   showBanner("Failed to connect to MCP. Retrying in 3s...", "error");
   setTimeout(() => {
-    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
-      const App = module.App || module.default?.App || module.default;
-      const AppClass = App.App || App;
-      const app = new AppClass({ name: "Cluster Inventory", version: "1.0.0" });
-      app.connect();
-      window.mcpApp = app;
-      mcpReady = true;
-      loadClusters();
-    }).catch(err2 => {
+    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(initMcp).catch(() => {
       showBanner("MCP connection failed. Please reload.", "error");
     });
   }, 3000);
