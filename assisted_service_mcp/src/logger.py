@@ -60,6 +60,43 @@ class SensitiveFormatter(logging.Formatter):
         s = _redact_value(s, "vsphere_username", "*** VSPHERE_USER ***")
         s = _redact_value(s, "vsphere_password", "*** VSPHERE_PASSWORD ***")
 
+        # Redact Authorization: Bearer tokens (including base64url chars: +, /, =)
+        s = re.sub(
+            r"(['\"]?Authorization['\"]?\s*:\s*['\"]?Bearer\s+)[A-Za-z0-9._\-+/~=]+",
+            r"\g<1>*** TOKEN ***",
+            s,
+            flags=re.IGNORECASE,
+        )
+        # Redact bare Bearer tokens without Authorization header
+        s = re.sub(
+            r"(Bearer\s+)[A-Za-z0-9._\-+/~=]+",
+            r"\g<1>*** TOKEN ***",
+            s,
+            flags=re.IGNORECASE,
+        )
+        # Redact AWS presigned URL credentials
+        s = re.sub(
+            r"(X-Amz-Signature=)[A-Fa-f0-9]+", r"\g<1>*** REDACTED ***", s
+        )
+        s = re.sub(
+            r"(X-Amz-Security-Token=)[A-Za-z0-9%+/=]+", r"\g<1>*** REDACTED ***", s
+        )
+        s = re.sub(
+            r"(X-Amz-Credential=)[A-Za-z0-9%/]+", r"\g<1>*** REDACTED ***", s
+        )
+
+        s = re.sub(
+            r'("pull_secret"\s*:\s*")[^"]*"',
+            r'\g<1>*** REDACTED ***"',
+            s
+        )
+
+        s = re.sub(
+            r'("ssh_public_key"\s*:\s*")[^"]*"',
+            r'\g<1>*** REDACTED ***"',
+            s
+        )
+
         return s
 
     def format(self, record: logging.LogRecord) -> str:

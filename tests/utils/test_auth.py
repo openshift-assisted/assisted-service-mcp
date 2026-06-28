@@ -39,21 +39,21 @@ def reset_auth_module() -> Iterator[None]:
         importlib.reload(sys.modules[module_name])
 
 
-def test_get_offline_token_prefers_settings_env() -> None:
+def test_get_offline_token_prefers_request_header() -> None:
     # Import fresh for each test
     from assisted_service_mcp.utils import auth as auth_mod
 
     with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", "env-token"):
         mcp = _MCP(headers={"OCM-Offline-Token": "header-token"})
-        assert auth_mod.get_offline_token(mcp) == "env-token"
+        assert auth_mod.get_offline_token(mcp) == "header-token"
 
 
-def test_get_offline_token_from_header_when_no_env() -> None:
+def test_get_offline_token_from_env_when_no_header() -> None:
     from assisted_service_mcp.utils import auth as auth_mod
 
-    with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", None):
-        mcp = _MCP(headers={"OCM-Offline-Token": "header-token"})
-        assert auth_mod.get_offline_token(mcp) == "header-token"
+    with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", "env-token"):
+        mcp = _MCP(headers={})
+        assert auth_mod.get_offline_token(mcp) == "env-token"
 
 
 def test_get_offline_token_raises_when_missing() -> None:

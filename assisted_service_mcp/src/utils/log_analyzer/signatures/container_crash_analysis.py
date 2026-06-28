@@ -18,6 +18,10 @@ from .base import Signature, SignatureResult
 
 logger = logging.getLogger(__name__)
 
+# Constants for log extraction
+DEFAULT_MAX_LOG_LINES = 5
+MAX_LOG_LINE_LENGTH = 200
+
 
 class ContainerCrashAnalysis(Signature):
     """Analyzes container crashes in the last 30 minutes of the install from kubelet logs."""
@@ -256,7 +260,7 @@ class ContainerCrashAnalysis(Signature):
                 log_analyzer, host_id, container_name, containers_path
             )
             if container_logs_list:
-                content = "    Last 20 container logs:\n"
+                content = f"    Last {DEFAULT_MAX_LOG_LINES} container logs (max {MAX_LOG_LINE_LENGTH} chars/line):\n"
                 for log_file_name, log_lines in container_logs_list:
                     if len(container_logs_list) > 1:
                         content += f"      --- {log_file_name} ---\n"
@@ -338,7 +342,7 @@ class ContainerCrashAnalysis(Signature):
     def _get_container_logs(
         self, log_analyzer, host_ip: str, container_name: str, containers_dir_path: str
     ) -> List[tuple]:
-        """Get the last 20 lines from all container log files for a given container."""
+        """Get the last 5 lines (max 200 chars each) from all container log files for a given container."""
         try:
             containers_dir = log_analyzer.logs_archive.get(containers_dir_path)
         except FileNotFoundError:
@@ -385,7 +389,7 @@ class ContainerCrashAnalysis(Signature):
     def _process_container_log_files(
         self, log_analyzer, container_log_files: List[str], containers_dir_path: str
     ) -> List[tuple]:
-        """Process container log files and extract last 20 lines."""
+        """Process container log files and extract last 5 lines (max 200 chars each)."""
         all_logs = []
 
         for log_file_name in sorted(container_log_files):
@@ -408,12 +412,20 @@ class ContainerCrashAnalysis(Signature):
 
         return all_logs
 
-    def _extract_last_lines(self, log_content: str, max_lines: int = 20) -> List[str]:
-        """Extract the last N non-empty lines from log content."""
+    def _extract_last_lines(self, log_content: str, max_lines: int = DEFAULT_MAX_LOG_LINES) -> List[str]:
+        """
+        Extract the last N non-empty lines from log content.
+
+        Returns the last max_lines lines for concise output, with each line
+        truncated for readability.
+        """
         log_lines = log_content.split("\n")
         non_empty_lines = [line for line in log_lines if line.strip()]
-        return (
+        last_lines = (
             non_empty_lines[-max_lines:]
             if len(non_empty_lines) > max_lines
             else non_empty_lines
         )
+
+        # Truncate each line for readability
+        return [line[:MAX_LOG_LINE_LENGTH] for line in last_lines]
