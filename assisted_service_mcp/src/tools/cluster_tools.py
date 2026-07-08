@@ -1,13 +1,22 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
+import json
 from typing import Annotated, Callable
 from pydantic import Field
 
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.service_client.helpers import Helpers
+from fastmcp.tools.tool import ToolResult
+
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
+from assisted_service_mcp.src.tools.followups import (
+    cluster_info_followups,
+    create_cluster_followups,
+    installation_progress_followups,
+    list_clusters_followups,
+)
 
 
 @track_tool_usage()
@@ -40,11 +49,14 @@ async def cluster_info(
     client = InventoryClient(get_access_token_func())
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
-    return result.to_str()
+    status = getattr(result, "status", "")
+    return result.to_str() + cluster_info_followups(status)
 
 
 @track_tool_usage()
-async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
+async def list_clusters(
+    get_access_token_func: Callable[[], str],
+) -> str:
     """List all clusters for the current user.
 
     Retrieves a summary of all OpenShift clusters associated with your account. This provides
@@ -72,7 +84,7 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
     ]
     log.info("Successfully retrieved %s clusters", len(resp))
     if not resp:
-        return "No clusters found."
+        return "No clusters found." + list_clusters_followups(resp)
 
     formatted_output = ""
     for cluster in resp:
@@ -81,7 +93,26 @@ async def list_clusters(get_access_token_func: Callable[[], str]) -> str:
         formatted_output += f"- Openshift version: {cluster['openshift_version']}\n"
         formatted_output += f"- Status: {cluster['status']}\n\n"
 
-    return formatted_output
+    return ToolResult(
+        content=formatted_output + list_clusters_followups(resp),
+        structured_content={"result": json.dumps(resp)},
+    )
+
+
+async def open_cluster_creator(
+    _get_access_token_func: Callable[[], str],
+) -> str:
+    """Open the Cluster Creator dashboard.
+
+    Use when the user wants to create a new self-managed OpenShift cluster.
+    This opens the interactive creation form where the user can configure
+    all cluster parameters. After calling this, call create_cluster to
+    open the interactive Creator UI form.
+
+    Returns:
+        str: Instruction to proceed with create_cluster.
+    """
+    return "Cluster Creator dashboard loaded."
 
 
 @track_tool_usage()
@@ -205,7 +236,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         cluster.id,
         infraenv.id,
     )
-    return cluster.id
+    return cluster.id + create_cluster_followups()
 
 
 @track_tool_usage()
@@ -383,7 +414,7 @@ async def analyze_cluster_logs(
 ) -> str:
     """Analyze Assisted Installer logs for a cluster and summarize findings.
 
-    Runs a set of built‑in log analysis signatures against the cluster’s collected
+    Runs a set of built‑in log analysis signatures against the cluster's collected
     logs (controller logs, bootstrap/control‑plane logs, and must‑gather content
     when available). The results highlight common misconfigurations and known
     error patterns to speed up triage of failed or degraded installations.
@@ -398,3 +429,50 @@ async def analyze_cluster_logs(
     client = InventoryClient(get_access_token_func())
     results = await analyze_cluster(cluster_id=cluster_id, api_client=client)
     return "\n\n".join([str(r) for r in results])
+
+
+@track_tool_usage()
+async def get_installation_progress(
+    get_access_token_func: Callable[[], str],
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to check."),
+    ],
+) -> str:
+    """Get installation status and progress for a cluster.
+
+    Returns the current installation status, progress percentage, and
+    descriptive status info. Use this to monitor a running installation
+    after calling install_cluster. Typical installations take 45-60 minutes.
+
+    Prerequisites:
+        - Cluster with installation started (from install_cluster)
+
+    Returns:
+        str: JSON with status, progress (0-100), and status_info.
+    """
+    log.info("Getting installation progress for cluster %s", cluster_id)
+    client = InventoryClient(get_access_token_func())
+    cluster = await client.get_cluster(cluster_id)
+
+    progress_pct = 0
+    if hasattr(cluster, "progress") and cluster.progress:
+        progress_pct = getattr(
+            cluster.progress, "total_percentage", 0
+        ) or 0
+
+    result = {
+        "status": getattr(cluster, "status", "unknown"),
+        "progress": progress_pct,
+        "status_info": getattr(cluster, "status_info", ""),
+    }
+    log.info(
+        "Cluster %s: status=%s progress=%d%%",
+        cluster_id,
+        result["status"],
+        result["progress"],
+    )
+    return ToolResult(
+        content=json.dumps(result) + installation_progress_followups(result["status"]),
+        structured_content={"result": json.dumps(result)},
+    )

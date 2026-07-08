@@ -1,12 +1,71 @@
 """Host management tools for Assisted Service MCP Server."""
 
+import json
 from typing import Annotated, Callable, Literal
 from pydantic import Field
 
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.logger import log
+from fastmcp.tools.tool import ToolResult
+
 from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
+from assisted_service_mcp.src.tools.followups import get_cluster_hosts_followups
+
+
+@track_tool_usage()
+async def get_cluster_hosts(
+    get_access_token_func: Callable[[], str],
+    cluster_id: Annotated[
+        str,
+        Field(description="The unique identifier of the cluster to get hosts for."),
+    ],
+) -> str:
+    """Get registered hosts and discovery ISO URL for a cluster.
+
+    Returns the list of hosts that have booted from the discovery ISO and
+    registered with the Assisted Installer, along with the ISO download URL
+    for adding more hosts. Use this to check host discovery status before
+    assigning roles and starting installation.
+
+    Prerequisites:
+        - Existing cluster with infrastructure environment
+
+    Returns:
+        str: JSON with hosts array and discovery_iso_url.
+    """
+    log.info("Getting hosts for cluster %s", cluster_id)
+    client = InventoryClient(get_access_token_func())
+
+    cluster = await client.get_cluster(cluster_id)
+    cluster_status = getattr(cluster, "status", "")
+    hosts = []
+    for host in getattr(cluster, "hosts", []) or []:
+        hosts.append({
+            "id": getattr(host, "id", ""),
+            "hostname": getattr(host, "requested_hostname", "")
+            or getattr(host, "hostname", ""),
+            "status": getattr(host, "status", "unknown"),
+            "role": getattr(host, "role", "auto-assign"),
+        })
+
+    iso_url = ""
+    try:
+        infra_envs = await client.list_infra_envs(cluster_id)
+        if infra_envs:
+            infra_env_id = infra_envs[0].get("id", "")
+            if infra_env_id:
+                presigned = await client.get_infra_env_download_url(infra_env_id)
+                iso_url = presigned.url if presigned and presigned.url else ""
+    except Exception as exc:
+        log.warning("Could not get ISO URL for cluster %s: %s", cluster_id, exc)
+
+    result = {"cluster_id": cluster_id, "hosts": hosts, "discovery_iso_url": iso_url}
+    log.info("Found %d host(s) for cluster %s", len(hosts), cluster_id)
+    return ToolResult(
+        content=json.dumps(result) + get_cluster_hosts_followups(hosts, cluster_status),
+        structured_content={"result": json.dumps(result)},
+    )
 
 
 @track_tool_usage()
