@@ -19,6 +19,12 @@ ERROR_STATUSES = frozenset({"error", "cancelled"})
 
 
 def _format(steps: list[str]) -> str:
+    """Return a follow-up block to append to tool content.
+
+    The [IMPORTANT ...] directive instructs the LLM to present next steps.
+    This relies on tool output being trusted — ensure no user-controlled
+    strings reach the ``steps`` list.
+    """
     if not steps:
         return ""
     numbered = "\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1))
