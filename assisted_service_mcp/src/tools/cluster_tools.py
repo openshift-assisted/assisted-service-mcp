@@ -56,7 +56,7 @@ async def cluster_info(
 @track_tool_usage()
 async def list_clusters(
     get_access_token_func: Callable[[], str],
-) -> str:
+) -> ToolResult:
     """List all clusters for the current user.
 
     Retrieves a summary of all OpenShift clusters associated with your account. This provides
@@ -64,11 +64,7 @@ async def list_clusters(
     configuration. Use cluster_info() to get comprehensive details about a specific cluster.
 
     Returns:
-        str: A formatted list of clusters, each containing:
-            - Cluster name
-            - Unique cluster ID
-            - OpenShift version
-            - Current cluster status (e.g., "ready", "installing", "error")
+        ToolResult: A formatted list of clusters with structured data for UI widgets.
     """
     log.info("Retrieving list of all clusters")
     client = InventoryClient(get_access_token_func())
@@ -84,7 +80,11 @@ async def list_clusters(
     ]
     log.info("Successfully retrieved %s clusters", len(resp))
     if not resp:
-        return "No clusters found." + list_clusters_followups(resp)
+        return ToolResult(
+            content="No clusters found." + list_clusters_followups(resp),
+            # result is JSON-encoded string (not object) for MCP Gateway compatibility
+            structured_content={"result": json.dumps([])},
+        )
 
     formatted_output = ""
     for cluster in resp:
@@ -95,6 +95,7 @@ async def list_clusters(
 
     return ToolResult(
         content=formatted_output + list_clusters_followups(resp),
+        # result is JSON-encoded string (not object) for MCP Gateway compatibility
         structured_content={"result": json.dumps(resp)},
     )
 
