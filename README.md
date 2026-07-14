@@ -72,6 +72,54 @@ When configuring your MCP client, add the `OCM-Offline-Token` header:
 4. Ask about your clusters:
 ![Example prompt asking about a cluster](images/cluster-prompt-example.png)
 
+## MCP Apps — Interactive UI Dashboards
+
+When connected to a UI-capable MCP client (such as ChatGPT Custom GPTs or Cursor), the server
+renders interactive HTML dashboards alongside the chat. Text-only clients continue to receive
+the same text responses as before.
+
+### Dashboards
+
+| Dashboard | Trigger | Description |
+|---|---|---|
+| **Cluster Inventory** | Ask to list clusters | Browse clusters, view details, events, and download logs |
+| **Cluster Creator** | Ask to create a cluster | Form-based cluster creation with version picker and platform selector |
+| **Cluster Setup** | Ask to set up a cluster | Host table with role assignment, VIP configuration, and install button |
+
+> **Note:** The screenshots below were captured during development. The final dashboards
+> may differ slightly in styling and layout.
+
+**Cluster Inventory** — browse clusters, view details, events, and logs:
+
+![Cluster Inventory (light mode in ChatGPT)](./images/mcp-app-inventory-light.png)
+
+![Cluster Inventory (dark mode)](./images/mcp-app-inventory-dark.png)
+
+**Cluster Creator** — form-based cluster creation:
+
+![Cluster Creator](./images/mcp-app-creator.png)
+
+**Cluster Setup** — host registration, role assignment, VIPs, and installation:
+
+![Cluster Setup](./images/mcp-app-setup.png)
+
+![Cluster Setup (installation complete)](./images/mcp-app-setup-installed.png)
+
+### Developing New Dashboards
+
+Each dashboard is a single-file HTML application in `assisted_service_mcp/src/tools/`.
+New dashboards should follow these conventions:
+
+- **MCP Apps SDK**: Import from `https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps`
+- **Styling**: Use Red Hat fonts (`Red Hat Display`, `Red Hat Text`, `Red Hat Mono` via Google Fonts). See the existing dashboards for CSS variable patterns supporting light/dark mode.
+- **Tool calls**: Use `app.callServerTool()` to invoke server tools from within the widget
+- **Follow-up buttons**: Use `app.sendMessage()` to send follow-up prompts back to the chat
+- **Data ingestion**: Widget-opening tools return `ToolResult` with `structured_content` for the widget and `content` for text-only clients. Widgets receive initial data via `app.ontoolresult` and can fetch more via `callServerTool()`
+- **Follow-up isolation**: Tool responses include LLM-directed text (`[IMPORTANT...]` blocks). Widgets must strip this via `stripFollowUps()` before parsing data
+- **Registration**: Register the HTML as a `ui://` resource in `mcp.py` and bind it to a tool via `app=AppConfig(resource_uri=..., visibility=["app", "model"])`
+- **CSP**: Add any external domains to `_APP_CSP` in `mcp.py`
+- **Package data**: HTML files are included via `[tool.setuptools.package-data]` in `pyproject.toml`
+
 ## Available Tools
 
 The MCP server provides the following tools for interacting with the OpenShift Assisted Installer:
