@@ -64,6 +64,7 @@ async def get_cluster_hosts(
     log.info("Found %d host(s) for cluster %s", len(hosts), cluster_id)
     return ToolResult(
         content=json.dumps(result) + get_cluster_hosts_followups(hosts, cluster_status),
+        # result is JSON-encoded string (not object) for MCP Gateway compatibility
         structured_content={"result": json.dumps(result)},
     )
 

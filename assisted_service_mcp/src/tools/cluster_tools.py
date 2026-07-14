@@ -476,5 +476,6 @@ async def get_installation_progress(
     )
     return ToolResult(
         content=json.dumps(result) + installation_progress_followups(result["status"]),
+        # result is JSON-encoded string (not object) for MCP Gateway compatibility
         structured_content={"result": json.dumps(result)},
     )
