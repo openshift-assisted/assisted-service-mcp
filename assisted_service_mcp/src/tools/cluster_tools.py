@@ -100,6 +100,7 @@ async def list_clusters(
     )
 
 
+@track_tool_usage()
 async def open_cluster_creator(
     _get_access_token_func: Callable[[], str],
 ) -> str:
