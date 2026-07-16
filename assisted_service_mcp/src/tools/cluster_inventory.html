@@ -891,7 +891,9 @@ window.loadEvents = async function() {
       try {
         events = JSON.parse(result);
       } catch {
-        eventsList.innerHTML = `<li>${result}</li>`;
+        const li = document.createElement("li");
+        li.textContent = result;
+        eventsList.appendChild(li);
         eventsList.style.display = "block";
         btn.textContent = "Reload Events";
         btn.disabled = false;
