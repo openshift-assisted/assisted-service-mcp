@@ -440,7 +440,7 @@ async def get_installation_progress(
         str,
         Field(description="The unique identifier of the cluster to check."),
     ],
-) -> str:
+) -> ToolResult:
     """Get installation status and progress for a cluster.
 
     Returns the current installation status, progress percentage, and
@@ -451,7 +451,7 @@ async def get_installation_progress(
         - Cluster with installation started (from install_cluster)
 
     Returns:
-        str: JSON with status, progress (0-100), and status_info.
+        ToolResult: JSON with status, progress (0-100), and status_info.
     """
     log.info("Getting installation progress for cluster %s", cluster_id)
     client = InventoryClient(get_access_token_func())

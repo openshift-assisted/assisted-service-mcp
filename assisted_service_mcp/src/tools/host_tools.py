@@ -20,7 +20,7 @@ async def get_cluster_hosts(
         str,
         Field(description="The unique identifier of the cluster to get hosts for."),
     ],
-) -> str:
+) -> ToolResult:
     """Get registered hosts and discovery ISO URL for a cluster.
 
     Returns the list of hosts that have booted from the discovery ISO and
@@ -32,7 +32,7 @@ async def get_cluster_hosts(
         - Existing cluster with infrastructure environment
 
     Returns:
-        str: JSON with hosts array and discovery_iso_url.
+        ToolResult: JSON with hosts array and discovery_iso_url.
     """
     log.info("Getting hosts for cluster %s", cluster_id)
     client = InventoryClient(get_access_token_func())
