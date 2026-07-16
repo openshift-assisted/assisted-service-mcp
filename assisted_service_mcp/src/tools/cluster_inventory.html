@@ -788,9 +788,11 @@ window.lookupCluster = async function() {
 function showDetail(cluster) {
   currentClusterId = cluster.id;
   showBanner(`Loading details for "${cluster.name}"...`, "loading");
+  const requestedId = cluster.id;
 
   callTool("cluster_info", { cluster_id: cluster.id })
     .then(result => {
+      if (currentClusterId !== requestedId) return;
       const details = parseClusterDetail(result);
       details["Name"] = cluster.name;
       details["ID"] = cluster.id;
@@ -801,6 +803,7 @@ function showDetail(cluster) {
       hideBanner();
     })
     .catch(err => {
+      if (currentClusterId !== requestedId) return;
       showBanner(`Failed to load details: ${err.message}`, "error");
     });
 }
