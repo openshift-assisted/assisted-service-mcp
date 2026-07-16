@@ -83,7 +83,7 @@ the same text responses as before.
 | Dashboard | Trigger | Description |
 |---|---|---|
 | **Cluster Inventory** | Ask to list clusters | Browse clusters, view details, events, and download logs |
-| **Cluster Creator** | Ask to create a cluster | Form-based cluster creation with version picker and platform selector |
+| **Cluster Creator** | Ask to create a cluster | Form-based cluster creation with version picker and deployment type selector |
 | **Cluster Setup** | Ask to set up a cluster | Host table with role assignment, VIP configuration, and install button |
 
 > **Note:** The screenshots below were captured during development. The final dashboards
