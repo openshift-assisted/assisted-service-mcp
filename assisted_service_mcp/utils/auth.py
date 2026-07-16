@@ -3,6 +3,7 @@
 from typing import Any, Callable
 
 import requests
+from fastmcp.server.dependencies import get_http_headers
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.settings import get_setting
 
@@ -32,14 +33,14 @@ def get_offline_token(mcp: Any) -> str:
         log.debug("Found offline token in environment variables")
         return token
 
-    context = mcp.get_context()
-    if context and context.request_context:
-        request = context.request_context.request
-        if request is not None:
-            token = request.headers.get("OCM-Offline-Token")
-            if token:
-                log.debug("Found offline token in request headers")
-                return token
+    try:
+        headers = get_http_headers(include={"ocm-offline-token"})
+        token = headers.get("ocm-offline-token")
+        if token:
+            log.debug("Found offline token in request headers")
+            return token
+    except (RuntimeError, KeyError, AttributeError):
+        log.debug("Request headers not available")
 
     log.error("No offline token found in environment or request headers")
     raise RuntimeError("No offline token found in environment or request headers")
@@ -68,16 +69,16 @@ def get_access_token(
     """
     log.debug("Attempting to retrieve access token")
     # First try to get the token from the authorization header:
-    context = mcp.get_context()
-    if context and context.request_context:
-        request = context.request_context.request
-        if request is not None:
-            header = request.headers.get("Authorization")
-            if header is not None:
-                parts = header.split()
-                if len(parts) == 2 and parts[0].lower() == "bearer":
-                    log.debug("Found access token in authorization header")
-                    return parts[1]
+    try:
+        headers = get_http_headers(include={"authorization"})
+        auth_header = headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+            if token:
+                log.debug("Found access token in authorization header")
+                return token
+    except (RuntimeError, KeyError, AttributeError):
+        log.debug("Request headers not available for access token extraction")
 
     # Now try to get the offline token, and generate a new access token from it:
     log.debug("Generating new access token from offline token")

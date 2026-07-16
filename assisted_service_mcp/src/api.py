@@ -1,7 +1,7 @@
-"""FastAPI application setup for the Assisted Service MCP server.
+"""ASGI application setup for the Assisted Service MCP server.
 
-This module initializes the FastAPI app and sets up the MCP server
-with appropriate transport protocols.
+This module initializes the FastMCP server and creates an ASGI app
+for deployment with uvicorn or any ASGI server.
 """
 
 from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
@@ -14,10 +14,14 @@ configure_logging()
 # Initialize the MCP server
 server = AssistedServiceMCPServer()
 
-# Choose the appropriate transport protocol based on settings
-if settings.TRANSPORT == "streamable-http":
-    app = server.mcp.streamable_http_app()
-    log.info("Using StreamableHTTP transport (stateless)")
-else:
-    app = server.mcp.sse_app()
-    log.info("Using SSE transport (stateful)")
+# Create ASGI app with appropriate transport
+_SUPPORTED_TRANSPORTS = {"streamable-http", "http"}
+if settings.TRANSPORT and settings.TRANSPORT not in _SUPPORTED_TRANSPORTS:
+    log.warning(
+        "Unsupported TRANSPORT=%r (supported: %s). Falling back to StreamableHTTP.",
+        settings.TRANSPORT,
+        ", ".join(sorted(_SUPPORTED_TRANSPORTS)),
+    )
+stateless = settings.TRANSPORT == "streamable-http"
+app = server.mcp.http_app(stateless_http=stateless)
+log.info("Using %s transport", "stateless StreamableHTTP" if stateless else "StreamableHTTP")

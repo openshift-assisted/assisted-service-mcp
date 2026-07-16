@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>OCP Admin — Cluster Setup</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&family=Red+Hat+Text:wght@400;600&family=Red+Hat+Mono&display=swap">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --font-body: "Red Hat Text", "Noto Sans", "Segoe UI", sans-serif;
+      --font-heading: "Red Hat Display", "Noto Sans", "Segoe UI", sans-serif;
+      --sp-2xs: 0.25rem;
+      --sp-xs: 0.5rem;
+      --sp-sm: 0.75rem;
+      --sp-md: 1rem;
+      --sp-lg: 1.5rem;
+      --sp-xl: 2rem;
+      --bg-shell: #f8f8f8;
+      --bg-surface: #ffffff;
+      --text-primary: #151515;
+      --text-muted: #4f5255;
+      --border: #d2d2d2;
+      --color-primary: #ee0000;
+      --color-success: #3e8635;
+      --color-error: #c9190b;
+      --color-warning: #f0ab00;
+    }
+
+    [data-theme="dark"] {
+      --bg-shell: #1e1e1e;
+      --bg-surface: #2a2a2a;
+      --text-primary: #e0e0e0;
+      --text-muted: #a0a0a0;
+      --border: #444;
+      --color-primary: #ff6b6b;
+      --color-success: #5cb85c;
+      --color-error: #f06560;
+      --color-warning: #f5c242;
+      --bg-banner: #1a2a3a;
+      --bg-banner-success: #1a2e1a;
+      --bg-banner-error: #2e1a1a;
+      --bg-banner-warning: #2e2a1a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { background: transparent; }
+
+    body {
+      margin: 0;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #app {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: var(--sp-lg);
+    }
+
+    h1 {
+      margin: 0 0 var(--sp-xs);
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    h2 {
+      margin: 0 0 var(--sp-sm);
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      margin: 0 0 var(--sp-lg);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Status banner */
+    .banner {
+      border-left: 3px solid var(--color-primary);
+      background: var(--bg-banner, #f0f8ff);
+      border-radius: 0.25rem;
+      padding: var(--sp-sm) var(--sp-md);
+      margin-bottom: var(--sp-md);
+      font-size: 0.9rem;
+    }
+    .banner--success { border-left-color: var(--color-success); background: var(--bg-banner-success, #edf8ef); color: var(--text-primary); }
+    .banner--error   { border-left-color: var(--color-error);   background: var(--bg-banner-error, #faeae8); color: var(--text-primary); }
+    .banner--warning { border-left-color: var(--color-warning); background: var(--bg-banner-warning, #fff8e7); color: var(--text-primary); }
+    .banner[hidden] { display: none; }
+
+    /* Card sections */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      box-shadow: 0 1px 2px rgba(21,21,21,0.08);
+      padding: var(--sp-lg);
+      margin-bottom: var(--sp-md);
+    }
+
+    /* Empty / placeholder state */
+    .empty-state {
+      text-align: center;
+      padding: var(--sp-xl) var(--sp-lg);
+    }
+    .empty-state h2 { font-size: 1.1rem; color: var(--text-primary); }
+    .empty-state p  { color: var(--text-muted); margin: var(--sp-xs) 0 0; }
+
+    /* Cluster ID display */
+    .cluster-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      background: #f3f3f3;
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.2rem;
+      word-break: break-all;
+    }
+
+    /* Discovery ISO */
+    .iso-link {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-xs);
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .iso-link:hover { text-decoration: underline; }
+    .iso-link::before { content: "\2B07"; font-size: 1.1em; }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      text-align: left;
+      padding: 0.45rem 0.55rem;
+    }
+    thead th {
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    td.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+    }
+
+    .role-select {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.25rem 0.4rem;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      -webkit-appearance: none;
+      appearance: none;
+      border-radius: 0.25rem;
+    }
+    .role-select option {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      cursor: pointer;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+    .badge--assigned { background: var(--bg-banner-success, #edf8ef); color: var(--color-success); }
+    .badge--pending  { background: var(--bg-banner-warning, #fff8e7); color: var(--color-warning); }
+
+    /* Form elements */
+    .form-row {
+      display: flex;
+      gap: var(--sp-sm);
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-2xs);
+      flex: 1;
+      min-width: 160px;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .input {
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      padding: 0.5rem 0.65rem;
+      font: inherit;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+    }
+    .input:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -1px;
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      border-radius: 0.25rem;
+      border: 1px solid transparent;
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn:disabled { cursor: not-allowed; opacity: 0.55; }
+
+    .btn--primary {
+      color: #fff;
+      background: var(--color-primary);
+    }
+    .btn--primary:hover:not(:disabled) { background: #004d99; }
+
+    .btn--secondary {
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border-color: var(--border);
+    }
+    .btn--secondary:hover:not(:disabled) { background: #f3f3f3; }
+
+    .btn--danger {
+      color: #fff;
+      background: var(--color-error);
+    }
+    .btn--danger:hover:not(:disabled) { background: #a11509; }
+
+    .btn--ghost {
+      color: var(--color-primary);
+      background: transparent;
+      border-color: transparent;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .btn--ghost:hover:not(:disabled) { text-decoration: underline; }
+
+    .btn-row {
+      display: flex;
+      gap: var(--sp-sm);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* Progress bar */
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: var(--sp-sm) 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Readiness summary */
+    .readiness {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: var(--sp-sm);
+    }
+    .readiness strong { color: var(--text-primary); }
+
+    /* Confirmation dialog overlay */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(21,21,21,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .confirm-dialog {
+      background: var(--bg-surface);
+      border-radius: 0.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      padding: var(--sp-lg);
+      max-width: 420px;
+      width: 90%;
+    }
+    .confirm-dialog h2 { margin-bottom: var(--sp-sm); }
+    .confirm-dialog p {
+      margin: 0 0 var(--sp-lg);
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .confirm-dialog .btn-row { justify-content: flex-end; }
+
+    .success-banner {
+      background: var(--bg-banner-success, #edf8ef);
+      border: 1px solid var(--color-success);
+      border-radius: 0.375rem;
+      padding: var(--sp-md) var(--sp-lg);
+      text-align: center;
+      color: var(--color-success);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .error-banner {
+      background: var(--bg-banner-error, #faeae8);
+      border: 1px solid var(--color-error);
+      border-radius: 0.375rem;
+      padding: var(--sp-md) var(--sp-lg);
+      text-align: center;
+      color: var(--color-error);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* Spacing helpers */
+    .mt-sm  { margin-top: var(--sp-sm); }
+    .mt-md  { margin-top: var(--sp-md); }
+    .mb-sm  { margin-bottom: var(--sp-sm); }
+    .muted  { color: var(--text-muted); }
+    .small  { font-size: 0.85rem; }
+
+    .spinner::after {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-left: var(--sp-xs);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .follow-ups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: var(--sp-md);
+      padding-top: var(--sp-sm);
+      border-top: 1px solid var(--border);
+    }
+
+    .follow-ups button {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .follow-ups button:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    const state = {
+      clusterId: null,
+      hosts: [],
+      isLoadingHosts: false,
+      discoveryIsoUrl: null,
+      apiVip: "",
+      ingressVip: "",
+      installationStatus: null,
+      installationProgress: 0,
+      installationStatusInfo: null,
+      isStartingInstallation: false,
+      showInstallConfirm: false,
+      statusMessage: "",
+      statusVariant: "info",
+    };
+
+    const root = document.getElementById("app");
+
+    function esc(str) {
+      const d = document.createElement("div");
+      d.textContent = str ?? "";
+      return d.innerHTML;
+    }
+
+    async function suggestFollowUp(promptText) {
+      if (window.openai?.sendFollowUpMessage) {
+        await window.openai.sendFollowUpMessage({ prompt: promptText });
+      } else if (window.mcpApp) {
+        await window.mcpApp.sendMessage({
+          role: "user",
+          content: [{ type: "text", text: promptText }]
+        });
+      }
+    }
+
+    function followUpHtml(prompts) {
+      return `<div class="follow-ups">${prompts.map(p =>
+        `<button onclick="suggestFollowUp('${p.replace(/'/g, "\\'")}')">${esc(p)}</button>`
+      ).join("")}</div>`;
+    }
+    window.suggestFollowUp = suggestFollowUp;
+
+    /* ---------- MCP SDK ---------- */
+    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+      const App = module.App || module.default?.App || module.default;
+      const app = new (App.App || App)({ name: "Cluster Setup", version: "1.0.0" });
+      const applyDocTheme = module.applyDocumentTheme || module.default?.applyDocumentTheme;
+      const applyStyles = module.applyHostStyleVariables || module.default?.applyHostStyleVariables;
+      app.connect().then(() => {
+        try {
+          const ctx = app.getHostContext?.();
+          if (ctx?.theme && applyDocTheme) applyDocTheme(ctx.theme);
+          if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+        } catch {}
+      });
+      app.onhostcontextchanged = (ctx) => {
+        if (ctx.theme && applyDocTheme) applyDocTheme(ctx.theme);
+        if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
+      };
+      window.mcpApp = app;
+
+      function trySetCluster(id) {
+        if (id && typeof id === "string" && id.length > 8) {
+          state.clusterId = id;
+          render();
+          loadHosts();
+          return true;
+        }
+        return false;
+      }
+
+      function extractClusterId(obj) {
+        if (!obj || typeof obj !== "object") return;
+        if (trySetCluster(obj.cluster_id)) return;
+        if (trySetCluster(obj.arguments?.cluster_id)) return;
+        if (trySetCluster(obj.params?.arguments?.cluster_id)) return;
+        const sc = obj.structuredContent || {};
+        if (trySetCluster(sc.cluster_id)) return;
+        if (sc.result) {
+          try {
+            const parsed = typeof sc.result === "string" ? JSON.parse(sc.result) : sc.result;
+            if (trySetCluster(parsed.cluster_id)) return;
+          } catch {}
+        }
+        const content = obj.content || sc.content || [];
+        const txt = (Array.isArray(content) ? content : []).find(c => c.type === "text")?.text || "";
+        try { trySetCluster(JSON.parse(txt).cluster_id); } catch {}
+      }
+
+      app.ontoolinput = (params) => { if (!state.clusterId) extractClusterId(params); };
+      app.ontoolresult = (params) => {
+        if (!state.clusterId) extractClusterId(params);
+        const sc = params.structuredContent;
+        if (sc && sc.result) {
+          let data;
+          try { data = typeof sc.result === "string" ? JSON.parse(sc.result) : sc.result; } catch { return; }
+          if (data && data.cluster_id && Array.isArray(data.hosts)) {
+            state.clusterId = data.cluster_id;
+            state.hosts = data.hosts;
+            state.discoveryIsoUrl = data.discovery_iso_url || "";
+            render();
+          }
+        }
+      };
+    }).catch(() => {});
+
+    function stripFollowUps(raw) {
+      if (!raw) return raw;
+      const idx = raw.indexOf("\n\n[IMPORTANT");
+      return idx !== -1 ? raw.substring(0, idx) : raw;
+    }
+
+    async function callTool(name, args = {}) {
+      if (!window.mcpApp) return null;
+      try {
+        const result = await window.mcpApp.callServerTool({ name, arguments: args });
+        const text = stripFollowUps(result.content?.find(c => c.type === "text")?.text);
+        if (!text) return null;
+        try { return JSON.parse(text); } catch { return text; }
+      } catch (err) {
+        setStatus("Tool call failed: " + (err?.message || err), "error");
+        render();
+        return null;
+      }
+    }
+
+    /* ---------- Status helpers ---------- */
+    function setStatus(msg, variant) {
+      state.statusMessage = msg;
+      state.statusVariant = variant || "info";
+    }
+
+    /* ---------- Actions ---------- */
+    async function loadHosts() {
+      if (!state.clusterId) return;
+      state.isLoadingHosts = true;
+      state.hosts = [];
+      setStatus("Loading hosts\u2026", "info");
+      render();
+
+      const data = await callTool("get_cluster_hosts", { cluster_id: state.clusterId });
+      state.isLoadingHosts = false;
+
+      if (!data || typeof data !== "object") {
+        setStatus("Failed to load hosts.", "error");
+        render();
+        return;
+      }
+
+      state.hosts = Array.isArray(data.hosts) ? data.hosts : [];
+      state.discoveryIsoUrl = data.discovery_iso_url || null;
+      setStatus("Loaded " + state.hosts.length + " host(s).", "success");
+      render();
+      refreshProgress();
+    }
+
+    async function setHostRole(hostId, role) {
+      if (!state.clusterId) return;
+      setStatus("Setting role\u2026", "info");
+      render();
+
+      const data = await callTool("set_host_role", {
+        host_id: hostId,
+        cluster_id: state.clusterId,
+        role,
+      });
+
+      if (data === null) {
+        setStatus("Failed to set host role.", "error");
+        render();
+        return;
+      }
+
+      state.hosts = state.hosts.map(h =>
+        h.id === hostId ? { ...h, role } : h
+      );
+      setStatus("Host role set to " + role + ".", "success");
+      render();
+    }
+
+    async function setVips() {
+      if (!state.clusterId) return;
+      if (!state.apiVip.trim() || !state.ingressVip.trim()) {
+        setStatus("Both API VIP and Ingress VIP are required.", "warning");
+        render();
+        return;
+      }
+
+      setStatus("Setting VIPs\u2026", "info");
+      render();
+
+      const data = await callTool("set_cluster_vips", {
+        cluster_id: state.clusterId,
+        api_vip: state.apiVip.trim(),
+        ingress_vip: state.ingressVip.trim(),
+      });
+
+      if (data === null) {
+        setStatus("Failed to set VIPs.", "error");
+        render();
+        return;
+      }
+
+      setStatus("VIPs configured. API: " + state.apiVip + ", Ingress: " + state.ingressVip + ".", "success");
+      render();
+    }
+
+    async function startInstallation() {
+      if (!state.clusterId) return;
+      state.showInstallConfirm = false;
+      state.isStartingInstallation = true;
+      setStatus("Starting installation\u2026", "info");
+      render();
+
+      const data = await callTool("install_cluster", { cluster_id: state.clusterId });
+      state.isStartingInstallation = false;
+
+      if (data === null) {
+        setStatus("Failed to start installation.", "error");
+        render();
+        return;
+      }
+
+      state.installationStatus = "installing";
+      state.installationProgress = 0;
+      setStatus("Installation started.", "success");
+      render();
+    }
+
+    async function refreshProgress() {
+      if (!state.clusterId) return;
+      setStatus("Refreshing progress\u2026", "info");
+      render();
+
+      const data = await callTool("get_installation_progress", { cluster_id: state.clusterId });
+
+      if (!data || typeof data !== "object") {
+        setStatus("Failed to get installation progress.", "warning");
+        render();
+        return;
+      }
+
+      state.installationStatus = data.status || "unknown";
+      state.installationProgress = typeof data.progress === "number" ? data.progress : 0;
+      state.installationStatusInfo = data.status_info || null;
+
+      if (state.installationStatus === "installed") {
+        setStatus("Installation complete!", "success");
+      } else if (state.installationStatus === "error") {
+        setStatus("Installation failed.", "error");
+      } else {
+        setStatus("Installing\u2026 " + state.installationProgress + "%", "info");
+      }
+      render();
+    }
+
+    /* ---------- Readiness checks ---------- */
+    const IN_PROGRESS_STATUSES = new Set([
+      "installing", "preparing-for-installation", "finalizing",
+      "update-image-started", "installing-pending-user-action",
+    ]);
+    function isInstallInProgress() {
+      return state.isStartingInstallation || IN_PROGRESS_STATUSES.has(state.installationStatus);
+    }
+    function isSno() {
+      return state.hosts.length <= 1;
+    }
+    function hostsWithRoles() {
+      return state.hosts.filter(h => h.role && h.role !== "auto-assign");
+    }
+    function vipsConfigured() {
+      return state.apiVip.trim() !== "" && state.ingressVip.trim() !== "";
+    }
+    function canInstall() {
+      return state.hosts.length > 0
+        && hostsWithRoles().length === state.hosts.length
+        && (isSno() || vipsConfigured())
+        && !isInstallInProgress()
+        && state.installationStatus !== "installed";
+    }
+
+    /* ---------- Event delegation ---------- */
+    root.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === "load-hosts")       loadHosts();
+      if (action === "set-vips")         setVips();
+      if (action === "show-confirm")     { state.showInstallConfirm = true; render(); }
+      if (action === "cancel-confirm")   { state.showInstallConfirm = false; render(); }
+      if (action === "confirm-install")  startInstallation();
+      if (action === "refresh-progress") refreshProgress();
+    });
+
+    root.addEventListener("change", (e) => {
+      if (e.target.matches(".role-select")) {
+        setHostRole(e.target.dataset.hostId, e.target.value);
+      }
+    });
+
+    root.addEventListener("input", (e) => {
+      if (e.target.id === "api-vip")     state.apiVip = e.target.value;
+      if (e.target.id === "ingress-vip") state.ingressVip = e.target.value;
+    });
+
+    /* ---------- Render ---------- */
+    function render() {
+      if (!state.clusterId) {
+        root.innerHTML = renderEmpty();
+        return;
+      }
+      root.innerHTML = renderDashboard();
+    }
+
+    function renderEmpty() {
+      return `
+        <div class="card empty-state">
+          <h2>No cluster selected for setup</h2>
+          <p>Use a tool that provides a <code>cluster_id</code> to get started,
+             or ask the assistant to set up a specific cluster.</p>
+        </div>`;
+    }
+
+    function renderBanner() {
+      if (!state.statusMessage) return "";
+      const cls = state.statusVariant === "success" ? "banner--success"
+                : state.statusVariant === "error"   ? "banner--error"
+                : state.statusVariant === "warning" ? "banner--warning"
+                : "";
+      return `<div class="banner ${cls}">${esc(state.statusMessage)}</div>`;
+    }
+
+    function renderSetupFollowUps() {
+      const prompts = [];
+      if (state.installationStatus === "installed") {
+        prompts.push("Show this cluster in the inventory");
+      } else if (state.installationStatus === "installing") {
+        prompts.push("Show cluster events for troubleshooting");
+      } else if (state.hosts.length > 0 && !state.installationStatus) {
+        prompts.push("Check if hosts have registered after booting from the discovery ISO");
+        prompts.push("Monitor the installation progress");
+      }
+      return prompts.length ? followUpHtml(prompts) : "";
+    }
+
+    function renderDashboard() {
+      return `
+        <h1><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAu/0lEQVR4Ae3dTchk2XkY4IrkteYbWauAoppAyCIy3SJZ2YGuWcYGdc8uFpju2QSJGHomAQecRXcHHBJvegYcrJDF9GCwvcq0BJZ3nhZYJtl4WliLQBbzabQLo5lPCgScH0/e9+uq7vr+6+f+nHPuc+H2Vz+3znnPc6rrvPfcW7dmMwsBAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECBAgAABAgQIECDQssDfarlx2kaAwMUCn85mi7+ZzW7Gh8Ct2Gq+3PIo/h7m+tls9sPPzWZP4/bTl589FjctBAi0IiABaKUntYPAhgI58Mfgfi82X2z4ktwsE4InsX7/8/FXQrCFnE0JFCogASi0Y4RFoA+BGPwfxiD+RgdlP82EIGYIvhPJwJMOylMEAQIDC0gABgZXXZ0CMXAeROS3Ysr8Wvynmcft62stOYzbRzEg5pR57h0/WXuuiJsZf8T3XgSz6CGg49mBZTLwuIfyFUmAQA8CEoAeUBXZjkAMnLtMl2cy8DgGxHdLSAaiDfOI5/3olfkAPbNqe84MSAYGAFcFgV0FJAC7ynld0wLLQfOdaORiz4YexqzBgzhu/jgGxKM9y9r65QMP/qfjkwycFnGfQEECEoCCOkMoZQjEoHk39pjvRzQHHUZ0GP/ZHkV5OStw2GG5FxY18uB/Oq7VYYIiZkVOB+c+gSkKSACm2OvafKFADJr3loP/hdvs+cQgiUC043q0472Idb5n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c3Bf3c+/uR7Zkw8FCwECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAQFEC/x/JekJ3aNEwbQAAAABJRU5ErkJggg==" alt="Red Hat" style="height:24px;vertical-align:middle;margin-right:8px;">Cluster Setup</h1>
+        <p class="subtitle">Setting up cluster <span class="cluster-id">${esc(state.clusterId)}</span></p>
+        ${renderBanner()}
+        ${renderDiscoveryIso()}
+        ${renderHostsSection()}
+        ${renderVipsSection()}
+        ${renderInstallSection()}
+        ${state.showInstallConfirm ? renderConfirmDialog() : ""}
+        ${renderSetupFollowUps()}`;
+    }
+
+    function renderDiscoveryIso() {
+      if (!state.discoveryIsoUrl) return "";
+      return `
+        <div class="card">
+          <h2>Discovery ISO</h2>
+          <a class="iso-link" href="${esc(state.discoveryIsoUrl)}" target="_blank" rel="noopener">
+            Download Discovery ISO
+          </a>
+          <p class="small muted mt-sm">Boot hosts with this ISO to register them for the cluster.</p>
+        </div>`;
+    }
+
+    function renderHostsSection() {
+      let body;
+      if (state.isLoadingHosts) {
+        body = `<p class="muted">Loading hosts<span class="spinner"></span></p>`;
+      } else if (state.hosts.length === 0) {
+        body = `<p class="muted">No hosts loaded yet. Click <strong>Load Hosts</strong> to fetch registered hosts.</p>`;
+      } else {
+        body = `
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Hostname</th>
+                  <th>Status</th>
+                  <th>Role</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.hosts.map(renderHostRow).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      return `
+        <div class="card">
+          <h2>Hosts</h2>
+          ${body}
+          <div class="btn-row mt-md">
+            <button class="btn btn--secondary" data-action="load-hosts"
+              ${state.isLoadingHosts ? "disabled" : ""}>
+              ${state.isLoadingHosts ? "Loading\u2026" : state.hosts.length ? "Refresh Hosts" : "Load Hosts"}
+            </button>
+          </div>
+        </div>`;
+    }
+
+    function renderHostRow(host) {
+      const roles = ["auto-assign", "master", "worker"];
+      const currentRole = host.role || "auto-assign";
+      const isAssigned = currentRole !== "auto-assign";
+
+      const options = roles.map(r =>
+        `<option value="${r}" ${r === currentRole ? "selected" : ""}>${r}</option>`
+      ).join("");
+
+      return `
+        <tr>
+          <td class="mono">${esc(host.hostname || host.id)}</td>
+          <td>${esc(host.status || "unknown")}</td>
+          <td>
+            <select class="role-select" data-host-id="${esc(host.id)}">
+              ${options}
+            </select>
+          </td>
+          <td>
+            <span class="badge ${isAssigned ? "badge--assigned" : "badge--pending"}">
+              ${isAssigned ? "Assigned" : "Pending"}
+            </span>
+          </td>
+        </tr>`;
+    }
+
+    function renderVipsSection() {
+      if (isSno()) return "";
+      return `
+        <div class="card">
+          <h2>Virtual IPs (VIPs)</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="api-vip">API VIP</label>
+              <input class="input" type="text" id="api-vip"
+                placeholder="e.g. 192.168.1.100"
+                value="${esc(state.apiVip)}" />
+            </div>
+            <div class="form-group">
+              <label for="ingress-vip">Ingress VIP</label>
+              <input class="input" type="text" id="ingress-vip"
+                placeholder="e.g. 192.168.1.101"
+                value="${esc(state.ingressVip)}" />
+            </div>
+          </div>
+          <div class="btn-row mt-md">
+            <button class="btn btn--primary" data-action="set-vips"
+              ${(!state.apiVip.trim() || !state.ingressVip.trim()) ? "disabled" : ""}>
+              Set VIPs
+            </button>
+          </div>
+        </div>`;
+    }
+
+    function renderInstallSection() {
+      const assigned = hostsWithRoles().length;
+      const total = state.hosts.length;
+      const vipsOk = vipsConfigured();
+
+      if (state.installationStatus === "installed") {
+        return `
+          <div class="card">
+            <h2>Installation</h2>
+            <div class="success-banner">OpenShift cluster installed successfully</div>
+            ${state.installationStatusInfo
+              ? `<p class="small muted mt-sm">${esc(state.installationStatusInfo)}</p>` : ""}
+          </div>`;
+      }
+
+      if (state.installationStatus === "error") {
+        return `
+          <div class="card">
+            <h2>Installation</h2>
+            <div class="error-banner">Installation failed</div>
+            ${state.installationStatusInfo
+              ? `<p class="small muted mt-sm">${esc(state.installationStatusInfo)}</p>` : ""}
+            <div class="btn-row mt-md">
+              <button class="btn btn--secondary" data-action="refresh-progress">Refresh Progress</button>
+            </div>
+          </div>`;
+      }
+
+      if (isInstallInProgress()) {
+        return `
+          <div class="card">
+            <h2>Installation</h2>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${state.installationProgress}%"></div>
+            </div>
+            <p class="progress-label">
+              ${state.installationProgress}% complete
+              ${state.installationStatusInfo ? " \u2014 " + esc(state.installationStatusInfo) : ""}
+            </p>
+            <div class="btn-row mt-sm">
+              <button class="btn btn--secondary" data-action="refresh-progress">Refresh Progress</button>
+            </div>
+          </div>`;
+      }
+
+      return `
+        <div class="card">
+          <h2>Installation</h2>
+          <p class="readiness">
+            <strong>${assigned} of ${total}</strong> host(s) with roles assigned
+            ${isSno() ? "" : `&nbsp;&middot;&nbsp; VIPs: <strong>${vipsOk ? "configured" : "not configured"}</strong>`}
+          </p>
+          <div class="btn-row">
+            <button class="btn btn--primary" data-action="show-confirm"
+              ${canInstall() ? "" : "disabled"}>
+              Start Installation
+            </button>
+          </div>
+          ${!canInstall() ? `<p class="small muted mt-sm">Assign roles to all hosts and configure VIPs before installing.</p>` : ""}
+        </div>`;
+    }
+
+    function renderConfirmDialog() {
+      return `
+        <div class="confirm-overlay">
+          <div class="confirm-dialog">
+            <h2>Confirm Installation</h2>
+            <p>This will begin installing OpenShift on the cluster. This action cannot be undone.</p>
+            <div class="btn-row">
+              <button class="btn btn--secondary" data-action="cancel-confirm">Cancel</button>
+              <button class="btn btn--danger" data-action="confirm-install">Confirm</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    /* ---------- Initial render ---------- */
+    render();
+  </script>
+</body>
+</html>
