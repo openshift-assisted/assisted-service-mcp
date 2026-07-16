@@ -292,10 +292,8 @@
 
       <div class="form-group">
         <label for="ocp-version">OpenShift Version</label>
-        <select id="ocp-version">
-          <option value="4.21" selected>4.21</option>
-          <option value="4.20">4.20</option>
-          <option value="4.19">4.19</option>
+        <select id="ocp-version" disabled>
+          <option value="">Loading versions…</option>
         </select>
       </div>
 
@@ -379,7 +377,33 @@
         if (ctx?.styles?.variables && applyStyles) applyStyles(ctx.styles.variables);
       };
       window.mcpApp = app;
+      loadVersions();
     });
+
+    async function loadVersions() {
+      const el = $("#ocp-version");
+      try {
+        const result = await callTool("list_versions");
+        const text = typeof result === "string" ? result : "";
+        const versions = [];
+        for (const row of text.split("\n")) {
+          const match = row.match(/^\|\s*([\d]+\.[\d]+\.[\d]+(?:-[^\s|]+)?)\s*\|/);
+          if (match) versions.push(match[1]);
+        }
+        if (versions.length === 0) return;
+        el.innerHTML = "";
+        for (const v of versions) {
+          const opt = document.createElement("option");
+          opt.value = v;
+          opt.textContent = v;
+          el.appendChild(opt);
+        }
+        el.disabled = false;
+        updateCreateBtn();
+      } catch {
+        el.innerHTML = '<option value="">Failed to load versions</option>';
+      }
+    }
 
     function stripFollowUps(raw) {
       if (!raw) return raw;
@@ -396,7 +420,10 @@
 
     // --- Validation ---
     function updateCreateBtn() {
-      const valid = elName.value.trim().length > 0 && elDomain.value.trim().length > 0;
+      const valid = window.mcpApp
+        && elName.value.trim().length > 0
+        && elDomain.value.trim().length > 0
+        && elVersion.value !== "" && !elVersion.disabled;
       elBtnCreate.disabled = !valid;
     }
 
@@ -440,9 +467,17 @@
           return;
         }
 
-        const clusterId = typeof result === "string"
+        const raw = typeof result === "string"
           ? result
           : result.id || result.cluster_id || result.uuid || JSON.stringify(result);
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+        if (!uuidPattern.test(raw)) {
+          showError(raw || "Cluster creation failed.");
+          elBtnCreate.textContent = "Create Cluster";
+          updateCreateBtn();
+          return;
+        }
+        const clusterId = raw.match(uuidPattern)[0];
 
         createdClusterId = clusterId;
 
