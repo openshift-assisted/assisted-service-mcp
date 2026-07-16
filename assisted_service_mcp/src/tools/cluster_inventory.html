@@ -533,6 +533,10 @@ async function callTool(name, args = {}) {
     throw new Error("MCP App not connected");
   }
   const result = await window.mcpApp.callServerTool({ name, arguments: args });
+  const sc = result.structuredContent?.result;
+  if (sc !== undefined) {
+    try { return typeof sc === "string" ? JSON.parse(sc) : sc; } catch {}
+  }
   const text = stripFollowUps(result.content?.find(c => c.type === "text")?.text);
   if (!text) return null;
   try { return JSON.parse(text); } catch { return text; }
