@@ -6,6 +6,22 @@ from pydantic import Field
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.tools.shared_helpers import escape_untrusted_data_delimiters
+
+
+def _wrap_untrusted_data(data: str) -> str:
+    """Wrap data from cluster/host sources in delimiters for structured output.
+
+    Escapes delimiter tokens to ensure proper formatting of wrapped content.
+
+    Args:
+        data: Raw event data from the assisted-service API
+
+    Returns:
+        str: Data wrapped in structured delimiters with escaped tokens
+    """
+    escaped_data = escape_untrusted_data_delimiters(data)
+    return f"«untrusted-cluster-data»\n{escaped_data}\n«/untrusted-cluster-data»"
 
 
 @track_tool_usage()
@@ -35,7 +51,7 @@ async def cluster_events(
         client = InventoryClient(access_token)
         result = await client.get_events(cluster_id=cluster_id)
         log.info("Successfully retrieved events for cluster %s", cluster_id)
-        return result
+        return _wrap_untrusted_data(result)
     except Exception as e:
         log.error("Failed to retrieve events for cluster %s: %s", cluster_id, str(e))
         raise
@@ -78,7 +94,7 @@ async def host_events(
             host_id,
             cluster_id,
         )
-        return result
+        return _wrap_untrusted_data(result)
     except Exception as e:
         log.error(
             "Failed to retrieve events for host %s in cluster %s: %s",

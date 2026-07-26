@@ -4,6 +4,23 @@ from assisted_service_mcp.src.service_client.assisted_service_api import Invento
 from assisted_service_mcp.src.logger import log
 
 
+def escape_untrusted_data_delimiters(data: str) -> str:
+    """Escape delimiter tokens in data to ensure proper formatting.
+
+    Replaces delimiter tokens with escaped versions to maintain
+    structured output boundaries.
+
+    Args:
+        data: Raw data that may contain delimiter tokens
+
+    Returns:
+        str: Data with delimiter tokens escaped
+    """
+    data = data.replace("«untrusted-cluster-data»", "[DELIMITER-ESCAPED-START]")
+    data = data.replace("«/untrusted-cluster-data»", "[DELIMITER-ESCAPED-END]")
+    return data
+
+
 async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) -> str:
     """
     Get the InfraEnv ID for a cluster (expecting a single InfraEnv).

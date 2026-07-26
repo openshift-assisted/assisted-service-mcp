@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class ErrorOnCleanupInstallDevice(ErrorSignature):
     """Detect non-fatal errors during cleanupInstallDevice in installer logs."""
 
-    LOG_PATTERN = re.compile(r'msg="(?P<message>failed to prepare install device.*)"')
+    LOG_PATTERN = re.compile(r'msg="(?P<message>failed to prepare install device.{0,200})"')
 
     def analyze(self, log_analyzer) -> Optional[SignatureResult]:
         cluster = log_analyzer.metadata
