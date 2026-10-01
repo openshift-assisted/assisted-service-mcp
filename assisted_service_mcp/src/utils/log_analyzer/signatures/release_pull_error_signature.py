@@ -4,7 +4,6 @@ ReleasePullErrorSignature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 from .helpers import get_hostname
@@ -17,7 +16,7 @@ class ReleasePullErrorSignature(ErrorSignature):
 
     ERROR_PATTERN = re.compile(r"release-image-download\.sh\[.+\]: Pull failed")
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         hosts_sections = []
         for host, journal_logs in log_analyzer.all_host_journal_logs():
             if self.ERROR_PATTERN.findall(journal_logs):

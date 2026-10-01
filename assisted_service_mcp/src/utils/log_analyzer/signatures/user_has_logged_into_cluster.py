@@ -4,7 +4,6 @@ UserHasLoggedIntoCluster signature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional
 
 from .base import Signature, SignatureResult
 
@@ -18,7 +17,7 @@ class UserHasLoggedIntoCluster(Signature):
         r"pam_unix\((sshd|login):session\): session opened for user .+ by"
     )
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         msgs = []
         for host, journal_logs in log_analyzer.all_host_journal_logs():
             if self.USER_LOGIN_PATTERN.findall(journal_logs):
