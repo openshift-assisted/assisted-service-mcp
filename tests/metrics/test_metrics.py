@@ -1,6 +1,7 @@
 import asyncio
 
 from prometheus_client import REGISTRY, generate_latest
+
 from assisted_service_mcp.src.metrics import initiate_metrics, track_tool_usage
 
 

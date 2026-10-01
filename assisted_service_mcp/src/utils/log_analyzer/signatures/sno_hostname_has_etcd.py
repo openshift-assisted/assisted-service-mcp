@@ -3,7 +3,6 @@ SNOHostnameHasEtcd signature for OpenShift Assisted Installer logs.
 """
 
 import logging
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 from .helpers import get_hostname
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 class SNOHostnameHasEtcd(ErrorSignature):
     """Looks for etcd in SNO hostname (OCPBUGS-15852)."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         """Analyze SNO hostname for etcd."""
         try:
             if not log_analyzer.cluster_is_sno():
@@ -32,7 +31,7 @@ class SNOHostnameHasEtcd(ErrorSignature):
                     title="No etcd in SNO hostname", content=content, severity="error"
                 )
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError) as e:
             logger.error("Error in SNOHostnameHasEtcd: %s", e)
 
         return None

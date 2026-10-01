@@ -4,7 +4,8 @@ Base signature classes for OpenShift Assisted Installer log analysis.
 
 import abc
 import logging
-from typing import Optional, Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from tabulate import tabulate
 
@@ -55,7 +56,7 @@ class Signature(abc.ABC):
         self.name = self.__class__.__name__
 
     @abc.abstractmethod
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         """
         Analyze the logs and return a result if relevant.
 
@@ -86,7 +87,7 @@ class Signature(abc.ABC):
             Iterator of directory contents if archive_dir is a directory,
             empty list otherwise
         """
-        return getattr(archive_dir, "iterdir", lambda: [])()
+        return getattr(archive_dir, "iterdir", list)()
 
 
 class ErrorSignature(Signature, abc.ABC):

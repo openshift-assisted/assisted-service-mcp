@@ -2,18 +2,18 @@
 Unit tests for ContainerCrashAnalysis signature.
 """
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 from unittest.mock import MagicMock
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
-    LogAnalyzer,
     LOG_BUNDLE_PATH,
+    LogAnalyzer,
 )
+from assisted_service_mcp.src.utils.log_analyzer.signatures.base import SignatureResult
 from assisted_service_mcp.src.utils.log_analyzer.signatures.container_crash_analysis import (
     ContainerCrashAnalysis,
 )
-from assisted_service_mcp.src.utils.log_analyzer.signatures.base import SignatureResult
 
 
 def make_archive(get_map: Mapping[str, object]) -> object:
@@ -291,10 +291,12 @@ class TestContainerCrashAnalysis:
         kubelet_log_lines = [
             # Use invalid month that matches regex pattern but fails datetime parsing
             "Xxx 17 14:30:00 k8s-masters1 kubenswrapper[2575]: I0917 14:30:00.123456 2575 kubelet.go:123] Starting kubelet",
-            f"Sep 17 14:35:00 k8s-masters1 kubenswrapper[2575]: E0917 14:35:00.402290 2575 pod_workers.go:1301] "
-            f'"Error syncing pod, skipping" err="failed to \\"StartContainer\\" for \\"{container}\\" with '
-            f'CrashLoopBackOff: \\"back-off 10s restarting failed container={container} pod={pod_name}_{namespace}'
-            f'({pod_uid})\\"" pod="{namespace}/{pod_name}" podUID="{pod_uid}"',
+            (
+                f"Sep 17 14:35:00 k8s-masters1 kubenswrapper[2575]: E0917 14:35:00.402290 2575 pod_workers.go:1301] "
+                f'"Error syncing pod, skipping" err="failed to \\"StartContainer\\" for \\"{container}\\" with '
+                f'CrashLoopBackOff: \\"back-off 10s restarting failed container={container} pod={pod_name}_{namespace}'
+                f'({pod_uid})\\"" pod="{namespace}/{pod_name}" podUID="{pod_uid}"'
+            ),
             "Sep 17 14:40:00 k8s-masters1 kubenswrapper[2575]: I0917 14:40:00.123456 2575 kubelet.go:789] Latest log entry",
         ]
 
