@@ -11,3 +11,6 @@ wheels/
 
 # Performance test output
 performance_test_results*
+
+# Visual Studio Code
+.vscode/

@@ -1,12 +1,15 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
-from typing import Annotated, Callable
+from collections.abc import Callable
+from typing import Annotated
+
 from pydantic import Field
 
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.service_client.helpers import Helpers
-from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
 
 
@@ -361,12 +364,12 @@ async def set_cluster_ssh_key(
         infra_env_id = await _get_cluster_infra_env_id(client, cluster_id)
     except ValueError as e:
         log.error("Failed to get InfraEnv ID: %s", str(e))
-        return f"Cluster key updated, but failed to get InfraEnv ID: {str(e)}. New cluster: {result.to_str()}"
+        return f"Cluster key updated, but failed to get InfraEnv ID: {e!s}. New cluster: {result.to_str()}"
 
     try:
         await client.update_infra_env(infra_env_id, ssh_authorized_key=ssh_public_key)
         log.info("Successfully updated InfraEnv %s with new SSH key", infra_env_id)
-    except Exception as e:
+    except AssistedServiceAPIError as e:
         log.error("Failed to update InfraEnv %s: %s", infra_env_id, str(e))
         return f"Cluster key updated, but boot image key update failed. New cluster: {result.to_str()}"
 

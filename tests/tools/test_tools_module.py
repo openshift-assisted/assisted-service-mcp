@@ -556,7 +556,9 @@ async def test_tool_set_cluster_ssh_key_partial_failure_module() -> None:
     mock_client = Mock()
     mock_client.update_cluster = AsyncMock(return_value=_Cluster("cid"))
     mock_client.list_infra_envs = AsyncMock(return_value=[{"id": "infraenv-id"}])
-    mock_client.update_infra_env = AsyncMock(side_effect=Exception("Update failed"))
+    mock_client.update_infra_env = AsyncMock(
+        side_effect=cluster_tools.AssistedServiceAPIError("Update failed")
+    )
 
     AssistedServiceMCPServer()
     with (

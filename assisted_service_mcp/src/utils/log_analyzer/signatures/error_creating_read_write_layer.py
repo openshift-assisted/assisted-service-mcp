@@ -4,7 +4,6 @@ ErrorCreatingReadWriteLayer signature for OpenShift Assisted Installer logs.
 
 import logging
 import os
-from typing import Optional
 
 import yaml
 
@@ -26,7 +25,7 @@ class ErrorCreatingReadWriteLayer(ErrorSignature):
             for containerStatus in pod.get("status", {}).get("containerStatuses", [])
         )
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         try:
             namespaces_dir = log_analyzer.logs_archive.get(
                 "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/quay-io-openshift-release-dev-*/namespaces"
@@ -48,7 +47,8 @@ class ErrorCreatingReadWriteLayer(ErrorSignature):
                         messages.append(
                             f"Pod {pod['metadata']['name']} in namespace {pod['metadata']['namespace']} has a container with an error creating the read-write layer, see BZ 1993243"
                         )
-            except Exception:
+            except (yaml.YAMLError, TypeError, AttributeError, KeyError) as e:
+                logger.debug("Skipping malformed pods YAML %s: %s", pods_yaml_path, e)
                 continue
 
         if messages:

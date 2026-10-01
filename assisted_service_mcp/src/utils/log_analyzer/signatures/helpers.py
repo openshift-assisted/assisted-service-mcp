@@ -4,7 +4,8 @@ Helper functions for signature analysis.
 
 import json
 import re
-from typing import Any, Generator, Callable, Dict
+from collections.abc import Callable, Generator
+from typing import Any
 
 
 def operator_statuses_from_controller_logs(
@@ -50,7 +51,7 @@ def condition_has_result(
 def filter_operators(
     operator_statuses,
     required_conditions,
-    aggregation_function: Callable[[Generator[Any, None, None]], bool],
+    aggregation_function: Callable[[Generator[Any]], bool],
 ):
     return {
         operator_name: operator_conditions
@@ -64,7 +65,7 @@ def filter_operators(
     }
 
 
-def get_hostname(host: Dict[str, Any]) -> str:
+def get_hostname(host: dict[str, Any]) -> str:
     """Extract hostname from host metadata."""
     hostname = host.get("requested_hostname")
     if hostname:
