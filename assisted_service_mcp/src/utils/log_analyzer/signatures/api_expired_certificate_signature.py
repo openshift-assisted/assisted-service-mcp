@@ -4,7 +4,6 @@ ApiExpiredCertificateSignature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -20,7 +19,7 @@ class ApiExpiredCertificateSignature(ErrorSignature):
 
     LOG_PATTERN = re.compile("x509: certificate has expired or is not yet valid.*")
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         path = f"{LOG_BUNDLE_PATH}/bootstrap/containers/bootstrap-control-plane/kube-apiserver.log"
         try:
             logs = log_analyzer.logs_archive.get(path)

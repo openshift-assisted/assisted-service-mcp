@@ -4,7 +4,7 @@ SlowImageDownloadSignature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 from .base import ErrorSignature, SignatureResult
 
@@ -19,7 +19,7 @@ class SlowImageDownloadSignature(ErrorSignature):
     )
     minimum_download_rate_mb = 10
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         """Analyze image download speeds."""
         try:
             events = log_analyzer.get_last_install_cluster_events()
@@ -38,14 +38,15 @@ class SlowImageDownloadSignature(ErrorSignature):
                     title="Slow Image Download", content=content, severity="warning"
                 )
 
-        except Exception as e:
+        # Keep one signature failure from aborting the overall log analysis.
+        except Exception as e:  # noqa: BLE001
             logger.error("Error in SlowImageDownloadSignature: %s", e)
 
         return None
 
     def _list_image_download_info(
-        self, events: List[Dict[str, Any]]
-    ) -> List[Dict[str, str]]:
+        self, events: list[dict[str, Any]]
+    ) -> list[dict[str, str]]:
         """Extract image download information from events."""
         return [
             match.groupdict()

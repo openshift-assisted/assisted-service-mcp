@@ -1,10 +1,11 @@
 """Main entry point for the Assisted Service MCP Server."""
 
 import uvicorn
+
 from assisted_service_mcp.src.api import app, server
-from assisted_service_mcp.src.settings import settings
-from assisted_service_mcp.src.metrics import metrics, initiate_metrics
 from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.metrics import initiate_metrics, metrics
+from assisted_service_mcp.src.settings import settings
 
 
 def main() -> None:
