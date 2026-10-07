@@ -1,12 +1,13 @@
 approvers:
-  - carbonin
-  - eranco74
-  - jhernand
-  - omertuc
-  - keitwb
+  - r2dedios
+  - sgratch
+  - nemerna
+  - ilan-pinto
 reviewers:
-  - carbonin
-  - eranco74
-  - jhernand
-  - omertuc
-  - keitwb
+  - r2dedios
+  - sgratch
+  - nemerna
+  - ilan-pinto
+  - rhartuv
+  - TomerFi
+  - dmartinol
