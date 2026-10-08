@@ -4,7 +4,6 @@ ApiInvalidCertificateSignature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 
@@ -18,7 +17,7 @@ class ApiInvalidCertificateSignature(ErrorSignature):
         'time=".*" level=error msg=".*x509: certificate is valid.* not .*'
     )
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         try:
             controller_logs = log_analyzer.get_controller_logs()
         except FileNotFoundError:

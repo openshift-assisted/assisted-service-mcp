@@ -3,7 +3,6 @@ DualstackrDNSBug signature for OpenShift Assisted Installer logs.
 """
 
 import logging
-from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 class DualstackrDNSBug(ErrorSignature):
     """Detect kube-apiserver 'must match public address family' message (MGMT-11651)."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         path = f"{LOG_BUNDLE_PATH}/bootstrap/containers/kube-apiserver-*.log"
         try:
             kubeapiserver_logs = log_analyzer.logs_archive.get(path)

@@ -1,5 +1,5 @@
 import importlib
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def test_get_host_overrides_scheme_and_netloc() -> None:

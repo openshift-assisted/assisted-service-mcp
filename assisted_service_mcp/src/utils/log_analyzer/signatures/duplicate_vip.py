@@ -4,7 +4,6 @@ DuplicateVIP signature for OpenShift Assisted Installer logs.
 
 import logging
 import os
-from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -19,7 +18,7 @@ class DuplicateVIP(ErrorSignature):
     """Looks for nodes holding the same VIP."""
 
     # pylint: disable=too-many-nested-blocks,too-many-branches
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         """Analyze for duplicate VIP issues."""
         try:
             cluster = log_analyzer.metadata
@@ -29,7 +28,7 @@ class DuplicateVIP(ErrorSignature):
                 return None
 
             # VIPs are not relevant with load balancer
-            if cluster.get("user_managed_networking") is True:  # noqa: E712
+            if cluster.get("user_managed_networking") is True:
                 return None
 
             vips = [vip["ip"] for vip in cluster.get("api_vips", [])]
@@ -86,7 +85,7 @@ class DuplicateVIP(ErrorSignature):
                 )
             return None
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError) as e:
             logger.error("Error in DuplicateVIP: %s", e)
 
         return None

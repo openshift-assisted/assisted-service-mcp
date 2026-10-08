@@ -3,6 +3,7 @@ Unit tests for the service_client.helpers module.
 """
 
 import pytest
+
 from assisted_service_mcp.src.service_client.helpers import Helpers
 
 
