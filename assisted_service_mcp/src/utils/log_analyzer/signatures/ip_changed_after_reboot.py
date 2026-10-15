@@ -7,7 +7,6 @@ import ipaddress
 import json
 import logging
 import re
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 
@@ -43,7 +42,7 @@ class IpChangedAfterReboot(ErrorSignature):
                             address_map[str(intf.ip)] = str(intf.network)
         return address_map
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         cluster = log_analyzer.metadata
 
         for host in cluster.get("hosts", []):

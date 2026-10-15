@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock
+
 import pytest
 
 from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id

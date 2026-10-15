@@ -5,7 +5,6 @@ SNOMachineCidrSignature for OpenShift Assisted Installer logs.
 import ipaddress
 import json
 import logging
-from typing import Optional
 
 from .base import Signature, SignatureResult
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SNOMachineCidrSignature(Signature):
     """Validates machine CIDR configuration for SNO clusters."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         """Analyze SNO machine CIDR configuration."""
         try:
             if not log_analyzer.cluster_is_sno():
@@ -52,6 +51,6 @@ class SNOMachineCidrSignature(Signature):
                 severity="error",
             )
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError) as e:
             logger.error("Error in SNOMachineCidrSignature: %s", e)
             return None

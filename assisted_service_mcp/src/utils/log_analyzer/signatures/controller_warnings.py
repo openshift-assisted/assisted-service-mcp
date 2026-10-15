@@ -4,7 +4,6 @@ ControllerWarnings signature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional
 
 from .base import Signature, SignatureResult
 
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 class ControllerWarnings(Signature):
     """Search for warnings in controller logs."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         try:
             controller_logs = log_analyzer.get_controller_logs()
         except FileNotFoundError:

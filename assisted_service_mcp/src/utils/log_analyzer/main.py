@@ -2,6 +2,7 @@
 """
 Main entry point for the OpenShift Assisted Installer Log Analyzer.
 """
+
 import logging
 from typing import List, Optional
 
