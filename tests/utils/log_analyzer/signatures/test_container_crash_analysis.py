@@ -136,6 +136,9 @@ class TestContainerCrashAnalysis:
         assert "Host bootstrap (1 total crashes)" in result.content
         assert "etcd: 1 crash(es)" in result.content
         assert "Container etcd log line" in result.content
+        # Check for untrusted-cluster-data wrapper
+        assert "«untrusted-cluster-data»" in str(result)
+        assert "«/untrusted-cluster-data»" in str(result)
 
     def test_multiple_crashes_warning_severity(self) -> None:
         """Test ContainerCrashAnalysis with multiple crashes (warning severity)."""
@@ -338,12 +341,14 @@ class TestContainerCrashAnalysis:
 
         assert result is not None
         assert "test-app: 1 crash(es)" in result.content
-        assert "Last 20 container logs:" in result.content
-        assert "Container test-app log line 6" in result.content
+        # Changed from "Last 20" to "Last 5"
+        assert "Last 5 container logs (max 200 chars/line):" in result.content
+        # With only last 5 lines from 25 total, we get lines 21-25
+        assert "Container test-app log line 21" in result.content
         assert "Container test-app log line 25" in result.content
-        assert (
-            "Container test-app log line 3" not in result.content
-        )  # Should be excluded
+        # Earlier lines should be excluded
+        assert "Container test-app log line 6" not in result.content
+        assert "Container test-app log line 3" not in result.content
 
     def test_container_logs_not_found(self) -> None:
         """Test when container logs are not found."""
@@ -438,6 +443,40 @@ class TestContainerCrashAnalysis:
         """Test that signature name is set correctly."""
         assert ContainerCrashAnalysis().name == "ContainerCrashAnalysis"
 
+    def test_container_log_line_truncation(self) -> None:
+        """Test that container log lines are truncated to 200 characters."""
+        signature = ContainerCrashAnalysis()
+
+        crashes = [{"timestamp": "Sep 17 14:35:00", "container": "long-log-container"}]
+        kubelet_log = self._create_kubelet_log_with_crashes(crashes)
+
+        # Create a log with very long lines (over 200 chars)
+        long_line = "A" * 300 + " This part should be truncated"
+        log_content = "\n".join([long_line for _ in range(10)])
+        log_file_name = "long-log-container-abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890.log"
+
+        archive_map = {
+            f"{LOG_BUNDLE_PATH}/bootstrap/journals/kubelet.log": kubelet_log,
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/": self._create_mock_directory(
+                [log_file_name]
+            ),
+            f"{LOG_BUNDLE_PATH}/bootstrap/containers/{log_file_name}": log_content,
+        }
+
+        archive = make_archive(archive_map)
+        log_analyzer = LogAnalyzer(archive)
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        # Check that lines are truncated to 200 chars max
+        content_lines = result.content.split("\n")
+        for line in content_lines:
+            # Skip header lines and check actual log lines
+            if line.strip().startswith("A"):
+                assert len(line.strip()) <= 200
+                # The line should be exactly 200 A's (truncated from 300)
+                assert line.strip() == "A" * 200
+
     def test_empty_kubelet_log(self) -> None:
         """Test ContainerCrashAnalysis with empty kubelet log."""
         signature = ContainerCrashAnalysis()
@@ -480,7 +519,8 @@ class TestContainerCrashAnalysis:
 
         assert result is not None
         assert "multi-log-container: 1 crash(es)" in result.content
-        assert "Last 20 container logs:" in result.content
+        # Changed from "Last 20" to "Last 5"
+        assert "Last 5 container logs (max 200 chars/line):" in result.content
         # Should show logs from both files with separators
         assert f"--- {log_file_name_1} ---" in result.content
         assert f"--- {log_file_name_2} ---" in result.content

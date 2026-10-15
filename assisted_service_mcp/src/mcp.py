@@ -6,6 +6,7 @@ from functools import wraps
 from typing import Any, Awaitable, Callable
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
@@ -70,10 +71,25 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(self._wrap_tool(cluster_tools.cluster_info))
         self.mcp.tool()(self._wrap_tool(cluster_tools.list_clusters))
         self.mcp.tool()(self._wrap_tool(cluster_tools.create_cluster))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_vips))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_ssh_key))
+
+        destructive_annotations = ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=True,
+        )
+
+        self.mcp.tool(annotations=destructive_annotations)(
+            self._wrap_tool(cluster_tools.set_cluster_vips)
+        )
+        self.mcp.tool(annotations=destructive_annotations)(
+            self._wrap_tool(cluster_tools.set_cluster_platform)
+        )
+        self.mcp.tool(annotations=destructive_annotations)(
+            self._wrap_tool(cluster_tools.install_cluster)
+        )
+        self.mcp.tool(annotations=destructive_annotations)(
+            self._wrap_tool(cluster_tools.set_cluster_ssh_key)
+        )
+
         if settings.ENABLE_TROUBLESHOOTING_TOOLS:
             self.mcp.tool()(self._wrap_tool(cluster_tools.analyze_cluster_logs))
 

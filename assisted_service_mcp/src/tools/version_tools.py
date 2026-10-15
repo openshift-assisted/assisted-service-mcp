@@ -29,8 +29,9 @@ def format_version_list(versions_data: models.OpenshiftVersions) -> str:
         "Extended Support": "Extended Support",
     }
 
-    # Start building the markdown table
-    markdown_table = (
+    # Start building the markdown table with header
+    markdown_table = "Available OpenShift versions:\n\n"
+    markdown_table += (
         "| OpenShift Version | Support Level | Supported CPU Architectures |\n"
     )
     markdown_table += "|---|---|---|\n"

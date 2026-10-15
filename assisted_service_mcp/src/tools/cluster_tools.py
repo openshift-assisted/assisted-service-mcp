@@ -1,6 +1,7 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
 from typing import Annotated, Callable
+import re
 from pydantic import Field
 
 from assisted_service_mcp.src.metrics import track_tool_usage
@@ -8,6 +9,66 @@ from assisted_service_mcp.src.service_client.assisted_service_api import Invento
 from assisted_service_mcp.src.service_client.helpers import Helpers
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
+from assisted_service_mcp.src.tools.event_tools import _wrap_untrusted_data
+
+
+def _validate_ssh_key(ssh_public_key: str) -> str:
+    """Validate SSH public key format and return sanitized value.
+
+    Validates the SSH key's base64 encoding and comment field, strips quotes,
+    and normalizes whitespace.
+
+    Args:
+        ssh_public_key: SSH public key in OpenSSH format
+
+    Returns:
+        str: Sanitized SSH public key with quotes stripped and whitespace normalized
+
+    Raises:
+        ValueError: If the key format is invalid or contains unsafe characters
+    """
+    # Strip surrounding quotes that may come from natural language input or YAML
+    ssh_public_key = ssh_public_key.strip().strip('"').strip("'")
+
+    parts = ssh_public_key.split()
+    if len(parts) < 2:
+        raise ValueError(
+            "Invalid SSH key format. Expected 'key-type key-data [comment]'"
+        )
+
+    key_type, key_data = parts[0], parts[1]
+
+    # Validate key type is a known SSH key algorithm
+    valid_key_types = {
+        "ssh-rsa",
+        "ssh-dss",
+        "ssh-ed25519",
+        "ecdsa-sha2-nistp256",
+        "ecdsa-sha2-nistp384",
+        "ecdsa-sha2-nistp521",
+        "sk-ssh-ed25519@openssh.com",
+        "sk-ecdsa-sha2-nistp256@openssh.com",
+    }
+    if key_type not in valid_key_types:
+        raise ValueError(
+            f"Invalid SSH key type '{key_type}'. "
+            f"Expected one of: {', '.join(sorted(valid_key_types))}"
+        )
+
+    # Validate key data is base64-like
+    if not re.match(r"^[A-Za-z0-9+/=]+$", key_data):
+        raise ValueError("SSH key data contains invalid characters")
+
+    if len(parts) > 2:
+        comment = " ".join(parts[2:])
+        if not re.match(r"^[\w@.\-\s]+$", comment):
+            raise ValueError(
+                "SSH key comment contains unsafe characters. "
+                "Only alphanumerics, dots, dashes, underscores, @, and spaces are allowed."
+            )
+
+    # Return the sanitized key with normalized whitespace
+    return " ".join(parts)
 
 
 @track_tool_usage()
@@ -40,7 +101,7 @@ async def cluster_info(
     client = InventoryClient(get_access_token_func())
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
-    return result.to_str()
+    return _wrap_untrusted_data(result.to_str())
 
 
 @track_tool_usage()
@@ -170,6 +231,14 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
         platform = "baremetal"
         if single_node is True:
             platform = "none"
+
+    # Validate SSH key if provided
+    if ssh_public_key:
+        try:
+            ssh_public_key = _validate_ssh_key(ssh_public_key)
+        except ValueError as e:
+            log.error("SSH key validation failed: %s", str(e))
+            return f"SSH key validation failed: {str(e)}"
 
     client = InventoryClient(get_access_token_func())
 
@@ -347,6 +416,13 @@ async def set_cluster_ssh_key(
         str: Formatted string with updated cluster configuration, or error message if boot image update fails.
     """
     log.info("Setting SSH public key for cluster %s", cluster_id)
+
+    try:
+        ssh_public_key = _validate_ssh_key(ssh_public_key)
+    except ValueError as e:
+        log.error("SSH key validation failed: %s", str(e))
+        return f"SSH key validation failed: {str(e)}"
+
     client = InventoryClient(get_access_token_func())
 
     # Import helper function here to avoid circular imports
