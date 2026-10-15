@@ -6,7 +6,6 @@ import ipaddress
 import logging
 import os
 import re
-from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -56,7 +55,7 @@ class NameserverInClusterNetwork(ErrorSignature):
             pass
         return nameservers
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         md = log_analyzer.metadata
         cidrs = [network["cidr"] for network in md.get("cluster_networks", [])]
         if not cidrs:

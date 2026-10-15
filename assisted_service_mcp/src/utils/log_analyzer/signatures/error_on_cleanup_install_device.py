@@ -5,7 +5,6 @@ ErrorOnCleanupInstallDevice signature for OpenShift Assisted Installer logs.
 import logging
 import re
 from collections import OrderedDict
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 from .helpers import get_hostname
@@ -18,7 +17,7 @@ class ErrorOnCleanupInstallDevice(ErrorSignature):
 
     LOG_PATTERN = re.compile(r'msg="(?P<message>failed to prepare install device.*)"')
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         cluster = log_analyzer.metadata
         hosts = []
         for host in cluster.get("hosts", []):

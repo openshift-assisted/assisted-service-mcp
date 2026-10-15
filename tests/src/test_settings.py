@@ -1,6 +1,8 @@
 import importlib
 import sys
+
 import pytest
+from pydantic import ValidationError
 
 
 def reload_settings_with_env(env: dict[str, str]):  # type: ignore[no-untyped-def]
@@ -51,8 +53,6 @@ def test_logging_level_case_insensitive() -> None:
 
 
 def test_settings_validation_invalid_transport() -> None:
-    from pydantic import ValidationError  # pylint: disable=import-outside-toplevel
-
     with pytest.raises(
         ValidationError, match="Input should be 'sse' or 'streamable-http'"
     ):
@@ -60,20 +60,20 @@ def test_settings_validation_invalid_transport() -> None:
 
 
 def test_validate_config_invalid_port_low() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         reload_settings_with_env({"MCP_PORT": "1023"})
 
 
 def test_validate_config_invalid_port_high() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         reload_settings_with_env({"MCP_PORT": "70000"})
 
 
 def test_validate_config_invalid_log_level() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         reload_settings_with_env({"LOGGING_LEVEL": "VERBOSE"})
 
 
 def test_validate_config_invalid_transport() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         reload_settings_with_env({"TRANSPORT": "http2"})

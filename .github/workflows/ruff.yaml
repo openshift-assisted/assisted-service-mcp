@@ -17,4 +17,4 @@ jobs:
         with:
           python-version: '3.13'
       - name: Python linter
-        run: uv tool run ruff check .
+        run: uv run ruff check .

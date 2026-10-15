@@ -1,11 +1,13 @@
 """Event management tools for Assisted Service MCP Server."""
 
-from typing import Annotated, Callable
+from collections.abc import Callable
+from typing import Annotated
+
 from pydantic import Field
 
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-from assisted_service_mcp.src.logger import log
 
 
 @track_tool_usage()
