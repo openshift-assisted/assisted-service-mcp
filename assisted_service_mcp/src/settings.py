@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     )
 
     # Transport Configuration
-    TRANSPORT: Literal["sse", "streamable-http"] = Field(
+    TRANSPORT: Literal["sse", "streamable-http", "stdio"] = Field(
         default="sse",
         json_schema_extra={
             "env": "TRANSPORT",
@@ -185,7 +185,7 @@ def validate_config(cfg: Settings) -> None:
         )
 
     # Validate transport protocol
-    valid_transports = ["sse", "streamable-http"]
+    valid_transports = ["sse", "streamable-http", "stdio"]
     if cfg.TRANSPORT not in valid_transports:
         raise ValueError(
             f"TRANSPORT must be one of {valid_transports}, got {cfg.TRANSPORT}"

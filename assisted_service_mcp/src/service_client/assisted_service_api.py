@@ -137,42 +137,67 @@ class InventoryClient:
     @sanitize_exceptions
     async def get_cluster(
         self, cluster_id: str, get_unregistered_clusters: bool = False
-    ) -> models.Cluster:
+    ) -> models.Cluster | dict[str, Any]:
         """
         Get cluster information by ID.
 
+        Automatically detects which API to use based on INVENTORY_URL:
+        - If URL contains 'clusters_mgmt' → OCM API (ROSA/ARO/OSD)
+        - Otherwise → Assisted Installer API (OCP/SNO)
+
         Args:
             cluster_id: The unique identifier of the cluster.
-            get_unregistered_clusters: Whether to include unregistered clusters.
+            get_unregistered_clusters: Whether to include unregistered clusters (Assisted Installer only).
 
         Returns:
-            models.Cluster: The cluster object containing cluster information.
+            models.Cluster | dict[str, Any]: The cluster object (Assisted Installer) or dictionary (OCM).
         """
-        log.info(
-            "Getting cluster %s (unregistered: %s)",
-            cluster_id,
-            get_unregistered_clusters,
-        )
-        result = await self._api_call(
-            self._installer_api().v2_get_cluster,
-            cluster_id=cluster_id,
-            get_unregistered_clusters=get_unregistered_clusters,
-        )
-        log.info("Successfully retrieved cluster %s", cluster_id)
-        return cast(models.Cluster, result)
+        log.info("Getting cluster %s from %s", cluster_id, self.inventory_url)
+
+        # Detect API type based on URL
+        if "clusters_mgmt" in self.inventory_url:
+            # Use OCM API for managed clusters (ROSA/ARO/OSD)
+            log.info("Detected OCM API - getting managed cluster")
+            return await self.ocm_get_cluster(cluster_id)
+        else:
+            # Use Assisted Installer API for self-managed clusters (OCP/SNO)
+            log.info(
+                "Detected Assisted Installer API - getting self-managed cluster (unregistered: %s)",
+                get_unregistered_clusters,
+            )
+            result = await self._api_call(
+                self._installer_api().v2_get_cluster,
+                cluster_id=cluster_id,
+                get_unregistered_clusters=get_unregistered_clusters,
+            )
+            log.info("Successfully retrieved cluster %s", cluster_id)
+            return cast(models.Cluster, result)
 
     @sanitize_exceptions
     async def list_clusters(self) -> list:
         """
         List all clusters accessible to the authenticated user.
 
+        Automatically detects which API to use based on INVENTORY_URL:
+        - If URL contains 'clusters_mgmt' → OCM API (ROSA/ARO/OSD)
+        - Otherwise → Assisted Installer API (OCP/SNO)
+
         Returns:
             list: A list of cluster objects.
         """
-        log.info("Listing all clusters")
-        result = await self._api_call(self._installer_api().v2_list_clusters)
-        log.info("Successfully listed clusters")
-        return cast(list, result)
+        log.info("Listing all clusters from %s", self.inventory_url)
+
+        # Detect API type based on URL
+        if "clusters_mgmt" in self.inventory_url:
+            # Use OCM API for managed clusters (ROSA/ARO/OSD)
+            log.info("Detected OCM API - listing managed clusters")
+            return await self.ocm_list_clusters()
+        else:
+            # Use Assisted Installer API for self-managed clusters (OCP/SNO)
+            log.info("Detected Assisted Installer API - listing self-managed clusters")
+            result = await self._api_call(self._installer_api().v2_list_clusters)
+            log.info("Successfully listed clusters")
+            return cast(list, result)
 
     @sanitize_exceptions
     async def get_cluster_logs(
@@ -573,3 +598,61 @@ class InventoryClient:
             infra_env_id,
         )
         return cast(models.PresignedUrl, result)
+
+    @sanitize_exceptions
+    async def ocm_list_clusters(self) -> list[dict[str, Any]]:
+        """
+        List all OCM managed clusters (ROSA, ARO, OSD).
+
+        This method should only be called when INVENTORY_URL points to the OCM API.
+        Uses the clusters_mgmt API endpoint to retrieve managed clusters.
+
+        Returns:
+            list[dict[str, Any]]: A list of OCM cluster dictionaries containing cluster information.
+        """
+        url = f"{self.inventory_url}/clusters"
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+
+        log.info("Listing OCM clusters from %s", url)
+        try:
+            response = await asyncio.to_thread(
+                requests.get, url, headers=headers, timeout=30
+            )
+            response.raise_for_status()
+            data = response.json()
+            clusters = data.get("items", [])
+            log.info("Successfully listed %d OCM clusters", len(clusters))
+            return clusters
+        except RequestException as e:
+            log.error("Error while listing OCM clusters from %s: %s", url, str(e))
+            raise
+
+    @sanitize_exceptions
+    async def ocm_get_cluster(self, cluster_id: str) -> dict[str, Any]:
+        """
+        Get detailed information about an OCM managed cluster.
+
+        This method should only be called when INVENTORY_URL points to the OCM API.
+        Uses the clusters_mgmt API endpoint to retrieve managed cluster details.
+
+        Args:
+            cluster_id: The unique identifier of the OCM cluster.
+
+        Returns:
+            dict[str, Any]: OCM cluster information dictionary.
+        """
+        url = f"{self.inventory_url}/clusters/{cluster_id}"
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+
+        log.info("Getting OCM cluster %s from %s", cluster_id, url)
+        try:
+            response = await asyncio.to_thread(
+                requests.get, url, headers=headers, timeout=30
+            )
+            response.raise_for_status()
+            cluster = response.json()
+            log.info("Successfully retrieved OCM cluster %s", cluster_id)
+            return cluster
+        except RequestException as e:
+            log.error("Error while getting OCM cluster %s: %s", cluster_id, str(e))
+            raise

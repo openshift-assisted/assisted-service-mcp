@@ -15,7 +15,12 @@ configure_logging()
 server = AssistedServiceMCPServer()
 
 # Choose the appropriate transport protocol based on settings
-if settings.TRANSPORT == "streamable-http":
+if settings.TRANSPORT == "stdio":
+    # For stdio transport, no HTTP app is needed
+    # The server will run directly via asyncio
+    app = None  # type: ignore
+    log.info("Using stdio transport (for Claude Code and CLI clients)")
+elif settings.TRANSPORT == "streamable-http":
     app = server.mcp.streamable_http_app()
     log.info("Using StreamableHTTP transport (stateless)")
 else:
