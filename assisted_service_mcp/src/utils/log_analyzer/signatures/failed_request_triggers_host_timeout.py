@@ -4,7 +4,6 @@ FailedRequestTriggersHostTimeout signature for OpenShift Assisted Installer logs
 
 import logging
 import re
-from typing import Optional
 
 from .base import Signature, SignatureResult
 
@@ -21,7 +20,7 @@ class FailedRequestTriggersHostTimeout(Signature):
         "Host failed to install due to timeout while connecting to host"
     )
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         cluster = log_analyzer.metadata
         failed_requests_hosts = set()
         timed_out_hosts = {

@@ -3,7 +3,7 @@ Test utilities for creating test objects.
 """
 
 from datetime import datetime
-from typing import Optional
+
 from assisted_service_client import models
 
 
@@ -46,7 +46,7 @@ def create_test_host(
     host_id: str = "test-host-id",
     status: str = "known",
     status_info: str = "Host is ready for installation",
-    role: Optional[str] = None,
+    role: str | None = None,
 ) -> models.Host:
     """Create a test host object with default values."""
     return models.Host(
@@ -63,7 +63,7 @@ def create_test_infra_env(  # pylint: disable=too-many-arguments,too-many-positi
     infra_env_id: str = "test-infraenv-id",
     name: str = "test-infraenv",
     infra_env_type: str = "full-iso",
-    cluster_id: Optional[str] = None,
+    cluster_id: str | None = None,
     created_at: str = "2023-01-01T00:00:00Z",
     updated_at: str = "2023-01-01T00:00:00Z",
 ) -> models.InfraEnv:
@@ -82,7 +82,7 @@ def create_test_infra_env(  # pylint: disable=too-many-arguments,too-many-positi
 
 def create_test_presigned_url(
     url: str = "https://example.com/presigned-url",
-    expires_at: Optional[str] = "2023-12-31T23:59:59Z",
+    expires_at: str | None = "2023-12-31T23:59:59Z",
 ) -> models.PresignedUrl:
     """Create a test presigned URL object with default values."""
 

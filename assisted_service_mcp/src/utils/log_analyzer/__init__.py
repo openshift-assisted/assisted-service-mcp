@@ -9,7 +9,7 @@ from .signatures import ALL_SIGNATURES, SignatureResult
 
 __version__ = "1.0.0"
 __all__ = [
-    "LogAnalyzer",
     "ALL_SIGNATURES",
+    "LogAnalyzer",
     "SignatureResult",
 ]

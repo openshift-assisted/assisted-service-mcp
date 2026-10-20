@@ -21,3 +21,5 @@ deploy/
 # Server log file
 assisted-service-mcp.log
 .env
+# Visual Studio Code
+.vscode/

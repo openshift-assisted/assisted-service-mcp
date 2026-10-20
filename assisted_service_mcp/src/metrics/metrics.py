@@ -16,7 +16,6 @@ from prometheus_client import (
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-
 # Define counter for request count
 REQUEST_COUNT = Counter(
     "assisted_service_mcp_tool_request_count",
