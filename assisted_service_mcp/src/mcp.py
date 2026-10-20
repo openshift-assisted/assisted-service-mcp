@@ -100,8 +100,7 @@ class AssistedServiceMCPServer:
 
         # Register network configuration tools
         self.mcp.tool()(self._wrap_tool(network_tools.validate_nmstate_yaml))
-        self.mcp.tool(
-            description=f"""
+        self.mcp.tool(description=f"""
             Generate an initial nmstate yaml.
 
             You should call this after gathering information from the user to generate the initial nmstate
@@ -112,8 +111,7 @@ class AssistedServiceMCPServer:
 
             Input param schema:
             {network_tools.NMStateTemplateParams.model_json_schema()}
-        """
-        )(self._wrap_tool(network_tools.generate_nmstate_yaml))
+        """)(self._wrap_tool(network_tools.generate_nmstate_yaml))
         self.mcp.tool()(
             self._wrap_tool(network_tools.alter_static_network_config_nmstate_for_host)
         )
