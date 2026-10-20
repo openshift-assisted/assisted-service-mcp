@@ -38,9 +38,9 @@ class AssistedServiceMCPServer:
             # Initialize FastMCP server
             self.mcp = FastMCP("AssistedService")
             # Define auth helpers bound to this MCP instance
-            self._get_offline_token = lambda: get_offline_token(self.mcp)
+            self._get_offline_token = get_offline_token
             self._get_access_token = lambda: get_access_token(
-                self.mcp, offline_token_func=self._get_offline_token
+                offline_token_func=self._get_offline_token
             )
             self._register_mcp_tools()
             log.info("Assisted Service MCP Server initialized successfully")
@@ -76,15 +76,11 @@ class AssistedServiceMCPServer:
         self.mcp.tool()(self._wrap_tool(event_tools.host_events))
 
         # Register download/URL tools
-        self.mcp.tool()(
-            self._wrap_tool(download_tools.cluster_iso_download_url)
-        )
+        self.mcp.tool()(self._wrap_tool(download_tools.cluster_iso_download_url))
         self.mcp.tool()(
             self._wrap_tool(download_tools.cluster_credentials_download_url)
         )
-        self.mcp.tool()(
-            self._wrap_tool(download_tools.cluster_logs_download_url)
-        )
+        self.mcp.tool()(self._wrap_tool(download_tools.cluster_logs_download_url))
 
         # Register version tools
         self.mcp.tool()(self._wrap_tool(version_tools.list_versions))
@@ -142,9 +138,7 @@ class AssistedServiceMCPServer:
             log.debug("Failed to extract auth headers: %s: %s", type(e).__name__, e)
         return bearer, offline
 
-    def _get_access_token_with_header(
-        self, offline_token_header: str | None
-    ) -> str:
+    def _get_access_token_with_header(self, offline_token_header: str | None) -> str:
         """Get access token using a pre-extracted OCM-Offline-Token header.
 
         Runs in a worker thread.  Does not rely on FastMCP request context
@@ -157,9 +151,7 @@ class AssistedServiceMCPServer:
             raise RuntimeError(
                 "No offline token found in environment or request headers"
             )
-        return get_access_token(
-            self.mcp, offline_token_func=lambda: offline_token
-        )
+        return get_access_token(offline_token_func=lambda: offline_token)
 
     def _wrap_tool(
         self, tool_func: Callable[..., Awaitable[Any]]

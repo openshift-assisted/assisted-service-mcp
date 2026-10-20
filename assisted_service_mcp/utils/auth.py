@@ -1,6 +1,6 @@
 """Authentication utilities for Assisted Service MCP Server."""
 
-from typing import Any, Callable
+from typing import Callable
 
 import requests
 from fastmcp.server.dependencies import get_http_headers
@@ -8,7 +8,7 @@ from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.settings import get_setting
 
 
-def get_offline_token(mcp: Any) -> str:
+def get_offline_token() -> str:
     """
     Retrieve the offline token from environment variables or request headers.
 
@@ -16,9 +16,6 @@ def get_offline_token(mcp: Any) -> str:
     first from the OFFLINE_TOKEN environment variable, then from the OCM-Offline-Token
     request header. The token is required for authenticating with the Red Hat assisted
     installer service.
-
-    Args:
-        mcp: The FastMCP instance to get request context from.
 
     Returns:
         str: The offline token string used for authentication.
@@ -46,9 +43,7 @@ def get_offline_token(mcp: Any) -> str:
     raise RuntimeError("No offline token found in environment or request headers")
 
 
-def get_access_token(
-    mcp: Any, offline_token_func: Callable[[], str] | None = None
-) -> str:
+def get_access_token(offline_token_func: Callable[[], str] | None = None) -> str:
     """
     Retrieve the access token.
 
@@ -57,9 +52,8 @@ def get_access_token(
     to generate a new one using the offline token.
 
     Args:
-        mcp: The FastMCP instance to get request context from.
         offline_token_func: Optional function to get offline token. If not provided,
-                           uses get_offline_token(mcp).
+                           uses get_offline_token().
 
     Returns:
         str: The access token.
@@ -83,9 +77,9 @@ def get_access_token(
     # Now try to get the offline token, and generate a new access token from it:
     log.debug("Generating new access token from offline token")
 
-    # Use the provided offline token function or default to get_offline_token(mcp)
+    # Use the provided offline token function or default to get_offline_token()
     if offline_token_func is None:
-        offline_token = get_offline_token(mcp)
+        offline_token = get_offline_token()
     else:
         offline_token = offline_token_func()
 

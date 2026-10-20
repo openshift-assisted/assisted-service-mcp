@@ -24,4 +24,6 @@ if settings.TRANSPORT and settings.TRANSPORT not in _SUPPORTED_TRANSPORTS:
     )
 stateless = settings.TRANSPORT == "streamable-http"
 app = server.mcp.http_app(stateless_http=stateless)
-log.info("Using %s transport", "stateless StreamableHTTP" if stateless else "StreamableHTTP")
+log.info(
+    "Using %s transport", "stateless StreamableHTTP" if stateless else "StreamableHTTP"
+)
