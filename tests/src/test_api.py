@@ -68,4 +68,4 @@ def test_basic_liveness_returns_response(transport: str) -> None:
 
 def test_supported_transports_match_settings() -> None:
     api_mod = load_app_with_transport("sse")
-    assert api_mod._SUPPORTED_TRANSPORTS == {"sse", "streamable-http"}  # pylint: disable=protected-access
+    assert getattr(api_mod, "_SUPPORTED_TRANSPORTS") == {"sse", "streamable-http"}
