@@ -64,3 +64,8 @@ def test_basic_liveness_returns_response(transport: str) -> None:
     with TestClient(app) as client:
         resp = client.get("/")
         assert resp.status_code in (200, 404, 405)
+
+
+def test_supported_transports_match_settings() -> None:
+    api_mod = load_app_with_transport("sse")
+    assert api_mod._SUPPORTED_TRANSPORTS == {"sse", "streamable-http"}
