@@ -124,8 +124,7 @@ def generate_nmstate_from_template(params: NMStateTemplateParams) -> str:
     return yaml.dump(yaml.safe_load(NMSTATE_TEMPLATE.render(**params.model_dump())))
 
 
-NMSTATE_TEMPLATE = Template(
-    """
+NMSTATE_TEMPLATE = Template("""
 {% if dns %}
 dns-resolver:
   config:
@@ -227,5 +226,4 @@ interfaces:
     {% endif %}
 {% endfor %}
 {% endif %}
-"""
-)
+""")
