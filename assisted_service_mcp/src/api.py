@@ -23,7 +23,12 @@ if settings.TRANSPORT and settings.TRANSPORT not in _SUPPORTED_TRANSPORTS:
         ", ".join(sorted(_SUPPORTED_TRANSPORTS)),
     )
 stateless = settings.TRANSPORT == "streamable-http"
-app = server.mcp.http_app(stateless_http=stateless)
+app = server.mcp.http_app(
+    stateless_http=stateless,
+    transport=settings.TRANSPORT,
+)
 log.info(
-    "Using %s transport", "stateless StreamableHTTP" if stateless else "StreamableHTTP"
+    "Using %s transport (%s)",
+    "SSE" if settings.TRANSPORT == "sse" else "StreamableHTTP",
+    "stateful" if settings.TRANSPORT == "sse" else "stateless",
 )
