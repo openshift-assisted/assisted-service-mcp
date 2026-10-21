@@ -10,7 +10,7 @@ from fastmcp.server.dependencies import get_http_headers
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
-from assisted_service_mcp.utils.auth import get_offline_token, get_access_token
+from assisted_service_mcp.utils.auth import get_access_token
 from assisted_service_mcp.src.settings import get_setting, settings
 
 # Import all tool modules
@@ -37,11 +37,6 @@ class AssistedServiceMCPServer:
         try:
             # Initialize FastMCP server
             self.mcp = FastMCP("AssistedService")
-            # Define auth helpers bound to this MCP instance
-            self._get_offline_token = get_offline_token
-            self._get_access_token = lambda: get_access_token(
-                offline_token_func=self._get_offline_token
-            )
             self._register_mcp_tools()
             log.info("Assisted Service MCP Server initialized successfully")
         except Exception as e:
@@ -156,18 +151,18 @@ class AssistedServiceMCPServer:
     def _wrap_tool(
         self, tool_func: Callable[..., Awaitable[Any]]
     ) -> Callable[..., Awaitable[Any]]:
-        """Wrap a tool function to inject mcp and auth dependencies.
+        """Wrap a tool to resolve request authentication and provide its token.
 
-        Extracts auth headers in the async context (where FastMCP request
-        context is available), then resolves the access token — either
-        directly from a Bearer header or via offline-token SSO exchange
-        in a worker thread.
+        Extracts auth headers in the async context, then resolves the access
+        token directly from a Bearer header or through an offline-token SSO
+        exchange in a worker thread. The wrapped tool receives a zero-argument
+        callable that returns the resolved token.
 
         Args:
-            tool_func: The tool function to wrap.
+            tool_func: The async tool function to wrap.
 
         Returns:
-            A wrapped async function that injects get_access_token.
+            A wrapped async function that injects a token-provider callable.
         """
 
         @wraps(tool_func)

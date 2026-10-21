@@ -218,7 +218,6 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "assisted-service-client" },
-    { name = "fastapi" },
     { name = "fastmcp" },
     { name = "jinja2" },
     { name = "nestedarchive" },
@@ -249,6 +248,7 @@ performance = [
     { name = "aiohttp" },
 ]
 test = [
+    { name = "fastapi" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -258,7 +258,6 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "assisted-service-client", specifier = ">=2.41.0.post3" },
-    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "fastmcp", specifier = ">=3.1.0,<4" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "nestedarchive", specifier = ">=0.2.4" },
@@ -287,6 +286,7 @@ dev = [
 ]
 performance = [{ name = "aiohttp", specifier = ">=3.8.0" }]
 test = [
+    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
