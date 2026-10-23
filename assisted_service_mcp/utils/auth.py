@@ -8,6 +8,16 @@ from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.settings import get_setting
 
 
+def extract_bearer_token(auth_header: str | None) -> str | None:
+    """Return the token from a well-formed Bearer authorization header."""
+    if auth_header is None:
+        return None
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1]
+    return None
+
+
 def get_offline_token() -> str:
     """
     Retrieve the offline token from environment variables or request headers.
@@ -65,12 +75,10 @@ def get_access_token(offline_token_func: Callable[[], str] | None = None) -> str
     # First try to get the token from the authorization header:
     try:
         headers = get_http_headers(include={"authorization"})
-        auth_header = headers.get("authorization")
-        if auth_header and auth_header.lower().startswith("bearer "):
-            token = auth_header[7:].strip()
-            if token:
-                log.debug("Found access token in authorization header")
-                return token
+        token = extract_bearer_token(headers.get("authorization"))
+        if token:
+            log.debug("Found access token in authorization header")
+            return token
     except (RuntimeError, KeyError, AttributeError):
         log.debug("Request headers not available for access token extraction")
 

@@ -10,7 +10,7 @@ from fastmcp.server.dependencies import get_http_headers
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
-from assisted_service_mcp.utils.auth import get_access_token
+from assisted_service_mcp.utils.auth import extract_bearer_token, get_access_token
 from assisted_service_mcp.src.settings import get_setting, settings
 
 # Import all tool modules
@@ -125,9 +125,7 @@ class AssistedServiceMCPServer:
         offline = None
         try:
             headers = get_http_headers(include={"authorization", "ocm-offline-token"})
-            auth_header = headers.get("authorization")
-            if auth_header and auth_header.lower().startswith("bearer "):
-                bearer = auth_header[7:].strip() or None
+            bearer = extract_bearer_token(headers.get("authorization"))
             offline = headers.get("ocm-offline-token")
         except (RuntimeError, KeyError, AttributeError) as e:
             log.debug("Failed to extract auth headers: %s: %s", type(e).__name__, e)
