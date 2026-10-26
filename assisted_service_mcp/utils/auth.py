@@ -35,10 +35,10 @@ def get_offline_token() -> str:
             or request headers.
     """
     log.debug("Attempting to retrieve offline token")
-    token = get_setting("OFFLINE_TOKEN")
-    if token:
+    offline_token = get_setting("OFFLINE_TOKEN")
+    if offline_token:
         log.debug("Found offline token in environment variables")
-        return token
+        return offline_token
 
     try:
         headers = get_http_headers(include={"ocm-offline-token"})
