@@ -3,11 +3,10 @@ UserManagedNetworkingLoadBalancer signature for OpenShift Assisted Installer log
 """
 
 import logging
-from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.signatures.helpers import (
-    operator_statuses_from_controller_logs,
     filter_operators,
+    operator_statuses_from_controller_logs,
 )
 
 from .base import ErrorSignature, SignatureResult
@@ -18,9 +17,9 @@ logger = logging.getLogger(__name__)
 class UserManagedNetworkingLoadBalancer(ErrorSignature):
     """Detects UMN clusters where load-balancer related operators are the only unhealthy ones."""
 
-    lb_operators = {"authentication", "console", "ingress"}
+    lb_operators = frozenset({"authentication", "console", "ingress"})
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         metadata = log_analyzer.metadata
 
         if not metadata.get("user_managed_networking", False):

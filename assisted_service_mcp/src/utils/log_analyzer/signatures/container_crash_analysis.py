@@ -6,9 +6,8 @@ import logging
 import os
 import re
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from operator import itemgetter
-from typing import Optional, List, Dict
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -26,7 +25,7 @@ MAX_LOG_LINE_LENGTH = 200
 class ContainerCrashAnalysis(Signature):
     """Analyzes container crashes in the last 30 minutes of the install from kubelet logs."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         """Analyze container crashes from kubelet logs in control plane nodes."""
         try:
             logger.debug("Starting ContainerCrashAnalysis")
@@ -39,13 +38,8 @@ class ContainerCrashAnalysis(Signature):
                     host_result = self._analyze_host_directory(log_analyzer, host_dir)
                     if host_result:
                         all_host_results.append(host_result)
-                except Exception as e:
-                    logger.error(
-                        "Error analyzing host directory %s: %s",
-                        host_dir,
-                        e,
-                        exc_info=True,
-                    )
+                except Exception:
+                    logger.exception("Error analyzing host directory %s", host_dir)
                     # Continue with other hosts even if one fails
                     continue
 
@@ -82,11 +76,11 @@ class ContainerCrashAnalysis(Signature):
                 severity=severity,
             )
 
-        except Exception as e:
-            logger.error("Error in ContainerCrashAnalysis: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Error in ContainerCrashAnalysis")
             return None
 
-    def _get_host_directories(self, log_analyzer) -> List[Dict[str, str]]:
+    def _get_host_directories(self, log_analyzer) -> list[dict[str, str]]:
         """Get list of host directories to analyze."""
         host_dirs = []
 
@@ -125,8 +119,8 @@ class ContainerCrashAnalysis(Signature):
         return host_dirs
 
     def _analyze_host_directory(
-        self, log_analyzer, host_dir: Dict[str, str]
-    ) -> Optional[Dict]:
+        self, log_analyzer, host_dir: dict[str, str]
+    ) -> dict | None:
         """Analyze a single host directory for container crashes."""
         host_id = host_dir["host_id"]
         logger.debug("Analyzing host directory: %s", host_id)
@@ -167,10 +161,10 @@ class ContainerCrashAnalysis(Signature):
 
     def _filter_crashes_by_time(
         self,
-        crash_entries: List[Dict],
-        latest_timestamp: Optional[datetime],
+        crash_entries: list[dict],
+        latest_timestamp: datetime | None,
         host_id: str,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Filter crashes to last 30 minutes based on latest timestamp."""
         if not latest_timestamp:
             logger.debug(
@@ -191,8 +185,8 @@ class ContainerCrashAnalysis(Signature):
             try:
                 # Parse timestamp with current year to avoid deprecation warning
                 crash_time = datetime.strptime(
-                    f"{entry['timestamp_str']} {datetime.now().year}",
-                    "%b %d %H:%M:%S %Y",
+                    f"{entry['timestamp_str']} {datetime.now(UTC).year} +0000",
+                    "%b %d %H:%M:%S %Y %z",
                 )
             except ValueError as e:
                 logger.debug(
@@ -209,8 +203,8 @@ class ContainerCrashAnalysis(Signature):
         return filtered_crashes
 
     def _generate_host_result(
-        self, log_analyzer, host_dir: Dict[str, str], filtered_crashes: List[Dict]
-    ) -> Dict:
+        self, log_analyzer, host_dir: dict[str, str], filtered_crashes: list[dict]
+    ) -> dict:
         """Generate the result dictionary for a host."""
         host_id = host_dir["host_id"]
 
@@ -232,7 +226,7 @@ class ContainerCrashAnalysis(Signature):
         return {"total_crashes": total_crashes, "content": content}
 
     def _generate_container_content(
-        self, log_analyzer, host_dir: Dict[str, str], container_crashes: Dict
+        self, log_analyzer, host_dir: dict[str, str], container_crashes: dict
     ) -> str:
         """Generate content for container crashes."""
         host_id = host_dir["host_id"]
@@ -303,7 +297,8 @@ class ContainerCrashAnalysis(Signature):
                 try:
                     # Parse timestamp with current year to avoid deprecation warning
                     log_time = datetime.strptime(
-                        f"{timestamp_str} {datetime.now().year}", "%b %d %H:%M:%S %Y"
+                        f"{timestamp_str} {datetime.now(UTC).year} +0000",
+                        "%b %d %H:%M:%S %Y %z",
                     )
                 except ValueError as e:
                     logger.warning(
@@ -361,7 +356,7 @@ class ContainerCrashAnalysis(Signature):
 
     def _find_container_log_files(
         self, containers_dir, container_name: str, host_ip: str
-    ) -> List[str]:
+    ) -> list[str]:
         """Find all container log files for a given container."""
         container_log_files = []
         pattern = re.compile(rf"^{re.escape(container_name)}-[a-f0-9]{{64}}\.log$")

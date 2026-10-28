@@ -1,11 +1,12 @@
 """Version and operator management tools for Assisted Service MCP Server."""
 
-from typing import Callable
+from collections.abc import Callable
+
 from assisted_service_client import models
 
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-from assisted_service_mcp.src.logger import log
 
 
 def format_version_list(versions_data: models.OpenshiftVersions) -> str:

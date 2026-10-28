@@ -5,7 +5,6 @@ LibvirtRebootFlagSignature for OpenShift Assisted Installer logs.
 import json
 import logging
 from collections import OrderedDict
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 from .helpers import get_hostname
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 class LibvirtRebootFlagSignature(ErrorSignature):
     """Detect potential libvirt _on_reboot_ flag issue (MGMT-2840)."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         cluster = log_analyzer.metadata
         # not relevant for SNO
         if len(cluster.get("hosts", [])) <= 1:

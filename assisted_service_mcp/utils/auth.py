@@ -1,13 +1,24 @@
 """Authentication utilities for Assisted Service MCP Server."""
 
-from typing import Any, Callable
+from typing import Callable
 
 import requests
+from fastmcp.server.dependencies import get_http_headers
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.settings import get_setting
 
 
-def get_offline_token(mcp: Any) -> str:
+def extract_bearer_token(auth_header: str | None) -> str | None:
+    """Return the token from a well-formed Bearer authorization header."""
+    if auth_header is None:
+        return None
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1]
+    return None
+
+
+def get_offline_token() -> str:
     """
     Retrieve the offline token from environment variables or request headers.
 
@@ -15,9 +26,6 @@ def get_offline_token(mcp: Any) -> str:
     first from the OCM-Offline-Token request header, then from the OFFLINE_TOKEN
     environment variable. The token is required for authenticating with the Red Hat assisted
     installer service.
-
-    Args:
-        mcp: The FastMCP instance to get request context from.
 
     Returns:
         str: The offline token string used for authentication.
@@ -27,27 +35,25 @@ def get_offline_token(mcp: Any) -> str:
             or request headers.
     """
     log.debug("Attempting to retrieve offline token")
-    context = mcp.get_context()
-    if context and context.request_context:
-        request = context.request_context.request
-        if request is not None:
-            token = request.headers.get("OCM-Offline-Token")
-            if token:
-                log.debug("Found offline token in request headers")
-                return token
+    
+    try:
+        headers = get_http_headers(include={"ocm-offline-token"})
+        token = headers.get("ocm-offline-token")
+        if token:
+            log.debug("Found offline token in request headers")
+            return token
+    except (RuntimeError, KeyError, AttributeError):
+        log.debug("Request headers not available")
 
-    token = get_setting("OFFLINE_TOKEN")
-    if token:
+    offline_token = get_setting("OFFLINE_TOKEN")
+    if offline_token:
         log.debug("Found offline token in environment variables")
-        return token
+        return offline_token
 
     log.error("No offline token found in environment or request headers")
     raise RuntimeError("No offline token found in environment or request headers")
 
-
-def get_access_token(
-    mcp: Any, offline_token_func: Callable[[], str] | None = None
-) -> str:
+def get_access_token(offline_token_func: Callable[[], str] | None = None) -> str:
     """
     Retrieve the access token.
 
@@ -56,9 +62,8 @@ def get_access_token(
     to generate a new one using the offline token.
 
     Args:
-        mcp: The FastMCP instance to get request context from.
         offline_token_func: Optional function to get offline token. If not provided,
-                           uses get_offline_token(mcp).
+                           uses get_offline_token().
 
     Returns:
         str: The access token.
@@ -68,23 +73,21 @@ def get_access_token(
     """
     log.debug("Attempting to retrieve access token")
     # First try to get the token from the authorization header:
-    context = mcp.get_context()
-    if context and context.request_context:
-        request = context.request_context.request
-        if request is not None:
-            header = request.headers.get("Authorization")
-            if header is not None:
-                parts = header.split()
-                if len(parts) == 2 and parts[0].lower() == "bearer":
-                    log.debug("Found access token in authorization header")
-                    return parts[1]
+    try:
+        headers = get_http_headers(include={"authorization"})
+        token = extract_bearer_token(headers.get("authorization"))
+        if token:
+            log.debug("Found access token in authorization header")
+            return token
+    except (RuntimeError, KeyError, AttributeError):
+        log.debug("Request headers not available for access token extraction")
 
     # Now try to get the offline token, and generate a new access token from it:
     log.debug("Generating new access token from offline token")
 
-    # Use the provided offline token function or default to get_offline_token(mcp)
+    # Use the provided offline token function or default to get_offline_token()
     if offline_token_func is None:
-        offline_token = get_offline_token(mcp)
+        offline_token = get_offline_token()
     else:
         offline_token = offline_token_func()
 

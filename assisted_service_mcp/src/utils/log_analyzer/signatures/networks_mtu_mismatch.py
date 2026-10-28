@@ -4,7 +4,6 @@ NetworksMtuMismatch signature for OpenShift Assisted Installer logs.
 
 import logging
 import re
-from typing import Optional
 
 from .base import ErrorSignature, SignatureResult
 
@@ -18,7 +17,7 @@ class NetworksMtuMismatch(ErrorSignature):
         r"Failed to start sdn: interface MTU [(]([0-9]+)[)] is too small for specified overlay MTU [(]([0-9]+)[)]"
     )
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         path = "controller_logs.tar.gz/must-gather.tar.gz/must-gather.local.*/quay-io-openshift-release-dev-*/namespaces/openshift-sdn/pods/sdn-*/sdn/sdn/logs/*.log"
         try:
             sdn_logs = log_analyzer.logs_archive.get(path)

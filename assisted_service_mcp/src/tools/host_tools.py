@@ -1,11 +1,13 @@
 """Host management tools for Assisted Service MCP Server."""
 
-from typing import Annotated, Callable, Literal
+from collections.abc import Callable
+from typing import Annotated, Literal
+
 from pydantic import Field
 
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
 
 

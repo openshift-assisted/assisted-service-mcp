@@ -20,14 +20,14 @@ def load_app_with_transport(transport: str) -> Any:
 
 def test_api_uses_sse_when_configured() -> None:
     api_mod = load_app_with_transport("sse")
-    assert hasattr(api_mod, "app")
-    assert hasattr(api_mod, "server")
+    assert api_mod.app.state.transport_type == "sse"
+    assert api_mod.app.state.path == "/sse"
 
 
 def test_api_uses_streamable_http_when_configured() -> None:
     api_mod = load_app_with_transport("streamable-http")
-    assert hasattr(api_mod, "app")
-    assert hasattr(api_mod, "server")
+    assert api_mod.app.state.transport_type == "streamable-http"
+    assert api_mod.app.state.path == "/mcp"
 
 
 def ensure_metrics_route(app) -> None:  # type: ignore[no-untyped-def]
@@ -64,3 +64,8 @@ def test_basic_liveness_returns_response(transport: str) -> None:
     with TestClient(app) as client:
         resp = client.get("/")
         assert resp.status_code in (200, 404, 405)
+
+
+def test_supported_transports_match_settings() -> None:
+    api_mod = load_app_with_transport("sse")
+    assert getattr(api_mod, "_SUPPORTED_TRANSPORTS") == {"sse", "streamable-http"}
