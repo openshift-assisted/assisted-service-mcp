@@ -5,11 +5,13 @@ import inspect
 from functools import wraps
 from typing import Any, Awaitable, Callable
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
-from assisted_service_mcp.utils.auth import get_offline_token, get_access_token
+from assisted_service_mcp.utils.auth import (
+    get_access_token,
+)
 from assisted_service_mcp.src.settings import settings
 
 # Import all tool modules
@@ -34,20 +36,8 @@ class AssistedServiceMCPServer:
     def __init__(self) -> None:
         """Initialize the MCP server with assisted service tools."""
         try:
-            # Get transport configuration from settings
-            use_stateless_http = settings.TRANSPORT == "streamable-http"
-
             # Initialize FastMCP server
-            self.mcp = FastMCP(
-                "AssistedService",
-                host=settings.MCP_HOST,
-                stateless_http=use_stateless_http,
-            )
-            # Define auth helpers bound to this MCP instance
-            self._get_offline_token = lambda: get_offline_token(self.mcp)
-            self._get_access_token = lambda: get_access_token(
-                self.mcp, offline_token_func=self._get_offline_token
-            )
+            self.mcp = FastMCP("AssistedService")
             self._register_mcp_tools()
             log.info("Assisted Service MCP Server initialized successfully")
         except Exception as e:
@@ -120,20 +110,31 @@ class AssistedServiceMCPServer:
     def _wrap_tool(
         self, tool_func: Callable[..., Awaitable[Any]]
     ) -> Callable[..., Awaitable[Any]]:
-        """Wrap a tool function to inject mcp and auth dependencies.
+        """Wrap a tool with request authentication and token injection.
+
+        Runs the synchronous ``get_access_token`` flow in a worker thread. It
+        uses a valid Bearer token from the request's Authorization header, or
+        obtains an offline token from the environment or request header and
+        exchanges it with SSO. The wrapped tool receives a zero-argument
+        callable that returns the resolved access token.
 
         Args:
-            tool_func: The tool function to wrap.
+            tool_func: The async tool function to wrap.
 
         Returns:
-            A wrapped async function that injects mcp and get_access_token.
+            A wrapped async function that injects a token-provider callable.
         """
 
         @wraps(tool_func)
         async def wrapped(*args: Any, **kwargs: Any) -> Any:
-            # Generate token off the event loop; pass a cheap closure to tools
-            token = await asyncio.to_thread(self._get_access_token)
-            return await tool_func(lambda: token, *args, **kwargs)
+            token = await asyncio.to_thread(get_access_token)
+            result = await tool_func(lambda: token, *args, **kwargs)
+            if isinstance(result, bytes):
+                raise TypeError(
+                    f"Tool {tool_func.__name__!r} returned bytes; "
+                    "expected text or an explicitly supported MCP content result"
+                )
+            return result
 
         # Get the original function signature
         sig = inspect.signature(tool_func)
