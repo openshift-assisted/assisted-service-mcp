@@ -75,27 +75,15 @@ class SensitiveFormatter(logging.Formatter):
             flags=re.IGNORECASE,
         )
         # Redact AWS presigned URL credentials
-        s = re.sub(
-            r"(X-Amz-Signature=)[A-Fa-f0-9]+", r"\g<1>*** REDACTED ***", s
-        )
+        s = re.sub(r"(X-Amz-Signature=)[A-Fa-f0-9]+", r"\g<1>*** REDACTED ***", s)
         s = re.sub(
             r"(X-Amz-Security-Token=)[A-Za-z0-9%+/=]+", r"\g<1>*** REDACTED ***", s
         )
-        s = re.sub(
-            r"(X-Amz-Credential=)[A-Za-z0-9%/]+", r"\g<1>*** REDACTED ***", s
-        )
+        s = re.sub(r"(X-Amz-Credential=)[A-Za-z0-9%/]+", r"\g<1>*** REDACTED ***", s)
 
-        s = re.sub(
-            r'("pull_secret"\s*:\s*")[^"]*"',
-            r'\g<1>*** REDACTED ***"',
-            s
-        )
+        s = re.sub(r'("pull_secret"\s*:\s*")[^"]*"', r'\g<1>*** REDACTED ***"', s)
 
-        s = re.sub(
-            r'("ssh_public_key"\s*:\s*")[^"]*"',
-            r'\g<1>*** REDACTED ***"',
-            s
-        )
+        s = re.sub(r'("ssh_public_key"\s*:\s*")[^"]*"', r'\g<1>*** REDACTED ***"', s)
 
         return s
 

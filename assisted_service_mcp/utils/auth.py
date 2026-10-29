@@ -35,7 +35,7 @@ def get_offline_token() -> str:
             or request headers.
     """
     log.debug("Attempting to retrieve offline token")
-    
+
     try:
         headers = get_http_headers(include={"ocm-offline-token"})
         token = headers.get("ocm-offline-token")
@@ -52,6 +52,7 @@ def get_offline_token() -> str:
 
     log.error("No offline token found in environment or request headers")
     raise RuntimeError("No offline token found in environment or request headers")
+
 
 def get_access_token(offline_token_func: Callable[[], str] | None = None) -> str:
     """

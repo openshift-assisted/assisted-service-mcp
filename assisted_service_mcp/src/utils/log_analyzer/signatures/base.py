@@ -8,7 +8,9 @@ from collections.abc import Sequence
 from typing import Any
 
 from tabulate import tabulate
-from assisted_service_mcp.src.tools.shared_helpers import escape_untrusted_data_delimiters
+from assisted_service_mcp.src.tools.shared_helpers import (
+    escape_untrusted_data_delimiters,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -18,7 +18,9 @@ class TestErrorOnCleanupInstallDevice:
         log_analyzer = MagicMock()
 
         log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
-        log_analyzer.get_host_log_file.return_value = "Some other log content without errors"
+        log_analyzer.get_host_log_file.return_value = (
+            "Some other log content without errors"
+        )
 
         result = signature.analyze(log_analyzer)
 
@@ -29,7 +31,9 @@ class TestErrorOnCleanupInstallDevice:
         signature = ErrorOnCleanupInstallDevice()
         log_analyzer = MagicMock()
 
-        log_analyzer.metadata = {"hosts": [{"id": "host1", "requested_hostname": "test-host"}]}
+        log_analyzer.metadata = {
+            "hosts": [{"id": "host1", "requested_hostname": "test-host"}]
+        }
         log_content = 'msg="failed to prepare install device: permission denied"'
         log_analyzer.get_host_log_file.return_value = log_content
 
@@ -48,14 +52,19 @@ class TestErrorOnCleanupInstallDevice:
 
         log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
         # Message contains quoted device name "sda" - should capture full message, not stop at first quote
-        log_content = 'msg="failed to prepare install device for "sda": permission denied"'
+        log_content = (
+            'msg="failed to prepare install device for "sda": permission denied"'
+        )
         log_analyzer.get_host_log_file.return_value = log_content
 
         result = signature.analyze(log_analyzer)
 
         assert result is not None
         # Should capture the full message including the quoted device name
-        assert 'failed to prepare install device for "sda": permission denied' in result.content
+        assert (
+            'failed to prepare install device for "sda": permission denied'
+            in result.content
+        )
         # Should NOT truncate at first embedded quote
         assert "failed to prepare install device for " not in result.content.split("\n")
 
@@ -64,7 +73,9 @@ class TestErrorOnCleanupInstallDevice:
         signature = ErrorOnCleanupInstallDevice()
         log_analyzer = MagicMock()
 
-        log_analyzer.metadata = {"hosts": [{"id": "host1", "requested_hostname": "test-host"}]}
+        log_analyzer.metadata = {
+            "hosts": [{"id": "host1", "requested_hostname": "test-host"}]
+        }
         # Create a message that's exactly at the boundary
         # The regex captures "failed to prepare install device" + up to 200 more chars
         # Total in the capture group: "failed to prepare install device" (32 chars) + 200 = 232 chars max
@@ -80,9 +91,13 @@ class TestErrorOnCleanupInstallDevice:
 
         # Now test with a message that exceeds the limit - the quote comes after 200 chars
         # This should NOT match because the closing quote is beyond the .{0,200} range
-        log_analyzer.metadata = {"hosts": [{"id": "host2", "requested_hostname": "test-host-2"}]}
+        log_analyzer.metadata = {
+            "hosts": [{"id": "host2", "requested_hostname": "test-host-2"}]
+        }
         long_error_exceeded = "A" * 250  # Exceeds the limit
-        log_content_exceeded = f'msg="failed to prepare install device{long_error_exceeded}"'
+        log_content_exceeded = (
+            f'msg="failed to prepare install device{long_error_exceeded}"'
+        )
         log_analyzer.get_host_log_file.return_value = log_content_exceeded
 
         result2 = signature.analyze(log_analyzer)
@@ -102,10 +117,10 @@ class TestErrorOnCleanupInstallDevice:
             ]
         }
 
-        def mock_get_log(host_id, log_file):
+        def mock_get_log(host_id: str, _log_file: str) -> str:
             if host_id == "host1":
                 return 'msg="failed to prepare install device: error on host 1"'
-            elif host_id == "host2":
+            if host_id == "host2":
                 return 'msg="failed to prepare install device: error on host 2"'
             raise FileNotFoundError()
 
@@ -131,10 +146,10 @@ class TestErrorOnCleanupInstallDevice:
             ]
         }
 
-        def mock_get_log(host_id, log_file):
+        def mock_get_log(host_id: str, _log_file: str) -> str:
             if host_id == "host1":
                 return 'msg="failed to prepare install device: error"'
-            elif host_id == "host2":
+            if host_id == "host2":
                 return "No errors in this log"
             raise FileNotFoundError()
 

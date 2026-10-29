@@ -23,16 +23,33 @@ def reset_auth_module() -> Iterator[None]:
 def test_get_offline_token_prefers_request_header() -> None:
     from assisted_service_mcp.utils import auth as auth_mod
 
-    with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", "env-token"):
+    with (
+        patch(
+            "assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN",
+            "env-token",
+        ),
+        patch(
+            "assisted_service_mcp.utils.auth.get_http_headers",
+            return_value={"ocm-offline-token": "header-token"},
+        ),
+    ):
         assert auth_mod.get_offline_token() == "header-token"
 
 
 def test_get_offline_token_from_env_when_no_header() -> None:
     from assisted_service_mcp.utils import auth as auth_mod
 
-    with patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", "env-token"):
-    
-    assert auth_mod.get_offline_token() == "env-token"
+    with (
+        patch(
+            "assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN",
+            "env-token",
+        ),
+        patch(
+            "assisted_service_mcp.utils.auth.get_http_headers",
+            return_value={},
+        ),
+    ):
+        assert auth_mod.get_offline_token() == "env-token"
 
 
 def test_get_offline_token_raises_when_missing() -> None:

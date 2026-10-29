@@ -93,13 +93,13 @@ def test_preserve_spaces_around_equals() -> None:
 
 
 def test_redact_authorization_bearer_token() -> None:
-    original = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+    original = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
     redacted = filter_text(original)
     assert "Authorization: Bearer *** TOKEN ***" in redacted
 
 
 def test_redact_authorization_bearer_token_case_insensitive() -> None:
-    original = 'authorization: bearer abc123xyz'
+    original = "authorization: bearer abc123xyz"
     redacted = filter_text(original)
     assert "*** TOKEN ***" in redacted
     assert "abc123xyz" not in redacted
@@ -144,7 +144,7 @@ def test_redact_json_pull_secret_with_spaces() -> None:
 def test_redact_bearer_token_with_base64url_chars() -> None:
     """Test that Bearer tokens with +, /, ~, = are fully redacted."""
     # Token with plus and slash (base64url encoding)
-    original = 'Authorization: Bearer abc+DEF/123='
+    original = "Authorization: Bearer abc+DEF/123="
     redacted = filter_text(original)
     assert "Authorization: Bearer *** TOKEN ***" in redacted
     assert "abc+DEF/123=" not in redacted
@@ -152,7 +152,7 @@ def test_redact_bearer_token_with_base64url_chars() -> None:
     assert "/" not in redacted
 
     # Token with tilde
-    original = 'Authorization: Bearer token~with~tildes'
+    original = "Authorization: Bearer token~with~tildes"
     redacted = filter_text(original)
     assert "*** TOKEN ***" in redacted
     assert "token~with~tildes" not in redacted
@@ -161,13 +161,13 @@ def test_redact_bearer_token_with_base64url_chars() -> None:
 def test_redact_bare_bearer_token() -> None:
     """Test that bare Bearer tokens without Authorization header are redacted."""
     # Bare Bearer in log message
-    original = 'Request failed with Bearer eyJhbGc+iJIUzI1/NiIsInR5cCI='
+    original = "Request failed with Bearer eyJhbGc+iJIUzI1/NiIsInR5cCI="
     redacted = filter_text(original)
     assert "Bearer *** TOKEN ***" in redacted
     assert "eyJhbGc+iJIUzI1/NiIsInR5cCI=" not in redacted
 
     # Bearer in debug output
-    original = 'Debug: token is Bearer abc+123/xyz='
+    original = "Debug: token is Bearer abc+123/xyz="
     redacted = filter_text(original)
     assert "Bearer *** TOKEN ***" in redacted
     assert "abc+123/xyz=" not in redacted
@@ -175,7 +175,7 @@ def test_redact_bare_bearer_token() -> None:
 
 def test_redact_bearer_token_case_insensitive_with_special_chars() -> None:
     """Test case-insensitive Bearer redaction with special characters."""
-    original = 'bearer abc+DEF/123='
+    original = "bearer abc+DEF/123="
     redacted = filter_text(original)
     assert "bearer *** TOKEN ***" in redacted
     assert "abc+DEF/123=" not in redacted
@@ -191,7 +191,9 @@ def test_redact_x_amz_security_token() -> None:
 
 def test_redact_x_amz_credential() -> None:
     """Test that X-Amz-Credential (AWS access key material) is redacted."""
-    original = "X-Amz-Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request"
+    original = (
+        "X-Amz-Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request"
+    )
     redacted = filter_text(original)
     assert "X-Amz-Credential=*** REDACTED ***" in redacted
     assert "AKIAIOSFODNN7EXAMPLE" not in redacted
@@ -212,5 +214,8 @@ def test_redact_full_presigned_url() -> None:
     assert "X-Amz-Security-Token=*** REDACTED ***" in redacted
     # Verify actual values are gone
     assert "AKIAIOSFODNN7EXAMPLE" not in redacted
-    assert "34b48302e7b5fa45bde8084f4b7868a86f0a534bc59db6670ed5711ef69dc6f7" not in redacted
+    assert (
+        "34b48302e7b5fa45bde8084f4b7868a86f0a534bc59db6670ed5711ef69dc6f7"
+        not in redacted
+    )
     assert "FQoDYXdzEPT" not in redacted

@@ -8,7 +8,9 @@ from pydantic import Field
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-from assisted_service_mcp.src.tools.shared_helpers import escape_untrusted_data_delimiters
+from assisted_service_mcp.src.tools.shared_helpers import (
+    escape_untrusted_data_delimiters,
+)
 
 
 def _wrap_untrusted_data(data: str) -> str:

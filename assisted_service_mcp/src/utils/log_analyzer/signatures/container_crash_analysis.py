@@ -8,6 +8,7 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from operator import itemgetter
+from typing import List
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -407,7 +408,9 @@ class ContainerCrashAnalysis(Signature):
 
         return all_logs
 
-    def _extract_last_lines(self, log_content: str, max_lines: int = DEFAULT_MAX_LOG_LINES) -> List[str]:
+    def _extract_last_lines(
+        self, log_content: str, max_lines: int = DEFAULT_MAX_LOG_LINES
+    ) -> List[str]:
         """
         Extract the last N non-empty lines from log content.
 
