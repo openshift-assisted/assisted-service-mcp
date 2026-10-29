@@ -10,14 +10,13 @@ from .base import ErrorSignature, SignatureResult
 from .helpers import get_hostname
 
 logger = logging.getLogger(__name__)
+MAX_MESSAGE_LENGTH = 200
 
 
 class ErrorOnCleanupInstallDevice(ErrorSignature):
     """Detect non-fatal errors during cleanupInstallDevice in installer logs."""
 
-    LOG_PATTERN = re.compile(
-        r'msg="(?P<message>failed to prepare install device.{0,200})"'
-    )
+    LOG_PATTERN = re.compile(r'msg="(?P<message>failed to prepare install device.*)"')
 
     def analyze(self, log_analyzer) -> SignatureResult | None:
         cluster = log_analyzer.metadata
@@ -35,7 +34,7 @@ class ErrorOnCleanupInstallDevice(ErrorSignature):
                 hosts.append(
                     OrderedDict(
                         host=get_hostname(host),
-                        message=match.group("message"),
+                        message=match.group("message")[:MAX_MESSAGE_LENGTH],
                     )
                 )
         if hosts:

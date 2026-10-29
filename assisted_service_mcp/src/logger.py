@@ -81,9 +81,17 @@ class SensitiveFormatter(logging.Formatter):
         )
         s = re.sub(r"(X-Amz-Credential=)[A-Za-z0-9%/]+", r"\g<1>*** REDACTED ***", s)
 
-        s = re.sub(r'("pull_secret"\s*:\s*")[^"]*"', r'\g<1>*** REDACTED ***"', s)
+        s = re.sub(
+            r'("pull_secret"\s*:\s*")(?:\\.|[^"\\])*"',
+            r'\g<1>*** REDACTED ***"',
+            s,
+        )
 
-        s = re.sub(r'("ssh_public_key"\s*:\s*")[^"]*"', r'\g<1>*** REDACTED ***"', s)
+        s = re.sub(
+            r'("ssh_public_key"\s*:\s*")(?:\\.|[^"\\])*"',
+            r'\g<1>*** REDACTED ***"',
+            s,
+        )
 
         return s
 

@@ -12,7 +12,7 @@ from assisted_service_mcp.src.service_client.assisted_service_api import Invento
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.service_client.helpers import Helpers
 from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
-from assisted_service_mcp.src.tools.event_tools import _wrap_untrusted_data
+from assisted_service_mcp.src.tools.shared_helpers import _wrap_untrusted_data
 
 
 def _validate_ssh_key(ssh_public_key: str) -> str:

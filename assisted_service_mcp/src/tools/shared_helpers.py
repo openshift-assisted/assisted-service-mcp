@@ -21,6 +21,12 @@ def escape_untrusted_data_delimiters(data: str) -> str:
     return data
 
 
+def _wrap_untrusted_data(data: str) -> str:
+    """Escape and wrap untrusted data in structured delimiters."""
+    escaped_data = escape_untrusted_data_delimiters(data)
+    return f"«untrusted-cluster-data»\n{escaped_data}\n«/untrusted-cluster-data»"
+
+
 async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) -> str:
     """
     Get the InfraEnv ID for a cluster (expecting a single InfraEnv).

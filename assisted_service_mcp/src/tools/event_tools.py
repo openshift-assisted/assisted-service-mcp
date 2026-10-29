@@ -9,23 +9,8 @@ from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.tools.shared_helpers import (
-    escape_untrusted_data_delimiters,
+    _wrap_untrusted_data,
 )
-
-
-def _wrap_untrusted_data(data: str) -> str:
-    """Wrap data from cluster/host sources in delimiters for structured output.
-
-    Escapes delimiter tokens to ensure proper formatting of wrapped content.
-
-    Args:
-        data: Raw event data from the assisted-service API
-
-    Returns:
-        str: Data wrapped in structured delimiters with escaped tokens
-    """
-    escaped_data = escape_untrusted_data_delimiters(data)
-    return f"«untrusted-cluster-data»\n{escaped_data}\n«/untrusted-cluster-data»"
 
 
 @track_tool_usage()

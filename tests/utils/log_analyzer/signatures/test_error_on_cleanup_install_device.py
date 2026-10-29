@@ -69,28 +69,27 @@ class TestErrorOnCleanupInstallDevice:
         assert "failed to prepare install device for " not in result.content.split("\n")
 
     def test_message_truncation_at_200_chars(self) -> None:
-        """Test that messages longer than 200 chars are truncated by the regex."""
+        """Test that long messages are detected and truncated in the result."""
         signature = ErrorOnCleanupInstallDevice()
         log_analyzer = MagicMock()
 
         log_analyzer.metadata = {
             "hosts": [{"id": "host1", "requested_hostname": "test-host"}]
         }
-        # Create a message that's exactly at the boundary
-        # The regex captures "failed to prepare install device" + up to 200 more chars
-        # Total in the capture group: "failed to prepare install device" (32 chars) + 200 = 232 chars max
-        long_error = "A" * 200  # Exactly at the limit
+        # The displayed message is capped at 200 characters total, including the prefix.
+        long_error = "A" * 200
         log_content = f'msg="failed to prepare install device{long_error}"'
         log_analyzer.get_host_log_file.return_value = log_content
 
         result = signature.analyze(log_analyzer)
 
         assert result is not None
-        # The captured message should be exactly "failed to prepare install device" + 200 A's
-        assert "A" * 200 in result.content
+        # The 32-character prefix leaves room for 168 A's in the 200-character result.
+        prefix = "failed to prepare install device"
+        assert prefix + ("A" * 168) in result.content
+        assert "A" * 169 not in result.content
 
-        # Now test with a message that exceeds the limit - the quote comes after 200 chars
-        # This should NOT match because the closing quote is beyond the .{0,200} range
+        # A longer message still matches, but its displayed message remains capped at 200.
         log_analyzer.metadata = {
             "hosts": [{"id": "host2", "requested_hostname": "test-host-2"}]
         }
@@ -102,8 +101,9 @@ class TestErrorOnCleanupInstallDevice:
 
         result2 = signature.analyze(log_analyzer)
 
-        # Should not match at all because closing quote is too far
-        assert result2 is None
+        assert result2 is not None
+        assert prefix + ("A" * 168) in result2.content
+        assert "A" * 169 not in result2.content
 
     def test_multiple_hosts_with_errors(self) -> None:
         """Test that signature detects errors on multiple hosts."""

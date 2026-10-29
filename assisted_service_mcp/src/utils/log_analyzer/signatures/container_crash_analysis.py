@@ -255,7 +255,7 @@ class ContainerCrashAnalysis(Signature):
                 log_analyzer, host_id, container_name, containers_path
             )
             if container_logs_list:
-                content = f"    Last {DEFAULT_MAX_LOG_LINES} container logs (max {MAX_LOG_LINE_LENGTH} chars/line):\n"
+                content = f"    Last {DEFAULT_MAX_LOG_LINES} lines per container log file (max {MAX_LOG_LINE_LENGTH} chars/line):\n"
                 for log_file_name, log_lines in container_logs_list:
                     if len(container_logs_list) > 1:
                         content += f"      --- {log_file_name} ---\n"
@@ -338,7 +338,7 @@ class ContainerCrashAnalysis(Signature):
     def _get_container_logs(
         self, log_analyzer, host_ip: str, container_name: str, containers_dir_path: str
     ) -> List[tuple]:
-        """Get the last 5 lines (max 200 chars each) from all container log files for a given container."""
+        """Get up to 5 non-empty lines (max 200 chars each) from each matching log file."""
         try:
             containers_dir = log_analyzer.logs_archive.get(containers_dir_path)
         except FileNotFoundError:
@@ -385,7 +385,7 @@ class ContainerCrashAnalysis(Signature):
     def _process_container_log_files(
         self, log_analyzer, container_log_files: List[str], containers_dir_path: str
     ) -> List[tuple]:
-        """Process container log files and extract last 5 lines (max 200 chars each)."""
+        """Process each log file, extracting up to 5 non-empty lines (max 200 chars each)."""
         all_logs = []
 
         for log_file_name in sorted(container_log_files):
@@ -397,12 +397,12 @@ class ContainerCrashAnalysis(Signature):
                 logger.debug("Container log file not found: %s", log_file_path)
                 continue
 
-            last_20_lines = self._extract_last_lines(container_log_content)
-            if last_20_lines:
-                all_logs.append((log_file_name, last_20_lines))
+            last_lines = self._extract_last_lines(container_log_content)
+            if last_lines:
+                all_logs.append((log_file_name, last_lines))
                 logger.debug(
                     "Retrieved %d log lines from %s",
-                    len(last_20_lines),
+                    len(last_lines),
                     log_file_name,
                 )
 

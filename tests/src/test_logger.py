@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import logging
 import os
@@ -124,6 +125,17 @@ def test_redact_json_pull_secret() -> None:
     redacted = filter_text(original)
     assert '"pull_secret": "*** REDACTED ***"' in redacted
     assert "super-secret-value" not in redacted
+
+
+def test_redact_json_pull_secret_with_escaped_quotes() -> None:
+    original = r'{"pull_secret": "prefix \"secret-token\" suffix", "other": "data"}'
+    redacted = filter_text(original)
+
+    assert json.loads(redacted) == {
+        "pull_secret": "*** REDACTED ***",
+        "other": "data",
+    }
+    assert "secret-token" not in redacted
 
 
 def test_redact_json_ssh_public_key() -> None:

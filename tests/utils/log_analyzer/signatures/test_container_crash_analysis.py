@@ -28,6 +28,28 @@ def make_archive(get_map: Mapping[str, object]) -> object:
     return _Archive()
 
 
+def _assert_log_file_lines(
+    content: str,
+    file_name: str,
+    container_name: str,
+    expected_line_numbers: range,
+) -> None:
+    """Assert that a rendered log file contains exactly the expected lines."""
+    file_section = content.split(f"--- {file_name} ---", 1)[1].split(
+        f"--- end {file_name} ---", 1
+    )[0]
+    line_prefix = f"2024-09-17T14:35:00.123456789Z Container {container_name} log line "
+    actual_lines = [
+        line.strip()
+        for line in file_section.splitlines()
+        if line.strip().startswith(line_prefix)
+    ]
+    expected_lines = [
+        f"{line_prefix}{line_number}" for line_number in expected_line_numbers
+    ]
+    assert actual_lines == expected_lines
+
+
 class TestContainerCrashAnalysis:
     """Test cases for ContainerCrashAnalysis signature."""
 
@@ -344,7 +366,10 @@ class TestContainerCrashAnalysis:
         assert result is not None
         assert "test-app: 1 crash(es)" in result.content
         # Changed from "Last 20" to "Last 5"
-        assert "Last 5 container logs (max 200 chars/line):" in result.content
+        assert (
+            "Last 5 lines per container log file (max 200 chars/line):"
+            in result.content
+        )
         # With only last 5 lines from 25 total, we get lines 21-25
         assert "Container test-app log line 21" in result.content
         assert "Container test-app log line 25" in result.content
@@ -472,12 +497,14 @@ class TestContainerCrashAnalysis:
         assert result is not None
         # Check that lines are truncated to 200 chars max
         content_lines = result.content.split("\n")
-        for line in content_lines:
-            # Skip header lines and check actual log lines
-            if line.strip().startswith("A"):
-                assert len(line.strip()) <= 200
-                # The line should be exactly 200 A's (truncated from 300)
-                assert line.strip() == "A" * 200
+        log_lines = [
+            line.strip() for line in content_lines if line.strip().startswith("A")
+        ]
+        assert log_lines, "Expected truncated container log lines in the result"
+        for line in log_lines:
+            assert len(line) <= 200
+            # Each line should be exactly 200 A's (truncated from 300).
+            assert line == "A" * 200
 
     def test_empty_kubelet_log(self) -> None:
         """Test ContainerCrashAnalysis with empty kubelet log."""
@@ -522,7 +549,17 @@ class TestContainerCrashAnalysis:
         assert result is not None
         assert "multi-log-container: 1 crash(es)" in result.content
         # Changed from "Last 20" to "Last 5"
-        assert "Last 5 container logs (max 200 chars/line):" in result.content
+        assert (
+            "Last 5 lines per container log file (max 200 chars/line):"
+            in result.content
+        )
         # Should show logs from both files with separators
         assert f"--- {log_file_name_1} ---" in result.content
         assert f"--- {log_file_name_2} ---" in result.content
+
+        _assert_log_file_lines(
+            result.content, log_file_name_1, "multi-log-container", range(6, 11)
+        )
+        _assert_log_file_lines(
+            result.content, log_file_name_2, "multi-log-container", range(11, 16)
+        )
