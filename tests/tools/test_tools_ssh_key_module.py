@@ -262,7 +262,14 @@ async def test_set_cluster_ssh_key_validation_failure() -> None:
 
     AssistedServiceMCPServer()
 
-    # Invalid SSH key should return error without calling API
-    resp = await cluster_tools.set_cluster_ssh_key(lambda: "t", "cid", "invalid-key")
+    # Invalid SSH key should return error without creating an API client.
+    with patch(
+        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
+    ) as mock_inventory_client:
+        resp = await cluster_tools.set_cluster_ssh_key(
+            lambda: "t", "cid", "invalid-key"
+        )
+
+    mock_inventory_client.assert_not_called()
     assert "SSH key validation failed" in resp
     assert "Invalid SSH key format" in resp

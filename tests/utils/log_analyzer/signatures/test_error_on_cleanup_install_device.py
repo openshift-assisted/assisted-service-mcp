@@ -46,27 +46,27 @@ class TestErrorOnCleanupInstallDevice:
         assert "failed to prepare install device: permission denied" in result.content
 
     def test_error_with_embedded_quotes(self) -> None:
-        """Test that signature captures full message with embedded quotes (greedy quantifier)."""
+        """Test escaped quotes are included without capturing later log fields."""
         signature = ErrorOnCleanupInstallDevice()
         log_analyzer = MagicMock()
 
         log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
-        # Message contains quoted device name "sda" - should capture full message, not stop at first quote
+        # The msg field has an escaped device name and a later quoted field.
         log_content = (
-            'msg="failed to prepare install device for "sda": permission denied"'
+            r'msg="failed to prepare install device for \"sda\": permission denied"'
+            + ' logger="TRAILING_FIELD_SENTINEL"'
         )
         log_analyzer.get_host_log_file.return_value = log_content
 
         result = signature.analyze(log_analyzer)
 
         assert result is not None
-        # Should capture the full message including the quoted device name
+        # Keep the device name, but stop at the end of the msg field.
         assert (
             'failed to prepare install device for "sda": permission denied'
             in result.content
         )
-        # Should NOT truncate at first embedded quote
-        assert "failed to prepare install device for " not in result.content.split("\n")
+        assert "TRAILING_FIELD_SENTINEL" not in result.content
 
     def test_message_truncation_at_200_chars(self) -> None:
         """Test that long messages are detected and truncated in the result."""
