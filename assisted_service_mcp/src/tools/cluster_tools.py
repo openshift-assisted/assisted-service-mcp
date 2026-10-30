@@ -236,7 +236,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
             platform = "none"
 
     # Validate SSH key if provided
-    if ssh_public_key:
+    if ssh_public_key is not None:
         try:
             ssh_public_key = _validate_ssh_key(ssh_public_key)
         except ValueError as e:
