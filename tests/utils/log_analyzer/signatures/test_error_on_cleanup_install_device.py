@@ -1,0 +1,220 @@
+"""
+Unit tests for ErrorOnCleanupInstallDevice signature.
+"""
+
+from unittest.mock import MagicMock
+
+from assisted_service_mcp.src.utils.log_analyzer.signatures.error_on_cleanup_install_device import (
+    ErrorOnCleanupInstallDevice,
+)
+
+
+class TestErrorOnCleanupInstallDevice:
+    """Test cases for ErrorOnCleanupInstallDevice signature."""
+
+    def test_no_errors_returns_none(self) -> None:
+        """Test that signature returns None when no cleanup errors are found."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
+        log_analyzer.get_host_log_file.return_value = (
+            "Some other log content without errors"
+        )
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is None
+
+    def test_basic_error_detected(self) -> None:
+        """Test that signature detects basic cleanup error without quotes."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {
+            "hosts": [{"id": "host1", "requested_hostname": "test-host"}]
+        }
+        log_content = 'msg="failed to prepare install device: permission denied"'
+        log_analyzer.get_host_log_file.return_value = log_content
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        assert result.title == "Non-fatal error on cleanupInstallDevice"
+        assert result.severity == "warning"
+        assert "test-host" in result.content
+        assert "failed to prepare install device: permission denied" in result.content
+
+    def test_error_with_embedded_quotes(self) -> None:
+        """Test escaped quotes are included without capturing later log fields."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
+        # The msg field has an escaped device name and a later quoted field.
+        log_content = (
+            r'msg="failed to prepare install device for \"sda\": permission denied"'
+            + ' logger="TRAILING_FIELD_SENTINEL"'
+        )
+        log_analyzer.get_host_log_file.return_value = log_content
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        # Keep the device name, but stop at the end of the msg field.
+        assert (
+            'failed to prepare install device for "sda": permission denied'
+            in result.content
+        )
+        assert "TRAILING_FIELD_SENTINEL" not in result.content
+
+    def test_message_truncation_at_200_chars(self) -> None:
+        """Test that long messages are detected and truncated in the result."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {
+            "hosts": [{"id": "host1", "requested_hostname": "test-host"}]
+        }
+        # The displayed message is capped at 200 characters total, including the prefix.
+        long_error = "A" * 200
+        log_content = f'msg="failed to prepare install device{long_error}"'
+        log_analyzer.get_host_log_file.return_value = log_content
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        # The 32-character prefix leaves room for 168 A's in the 200-character result.
+        prefix = "failed to prepare install device"
+        assert prefix + ("A" * 168) in result.content
+        assert "A" * 169 not in result.content
+
+        # A longer message still matches, but its displayed message remains capped at 200.
+        log_analyzer.metadata = {
+            "hosts": [{"id": "host2", "requested_hostname": "test-host-2"}]
+        }
+        long_error_exceeded = "A" * 250  # Exceeds the limit
+        log_content_exceeded = (
+            f'msg="failed to prepare install device{long_error_exceeded}"'
+        )
+        log_analyzer.get_host_log_file.return_value = log_content_exceeded
+
+        result2 = signature.analyze(log_analyzer)
+
+        assert result2 is not None
+        assert prefix + ("A" * 168) in result2.content
+        assert "A" * 169 not in result2.content
+
+    def test_multiple_hosts_with_errors(self) -> None:
+        """Test that signature detects errors on multiple hosts."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {
+            "hosts": [
+                {"id": "host1", "requested_hostname": "test-host-1"},
+                {"id": "host2", "requested_hostname": "test-host-2"},
+            ]
+        }
+
+        def mock_get_log(host_id: str, _log_file: str) -> str:
+            if host_id == "host1":
+                return 'msg="failed to prepare install device: error on host 1"'
+            if host_id == "host2":
+                return 'msg="failed to prepare install device: error on host 2"'
+            raise FileNotFoundError()
+
+        log_analyzer.get_host_log_file.side_effect = mock_get_log
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        assert "test-host-1" in result.content
+        assert "test-host-2" in result.content
+        assert "error on host 1" in result.content
+        assert "error on host 2" in result.content
+
+    def test_mixed_hosts_some_with_errors(self) -> None:
+        """Test signature with some hosts having errors and some without."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {
+            "hosts": [
+                {"id": "host1", "requested_hostname": "test-host-1"},
+                {"id": "host2", "requested_hostname": "test-host-2"},
+            ]
+        }
+
+        def mock_get_log(host_id: str, _log_file: str) -> str:
+            if host_id == "host1":
+                return 'msg="failed to prepare install device: error"'
+            if host_id == "host2":
+                return "No errors in this log"
+            raise FileNotFoundError()
+
+        log_analyzer.get_host_log_file.side_effect = mock_get_log
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        assert "test-host-1" in result.content
+        assert "test-host-2" not in result.content
+
+    def test_missing_installer_logs(self) -> None:
+        """Test that signature handles missing installer.logs gracefully."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
+        log_analyzer.get_host_log_file.side_effect = FileNotFoundError()
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is None
+
+    def test_no_hosts_in_cluster(self) -> None:
+        """Test that signature handles cluster with no hosts."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {"hosts": []}
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is None
+
+    def test_host_without_hostname(self) -> None:
+        """Test that signature handles hosts without hostname gracefully."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        # Host without hostname field - get_hostname helper should handle this
+        log_analyzer.metadata = {"hosts": [{"id": "host1"}]}
+        log_content = 'msg="failed to prepare install device: error"'
+        log_analyzer.get_host_log_file.return_value = log_content
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        # Should still create result even without hostname
+
+    def test_result_contains_warning_message(self) -> None:
+        """Test that result contains appropriate warning about non-fatal nature."""
+        signature = ErrorOnCleanupInstallDevice()
+        log_analyzer = MagicMock()
+
+        log_analyzer.metadata = {"hosts": [{"id": "host1", "hostname": "test-host"}]}
+        log_content = 'msg="failed to prepare install device: error"'
+        log_analyzer.get_host_log_file.return_value = log_content
+
+        result = signature.analyze(log_analyzer)
+
+        assert result is not None
+        assert "does not block installation" in result.content
+        assert "cleanupInstallDevice" in result.content
+
+    def test_signature_name_property(self) -> None:
+        """Test that signature name is set correctly."""
+        signature = ErrorOnCleanupInstallDevice()
+        assert signature.name == "ErrorOnCleanupInstallDevice"

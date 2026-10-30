@@ -23,8 +23,8 @@ def get_offline_token() -> str:
     Retrieve the offline token from environment variables or request headers.
 
     This function attempts to get the Red Hat OpenShift Cluster Manager (OCM) offline token
-    first from the OFFLINE_TOKEN environment variable, then from the OCM-Offline-Token
-    request header. The token is required for authenticating with the Red Hat assisted
+    first from the OCM-Offline-Token request header, then from the OFFLINE_TOKEN
+    environment variable. The token is required for authenticating with the Red Hat assisted
     installer service.
 
     Returns:
@@ -35,10 +35,6 @@ def get_offline_token() -> str:
             or request headers.
     """
     log.debug("Attempting to retrieve offline token")
-    offline_token = get_setting("OFFLINE_TOKEN")
-    if offline_token:
-        log.debug("Found offline token in environment variables")
-        return offline_token
 
     try:
         headers = get_http_headers(include={"ocm-offline-token"})
@@ -48,6 +44,11 @@ def get_offline_token() -> str:
             return token
     except (RuntimeError, KeyError, AttributeError):
         log.debug("Request headers not available")
+
+    offline_token = get_setting("OFFLINE_TOKEN")
+    if offline_token:
+        log.debug("Found offline token in environment variables")
+        return offline_token
 
     log.error("No offline token found in environment or request headers")
     raise RuntimeError("No offline token found in environment or request headers")
