@@ -106,12 +106,12 @@ class AssistedServiceMCPServer:
 
         # Register operator bundle tools
         self.mcp.tool()(self._wrap_tool(operator_tools.list_operator_bundles))
-        self.mcp.tool(annotations=nonreadonly_non_destructive_annotations)(
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
             self._wrap_tool(operator_tools.add_operator_bundle_to_cluster)
         )
 
         # Register host management tools
-        self.mcp.tool(annotations=nonreadonly_non_destructive_annotations)(
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
             self._wrap_tool(host_tools.set_host_role)
         )
 

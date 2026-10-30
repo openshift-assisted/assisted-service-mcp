@@ -12,7 +12,7 @@ from assisted_service_mcp.src.service_client.assisted_service_api import Invento
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.service_client.helpers import Helpers
 from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
-from assisted_service_mcp.src.tools.shared_helpers import _wrap_untrusted_data
+from assisted_service_mcp.src.tools.shared_helpers import wrap_untrusted_data
 
 
 def _validate_ssh_key(ssh_public_key: str) -> str:
@@ -64,10 +64,10 @@ def _validate_ssh_key(ssh_public_key: str) -> str:
 
     if len(parts) > 2:
         comment = " ".join(parts[2:])
-        if not re.match(r"^[\w@.\-\s]+$", comment):
+        if not re.match(r"^[\w@.+:\-\s]+$", comment):
             raise ValueError(
                 "SSH key comment contains unsafe characters. "
-                "Only alphanumerics, dots, dashes, underscores, @, and spaces are allowed."
+                "Only alphanumerics, dots, dashes, underscores, @, +, :, and spaces are allowed."
             )
 
     # Return the sanitized key with normalized whitespace
@@ -104,7 +104,7 @@ async def cluster_info(
     client = InventoryClient(get_access_token_func())
     result = await client.get_cluster(cluster_id=cluster_id)
     log.info("Successfully retrieved cluster information for %s", cluster_id)
-    return _wrap_untrusted_data(result.to_str())
+    return wrap_untrusted_data(result.to_str())
 
 
 @track_tool_usage()
@@ -236,7 +236,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
             platform = "none"
 
     # Validate SSH key if provided
-    if ssh_public_key:
+    if ssh_public_key is not None:
         try:
             ssh_public_key = _validate_ssh_key(ssh_public_key)
         except ValueError as e:
