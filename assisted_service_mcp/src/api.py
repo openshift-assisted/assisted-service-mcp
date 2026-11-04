@@ -1,4 +1,4 @@
-"""ASGI application setup for the Assisted Service MCP server.
+"""ASGI application setup for the MCP server for Red Hat OpenShift assisted installer.
 
 This module initializes the FastMCP server and creates an ASGI app
 for deployment with uvicorn or any ASGI server.

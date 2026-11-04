@@ -27,7 +27,7 @@ REQUEST_COUNT = Counter(
 # Define histogram for request latency
 REQUEST_LATENCY = Histogram(
     "assisted_service_mcp_tool_request_duration",
-    "Request latency",
+    "MCP tool execution time after access-token retrieval, in seconds",
     ["tool"],
     buckets=(0.05, 0.1, 0.5, 1.0, 5.0, 10.0, float("inf")),
 )
@@ -42,10 +42,10 @@ API_CALL_LATENCY = Histogram(
 
 
 def initiate_metrics(tools: list[str]) -> None:
-    """Initiate metrics."""
+    """Initialize zero-valued metric series for every tool."""
     for tool in tools:
-        REQUEST_COUNT.labels(tool=tool).inc()
-        REQUEST_LATENCY.labels(tool=tool).observe(0)
+        REQUEST_COUNT.labels(tool=tool)
+        REQUEST_LATENCY.labels(tool=tool)
 
 
 def track_tool_usage() -> Callable:

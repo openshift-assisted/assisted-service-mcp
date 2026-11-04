@@ -1,4 +1,4 @@
-"""Network configuration tools for Assisted Service MCP Server."""
+"""Network configuration tools for the MCP server for Red Hat OpenShift assisted installer."""
 
 import json
 from collections.abc import Callable
@@ -12,7 +12,7 @@ from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
-from assisted_service_mcp.src.utils.static_net import (
+from assisted_service_mcp.src.utils.static_network import (
     NMStateTemplateParams,
     add_or_replace_static_host_config_yaml,
     generate_nmstate_from_template,

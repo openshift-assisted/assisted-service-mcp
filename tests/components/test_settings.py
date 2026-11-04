@@ -59,21 +59,21 @@ def test_settings_validation_invalid_transport() -> None:
         _settings = reload_settings_with_env({"TRANSPORT": "invalid"})
 
 
-def test_validate_config_invalid_port_low() -> None:
+def test_settings_invalid_port_low() -> None:
     with pytest.raises(ValidationError):
         reload_settings_with_env({"MCP_PORT": "1023"})
 
 
-def test_validate_config_invalid_port_high() -> None:
+def test_settings_invalid_port_high() -> None:
     with pytest.raises(ValidationError):
         reload_settings_with_env({"MCP_PORT": "70000"})
 
 
-def test_validate_config_invalid_log_level() -> None:
+def test_settings_invalid_log_level() -> None:
     with pytest.raises(ValidationError):
         reload_settings_with_env({"LOGGING_LEVEL": "VERBOSE"})
 
 
-def test_validate_config_invalid_transport() -> None:
+def test_settings_invalid_transport_http2() -> None:
     with pytest.raises(ValidationError):
         reload_settings_with_env({"TRANSPORT": "http2"})
