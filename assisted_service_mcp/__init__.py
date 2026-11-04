@@ -1,4 +1,4 @@
-"""Assisted Service MCP Server.
+"""MCP server for Red Hat OpenShift assisted installer.
 
 MCP server for interacting with the OpenShift assisted installer API.
 """

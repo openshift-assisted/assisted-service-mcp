@@ -269,6 +269,92 @@ async def test_tool_cluster_credentials_download_url_module() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tool_cluster_logs_download_url_module() -> None:
+    from assisted_service_mcp.src.tools import download_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_client.get_presigned_cluster_logs_url = AsyncMock(
+        return_value="https://u/cluster-logs"
+    )
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await download_tools.cluster_logs_download_url(
+            lambda: "test-access-token", "cid"
+        )
+        data = json.loads(resp)
+        assert data == {"url": "https://u/cluster-logs"}
+        mock_client.get_presigned_cluster_logs_url.assert_awaited_once_with("cid")
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_logs_download_url_error_shaping() -> None:
+    from assisted_service_mcp.src.tools import download_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_client.get_presigned_cluster_logs_url = AsyncMock(
+        side_effect=Exception("boom")
+    )
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await download_tools.cluster_logs_download_url(
+            lambda: "test-access-token", "cid"
+        )
+        data = json.loads(resp)
+        assert "error" in data
+        assert "boom" in data["error"]
+        mock_client.get_presigned_cluster_logs_url.assert_awaited_once_with("cid")
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_logs_download_url_missing_url() -> None:
+    from assisted_service_mcp.src.tools import download_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_client.get_presigned_cluster_logs_url = AsyncMock(return_value=None)
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await download_tools.cluster_logs_download_url(
+            lambda: "test-access-token", "cid"
+        )
+        data = json.loads(resp)
+        assert data == {"error": "No logs URL available for cluster cid"}
+        mock_client.get_presigned_cluster_logs_url.assert_awaited_once_with("cid")
+
+
+@pytest.mark.asyncio
 async def test_tool_set_host_role_module() -> None:
     from assisted_service_mcp.src.tools import host_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
@@ -647,6 +733,37 @@ async def test_tool_cluster_info_success() -> None:
             f"«untrusted-cluster-data»\n{cluster.to_str()}\n«/untrusted-cluster-data»"
         )
         assert resp == expected
+
+
+@pytest.mark.asyncio
+async def test_tool_analyze_cluster_logs_module() -> None:
+    from assisted_service_mcp.src.tools import cluster_tools
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+
+    mock_client = Mock()
+    mock_results = ["first finding", "second finding"]
+    mock_analyze_cluster = AsyncMock(return_value=mock_results)
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
+            return_value=mock_client,
+        ) as inventory_client,
+        patch(
+            "assisted_service_mcp.src.tools.cluster_tools.analyze_cluster",
+            new=mock_analyze_cluster,
+        ),
+    ):
+        resp = await cluster_tools.analyze_cluster_logs(
+            lambda: "test-access-token", "cid"
+        )
+
+        assert resp == "first finding\n\nsecond finding"
+        inventory_client.assert_called_once_with("test-access-token")
+        mock_analyze_cluster.assert_awaited_once_with(
+            cluster_id="cid", api_client=mock_client
+        )
 
 
 @pytest.mark.asyncio

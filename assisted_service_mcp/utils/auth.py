@@ -1,4 +1,4 @@
-"""Authentication utilities for Assisted Service MCP Server."""
+"""Authentication utilities for the MCP server for Red Hat OpenShift assisted installer."""
 
 from typing import Callable
 
