@@ -11,7 +11,7 @@ from requests.exceptions import RequestException
 
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
-from tests.test_utils import (
+from tests.create_objects_helpers import (
     create_test_cluster,
     create_test_host,
     create_test_infra_env,

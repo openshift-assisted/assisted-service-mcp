@@ -1,6 +1,6 @@
 # type: ignore
 """
-Unit tests for the static_net module.
+Unit tests for the static_network module.
 """
 
 import json
@@ -9,14 +9,14 @@ from ipaddress import IPv4Address
 import pytest
 import yaml
 
-from assisted_service_mcp.src.utils.static_net import (
+from assisted_service_mcp.src.utils.static_network import (
     NMStateTemplateParams,
     add_or_replace_static_host_config_yaml,
     generate_nmstate_from_template,
     remove_static_host_config_by_index,
     validate_and_parse_nmstate,
 )
-from assisted_service_mcp.src.utils.static_net.template import (
+from assisted_service_mcp.src.utils.static_network.template import (
     BondInterfaceParams,
     DNSParams,
     EthernetInterfaceParams,

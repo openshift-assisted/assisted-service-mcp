@@ -31,7 +31,7 @@ async def test_tool_set_cluster_platform_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -58,7 +58,7 @@ async def test_tool_set_cluster_vips_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -104,7 +104,7 @@ async def test_tool_install_cluster_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -127,7 +127,7 @@ async def test_tool_cluster_events_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -151,7 +151,7 @@ async def test_tool_host_events_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -212,7 +212,7 @@ async def test_tool_cluster_iso_download_url_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -246,7 +246,7 @@ async def test_tool_cluster_credentials_download_url_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -255,6 +255,92 @@ async def test_tool_cluster_credentials_download_url_module() -> None:
         )
         data = json.loads(resp)
         assert data["url"] == "https://u/kubeconfig"
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_logs_download_url_module() -> None:
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
+
+    mock_client = Mock()
+    mock_client.get_presigned_cluster_logs_url = AsyncMock(
+        return_value="https://u/cluster-logs"
+    )
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.src.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await download_tools.cluster_logs_download_url(
+            lambda: "test-access-token", "cid"
+        )
+        data = json.loads(resp)
+        assert data == {"url": "https://u/cluster-logs"}
+        mock_client.get_presigned_cluster_logs_url.assert_awaited_once_with("cid")
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_logs_download_url_error_shaping() -> None:
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
+
+    mock_client = Mock()
+    mock_client.get_presigned_cluster_logs_url = AsyncMock(
+        side_effect=Exception("boom")
+    )
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.src.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await download_tools.cluster_logs_download_url(
+            lambda: "test-access-token", "cid"
+        )
+        data = json.loads(resp)
+        assert "error" in data
+        assert "boom" in data["error"]
+        mock_client.get_presigned_cluster_logs_url.assert_awaited_once_with("cid")
+
+
+@pytest.mark.asyncio
+async def test_tool_cluster_logs_download_url_missing_url() -> None:
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
+
+    mock_client = Mock()
+    mock_client.get_presigned_cluster_logs_url = AsyncMock(return_value=None)
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.download_tools.InventoryClient",
+            return_value=mock_client,
+        ),
+        patch(
+            "assisted_service_mcp.src.utils.auth.get_access_token",
+            return_value="test-access-token",
+        ),
+    ):
+        resp = await download_tools.cluster_logs_download_url(
+            lambda: "test-access-token", "cid"
+        )
+        data = json.loads(resp)
+        assert data == {"error": "No logs URL available for cluster cid"}
+        mock_client.get_presigned_cluster_logs_url.assert_awaited_once_with("cid")
 
 
 @pytest.mark.asyncio
@@ -278,7 +364,7 @@ async def test_tool_set_host_role_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -305,7 +391,7 @@ async def test_tool_add_operator_bundle_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -331,7 +417,7 @@ async def test_tool_list_operator_bundles_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -447,7 +533,7 @@ async def test_list_versions_happy_path() -> None:
 async def test_tool_network_generate_nmstate_yaml_module() -> None:
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
     from assisted_service_mcp.src.tools import network_tools
-    from assisted_service_mcp.src.utils.static_net.template import (
+    from assisted_service_mcp.src.utils.static_network.template import (
         EthernetInterfaceParams,
         NMStateTemplateParams,
     )
@@ -500,7 +586,7 @@ async def test_tool_create_cluster_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -547,7 +633,7 @@ async def test_tool_create_cluster_with_none_cpu_architecture_module() -> None:
             return_value=mock_client,
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_access_token",
+            "assisted_service_mcp.src.utils.auth.get_access_token",
             return_value="test-access-token",
         ),
     ):
@@ -620,7 +706,7 @@ def test_add_operator_bundle_to_cluster_happy() -> None:  # type: ignore[no-unty
 async def test_tool_cluster_info_success() -> None:
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
     from assisted_service_mcp.src.tools import cluster_tools
-    from tests.test_utils import create_test_cluster
+    from tests.create_objects_helpers import create_test_cluster
 
     cluster = create_test_cluster(cluster_id="cid-123")
     mock_client = Mock()
@@ -636,6 +722,37 @@ async def test_tool_cluster_info_success() -> None:
             f"«untrusted-cluster-data»\n{cluster.to_str()}\n«/untrusted-cluster-data»"
         )
         assert resp == expected
+
+
+@pytest.mark.asyncio
+async def test_tool_analyze_cluster_logs_module() -> None:
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
+
+    mock_client = Mock()
+    mock_results = ["first finding", "second finding"]
+    mock_analyze_cluster = AsyncMock(return_value=mock_results)
+
+    AssistedServiceMCPServer()
+    with (
+        patch(
+            "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
+            return_value=mock_client,
+        ) as inventory_client,
+        patch(
+            "assisted_service_mcp.src.tools.cluster_tools.runner.analyze_cluster",
+            new=mock_analyze_cluster,
+        ),
+    ):
+        resp = await cluster_tools.analyze_cluster_logs(
+            lambda: "test-access-token", "cid"
+        )
+
+        assert resp == "first finding\n\nsecond finding"
+        inventory_client.assert_called_once_with("test-access-token")
+        mock_analyze_cluster.assert_awaited_once_with(
+            cluster_id="cid", api_client=mock_client
+        )
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-"""Assisted Service MCP server implementation."""
+"""MCP server for Red Hat OpenShift assisted installer implementation."""
 
 import asyncio
 import inspect
@@ -24,13 +24,13 @@ from assisted_service_mcp.src.tools import (
 )
 
 # Import auth utilities
-from assisted_service_mcp.utils.auth import (
+from assisted_service_mcp.src.utils.auth import (
     get_access_token,
 )
 
 
 class AssistedServiceMCPServer:
-    """Main Assisted Service MCP Server implementation.
+    """Main MCP server for Red Hat OpenShift assisted installer implementation.
 
     This server provides tools for managing OpenShift clusters through the
     Red Hat Assisted Installer API.
@@ -42,9 +42,14 @@ class AssistedServiceMCPServer:
             # Initialize FastMCP server
             self.mcp = FastMCP("AssistedService")
             self._register_mcp_tools()
-            log.info("Assisted Service MCP Server initialized successfully")
+            log.info(
+                "MCP server for Red Hat OpenShift assisted installer initialized successfully"
+            )
         except Exception as e:
-            log.exception("Failed to initialize Assisted Service MCP Server: %s", e)
+            log.exception(
+                "Failed to initialize MCP server for Red Hat OpenShift assisted installer: %s",
+                e,
+            )
             raise
 
     def _register_mcp_tools(self) -> None:

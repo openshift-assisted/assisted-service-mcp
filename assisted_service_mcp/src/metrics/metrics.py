@@ -27,7 +27,7 @@ REQUEST_COUNT = Counter(
 # Define histogram for request latency
 REQUEST_LATENCY = Histogram(
     "assisted_service_mcp_tool_request_duration",
-    "Request latency",
+    "MCP tool execution time after access-token retrieval, in seconds",
     ["tool"],
     buckets=(0.05, 0.1, 0.5, 1.0, 5.0, 10.0, float("inf")),
 )

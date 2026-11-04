@@ -1,4 +1,4 @@
-"""Version and operator management tools for Assisted Service MCP Server."""
+"""Version and operator management tools for the MCP server for Red Hat OpenShift assisted installer."""
 
 from collections.abc import Callable
 

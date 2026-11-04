@@ -12,7 +12,7 @@ import requests
 @pytest.fixture(autouse=True)
 def reset_auth_module() -> Iterator[None]:
     """Reload auth module before each test to ensure clean state."""
-    module_name = "assisted_service_mcp.utils.auth"
+    module_name = "assisted_service_mcp.src.utils.auth"
     if module_name in sys.modules:
         importlib.reload(sys.modules[module_name])
     yield
@@ -21,7 +21,7 @@ def reset_auth_module() -> Iterator[None]:
 
 
 def test_get_offline_token_prefers_request_header() -> None:
-    from assisted_service_mcp.utils import auth as auth_mod
+    from assisted_service_mcp.src.utils import auth as auth_mod
 
     with (
         patch(
@@ -29,7 +29,7 @@ def test_get_offline_token_prefers_request_header() -> None:
             "env-token",
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_http_headers",
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
             return_value={"ocm-offline-token": "header-token"},
         ),
     ):
@@ -37,7 +37,7 @@ def test_get_offline_token_prefers_request_header() -> None:
 
 
 def test_get_offline_token_from_env_when_no_header() -> None:
-    from assisted_service_mcp.utils import auth as auth_mod
+    from assisted_service_mcp.src.utils import auth as auth_mod
 
     with (
         patch(
@@ -45,7 +45,7 @@ def test_get_offline_token_from_env_when_no_header() -> None:
             "env-token",
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_http_headers",
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
             return_value={},
         ),
     ):
@@ -53,12 +53,12 @@ def test_get_offline_token_from_env_when_no_header() -> None:
 
 
 def test_get_offline_token_raises_when_missing() -> None:
-    from assisted_service_mcp.utils import auth as auth_mod
+    from assisted_service_mcp.src.utils import auth as auth_mod
 
     with (
         patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", None),
         patch(
-            "assisted_service_mcp.utils.auth.get_http_headers",
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
             return_value={},
         ),
         pytest.raises(RuntimeError),
@@ -67,10 +67,10 @@ def test_get_offline_token_raises_when_missing() -> None:
 
 
 def test_get_access_token_from_authorization_header() -> None:
-    from assisted_service_mcp.utils import auth as auth_mod
+    from assisted_service_mcp.src.utils import auth as auth_mod
 
     with patch(
-        "assisted_service_mcp.utils.auth.get_http_headers",
+        "assisted_service_mcp.src.utils.auth.get_http_headers",
         return_value={"authorization": "Bearer abc"},
     ):
         assert auth_mod.get_access_token() == "abc"
@@ -78,7 +78,7 @@ def test_get_access_token_from_authorization_header() -> None:
 
 @patch("requests.post")
 def test_get_access_token_via_offline_token(mock_post: Mock) -> None:  # type: ignore[no-untyped-def]
-    from assisted_service_mcp.utils import auth as auth_mod
+    from assisted_service_mcp.src.utils import auth as auth_mod
 
     with (
         patch("assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN", "offline"),
@@ -86,7 +86,7 @@ def test_get_access_token_via_offline_token(mock_post: Mock) -> None:  # type: i
             "assisted_service_mcp.src.settings.settings.SSO_URL", "https://sso/token"
         ),
         patch(
-            "assisted_service_mcp.utils.auth.get_http_headers",
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
             return_value={},
         ),
     ):
@@ -100,14 +100,14 @@ def test_get_access_token_via_offline_token(mock_post: Mock) -> None:  # type: i
 
 
 def test_get_access_token_sso_request_exception() -> None:
-    mod = importlib.import_module("assisted_service_mcp.utils.auth")
+    mod = importlib.import_module("assisted_service_mcp.src.utils.auth")
 
     with (
         patch(
-            "assisted_service_mcp.utils.auth.get_http_headers",
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
             return_value={},
         ),
-        patch("assisted_service_mcp.utils.auth.requests.post") as mock_post,
+        patch("assisted_service_mcp.src.utils.auth.requests.post") as mock_post,
         patch(
             "assisted_service_mcp.src.settings.settings.SSO_URL",
             "https://sso.example.com",
@@ -120,19 +120,59 @@ def test_get_access_token_sso_request_exception() -> None:
             mod.get_access_token(offline_token_func=lambda: "offline")
 
 
-def test_get_access_token_invalid_json_response() -> None:
-    mod = importlib.import_module("assisted_service_mcp.utils.auth")
+@pytest.mark.parametrize(
+    "response_data",
+    [
+        [],
+        None,
+        {},
+        {"access_token": None},
+        {"access_token": ""},
+        {"access_token": "   "},
+        {"access_token": 123},
+    ],
+)
+def test_get_access_token_rejects_malformed_sso_response(
+    response_data: object,
+) -> None:
+    mod = importlib.import_module("assisted_service_mcp.src.utils.auth")
 
     mock_resp = MagicMock()
     mock_resp.raise_for_status.return_value = None
-    mock_resp.json.return_value = {}
+    mock_resp.json.return_value = response_data
 
     with (
         patch(
-            "assisted_service_mcp.utils.auth.get_http_headers",
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
             return_value={},
         ),
-        patch("assisted_service_mcp.utils.auth.requests.post", return_value=mock_resp),
+        patch(
+            "assisted_service_mcp.src.utils.auth.requests.post", return_value=mock_resp
+        ),
+        patch(
+            "assisted_service_mcp.src.settings.settings.SSO_URL",
+            "https://sso.example.com",
+        ),
+        pytest.raises(RuntimeError, match="Invalid SSO response"),
+    ):
+        mod.get_access_token(offline_token_func=lambda: "offline")
+
+
+def test_get_access_token_rejects_invalid_json_response() -> None:
+    mod = importlib.import_module("assisted_service_mcp.src.utils.auth")
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.return_value = None
+    mock_resp.json.side_effect = ValueError("invalid JSON")
+
+    with (
+        patch(
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
+            return_value={},
+        ),
+        patch(
+            "assisted_service_mcp.src.utils.auth.requests.post", return_value=mock_resp
+        ),
         patch(
             "assisted_service_mcp.src.settings.settings.SSO_URL",
             "https://sso.example.com",

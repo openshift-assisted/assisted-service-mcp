@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Mapping
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def make_archive(get_map: Mapping[str, object]) -> Any:
@@ -60,9 +60,12 @@ def test_log_analyzer_metadata_and_events_partitioning() -> None:
     m = la.metadata
     assert m is not None
     assert "deleted_hosts" in m and len(m["deleted_hosts"]) == 1
-    # last partition should only include post-reset events
+    # Despite its name, get_all_cluster_events returns only the latest attempt.
+    latest_events = la.get_all_cluster_events()
+    assert [event["name"] for event in latest_events] == ["something_else"]
+
     last_events = la.get_last_install_cluster_events()
-    assert last_events and last_events[0]["name"] == "something_else"
+    assert last_events == latest_events
 
 
 def test_log_analyzer_host_log_paths() -> None:
@@ -85,27 +88,45 @@ def test_log_analyzer_host_log_paths() -> None:
     assert content == "old"
 
 
-def test_main_analyze_cluster_runs_signatures() -> None:
-    from assisted_service_mcp.src.utils.log_analyzer import main as main_mod
+def test_runner_analyze_cluster_runs_all_when_unspecified() -> None:
+    from assisted_service_mcp.src.utils.log_analyzer import runner as runner_mod
 
-    fake_archive = MagicMock()
-    fake_archive.get.return_value = "{}"  # minimal content to keep signatures no-op
-
+    signature_class = MagicMock()
+    signature_class.__name__ = "TestSignature"
     fake_client = MagicMock()
 
-    async def _get_logs(cid: str) -> Any:  # pylint: disable=unused-argument
-        return fake_archive
+    async def _get_logs(_cluster_id: str) -> MagicMock:
+        return MagicMock()
 
     fake_client.get_cluster_logs = _get_logs  # type: ignore[attr-defined]
 
-    # Run with an empty signature list to ensure happy path
-    async def run() -> None:
-        results = await main_mod.analyze_cluster(
-            "cid", fake_client, specific_signatures=[]
-        )
-        assert isinstance(results, list)
+    with patch.object(runner_mod, "ALL_SIGNATURES", [signature_class]):
+        results = asyncio.run(runner_mod.analyze_cluster("cid", fake_client))
 
-    asyncio.run(run())
+    assert len(results) == 1
+    signature_class.assert_called_once_with()
+    signature_class.return_value.analyze.assert_called_once()
+
+
+def test_runner_analyze_cluster_empty_signature_list_runs_none() -> None:
+    from assisted_service_mcp.src.utils.log_analyzer import runner as runner_mod
+
+    signature_class = MagicMock()
+    signature_class.__name__ = "TestSignature"
+    fake_client = MagicMock()
+
+    async def _get_logs(_cluster_id: str) -> MagicMock:
+        return MagicMock()
+
+    fake_client.get_cluster_logs = _get_logs  # type: ignore[attr-defined]
+
+    with patch.object(runner_mod, "ALL_SIGNATURES", [signature_class]):
+        results = asyncio.run(
+            runner_mod.analyze_cluster("cid", fake_client, specific_signatures=[])
+        )
+
+    assert results == []
+    signature_class.assert_not_called()
 
 
 def test_error_detection_signature_no_crash() -> None:

@@ -1,6 +1,4 @@
-"""
-Main entry point for the OpenShift Assisted Installer Log Analyzer.
-"""
+"""Coordinate log analysis for an Assisted Installer cluster."""
 
 import logging
 
@@ -40,7 +38,7 @@ async def analyze_cluster(
 
         # Determine which signatures to run
         signatures_to_run = ALL_SIGNATURES
-        if specific_signatures:
+        if specific_signatures is not None:
             signature_classes = {sig.__name__: sig for sig in ALL_SIGNATURES}
             signatures_to_run = []
             for sig_name in specific_signatures:
