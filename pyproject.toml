@@ -1,7 +1,7 @@
 [project]
 name = "assisted-service-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP server for Red Hat OpenShift assisted installer implementation"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -85,7 +85,7 @@ asyncio_mode = "auto"
 [tool.coverage.run]
 omit = [
   "assisted_service_mcp/src/main.py",
-  "assisted_service_mcp/src/utils/log_analyzer/main.py",
+  "assisted_service_mcp/src/utils/log_analyzer/runner.py",
 ]
 
 [tool.pydocstyle]

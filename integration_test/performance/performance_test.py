@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance test script for the Assisted Service MCP Server.
+Performance test script for the MCP server for Red Hat OpenShift assisted installer.
 
 This script simulates multiple concurrent users making requests to test
 server performance, throughput, and behavior under load.

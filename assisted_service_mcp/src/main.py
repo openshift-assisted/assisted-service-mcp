@@ -1,4 +1,4 @@
-"""Main entry point for the Assisted Service MCP Server."""
+"""Main entry point for the MCP server for Red Hat OpenShift assisted installer."""
 
 import uvicorn
 
@@ -14,7 +14,7 @@ def main() -> None:
     Initializes the server, sets up metrics, and starts the uvicorn server.
     """
     try:
-        log.info("Starting Assisted Service MCP Server")
+        log.info("Starting MCP server for Red Hat OpenShift assisted installer")
         log.info(
             "Configuration: TRANSPORT=%s, HOST=%s, PORT=%s",
             settings.TRANSPORT,
@@ -40,7 +40,7 @@ def main() -> None:
         log.error("Server failed to start: %s", e, exc_info=True)
         raise
     finally:
-        log.info("Assisted Service MCP server shutting down")
+        log.info("MCP server for Red Hat OpenShift assisted installer shutting down")
 
 
 if __name__ == "__main__":
