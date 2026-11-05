@@ -8,6 +8,7 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from operator import itemgetter
+from typing import List
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -16,6 +17,10 @@ from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
 from .base import Signature, SignatureResult
 
 logger = logging.getLogger(__name__)
+
+# Constants for log extraction
+DEFAULT_MAX_LOG_LINES = 5
+MAX_LOG_LINE_LENGTH = 200
 
 
 class ContainerCrashAnalysis(Signature):
@@ -250,7 +255,7 @@ class ContainerCrashAnalysis(Signature):
                 log_analyzer, host_id, container_name, containers_path
             )
             if container_logs_list:
-                content = "    Last 20 container logs:\n"
+                content = f"    Last {DEFAULT_MAX_LOG_LINES} lines per container log file (max {MAX_LOG_LINE_LENGTH} chars/line):\n"
                 for log_file_name, log_lines in container_logs_list:
                     if len(container_logs_list) > 1:
                         content += f"      --- {log_file_name} ---\n"
@@ -332,8 +337,8 @@ class ContainerCrashAnalysis(Signature):
 
     def _get_container_logs(
         self, log_analyzer, host_ip: str, container_name: str, containers_dir_path: str
-    ) -> list[tuple]:
-        """Get the last 20 lines from all container log files for a given container."""
+    ) -> List[tuple]:
+        """Get up to 5 non-empty lines (max 200 chars each) from each matching log file."""
         try:
             containers_dir = log_analyzer.logs_archive.get(containers_dir_path)
         except FileNotFoundError:
@@ -378,9 +383,9 @@ class ContainerCrashAnalysis(Signature):
         return container_log_files
 
     def _process_container_log_files(
-        self, log_analyzer, container_log_files: list[str], containers_dir_path: str
-    ) -> list[tuple]:
-        """Process container log files and extract last 20 lines."""
+        self, log_analyzer, container_log_files: List[str], containers_dir_path: str
+    ) -> List[tuple]:
+        """Process each log file, extracting up to 5 non-empty lines (max 200 chars each)."""
         all_logs = []
 
         for log_file_name in sorted(container_log_files):
@@ -392,23 +397,33 @@ class ContainerCrashAnalysis(Signature):
                 logger.debug("Container log file not found: %s", log_file_path)
                 continue
 
-            last_20_lines = self._extract_last_lines(container_log_content)
-            if last_20_lines:
-                all_logs.append((log_file_name, last_20_lines))
+            last_lines = self._extract_last_lines(container_log_content)
+            if last_lines:
+                all_logs.append((log_file_name, last_lines))
                 logger.debug(
                     "Retrieved %d log lines from %s",
-                    len(last_20_lines),
+                    len(last_lines),
                     log_file_name,
                 )
 
         return all_logs
 
-    def _extract_last_lines(self, log_content: str, max_lines: int = 20) -> list[str]:
-        """Extract the last N non-empty lines from log content."""
+    def _extract_last_lines(
+        self, log_content: str, max_lines: int = DEFAULT_MAX_LOG_LINES
+    ) -> List[str]:
+        """
+        Extract the last N non-empty lines from log content.
+
+        Returns the last max_lines lines for concise output, with each line
+        truncated for readability.
+        """
         log_lines = log_content.split("\n")
         non_empty_lines = [line for line in log_lines if line.strip()]
-        return (
+        last_lines = (
             non_empty_lines[-max_lines:]
             if len(non_empty_lines) > max_lines
             else non_empty_lines
         )
+
+        # Truncate each line for readability
+        return [line[:MAX_LOG_LINE_LENGTH] for line in last_lines]

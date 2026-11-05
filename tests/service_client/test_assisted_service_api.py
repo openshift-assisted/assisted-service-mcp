@@ -258,7 +258,8 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     async def test_get_events_success(self, client: InventoryClient) -> None:
         """Test successful event retrieval."""
         cluster_id = "test-cluster-id"
-        mock_events = '{"events": ["event1", "event2"]}'
+        mock_events = b'{"events": ["event1", "event2"]}'
+        expected_events = mock_events.decode("utf-8")
 
         with patch.object(client, "_events_api") as mock_events_api:
             mock_api = Mock()
@@ -269,7 +270,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
 
             result = await client.get_events(cluster_id=cluster_id)
 
-            assert result == mock_events
+            assert result == expected_events
             mock_api.v2_list_events.assert_called_once_with(
                 cluster_id=cluster_id,
                 host_id="",
@@ -285,7 +286,8 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         """Test event retrieval with custom categories."""
         cluster_id = "test-cluster-id"
         categories = ["system", "user"]
-        mock_events = '{"events": []}'
+        mock_events = b'{"events": []}'
+        expected_events = mock_events.decode("utf-8")
 
         with patch.object(client, "_events_api") as mock_events_api:
             mock_api = Mock()
@@ -298,7 +300,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
                 cluster_id=cluster_id, categories=categories
             )
 
-            assert result == mock_events
+            assert result == expected_events
             mock_api.v2_list_events.assert_called_once_with(
                 cluster_id=cluster_id,
                 host_id="",

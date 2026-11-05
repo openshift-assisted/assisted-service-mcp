@@ -134,7 +134,7 @@ The MCP server provides the following tools for interacting with the OpenShift A
 
 * **list_operator_bundles** - Lists the operator bundles that can be optionally added to a cluster during installation
 
-* **add_operator_bundle_to_cluster** - Request an operator bundle to be installed with the given cluster
+* **add_operator_bundle_to_cluster** - Update the cluster's operator configuration so the selected bundle is installed during deployment. This may remove previously configured operators that are not included in the selected bundle. Use before starting installation.
   * `cluster_id`: Cluster ID (string, required)
   * `bundle_name`: Operator bundle name (string, required)
 

@@ -8,6 +8,9 @@ from pydantic import Field
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
+from assisted_service_mcp.src.tools.shared_helpers import (
+    _wrap_untrusted_data,
+)
 
 
 @track_tool_usage()
@@ -37,7 +40,7 @@ async def cluster_events(
         client = InventoryClient(access_token)
         result = await client.get_events(cluster_id=cluster_id)
         log.info("Successfully retrieved events for cluster %s", cluster_id)
-        return result
+        return _wrap_untrusted_data(result)
     except Exception as e:
         log.error("Failed to retrieve events for cluster %s: %s", cluster_id, str(e))
         raise
@@ -80,7 +83,7 @@ async def host_events(
             host_id,
             cluster_id,
         )
-        return result
+        return _wrap_untrusted_data(result)
     except Exception as e:
         log.error(
             "Failed to retrieve events for host %s in cluster %s: %s",

@@ -179,7 +179,7 @@ class InventoryClient:
         self, cluster_id: str
     ) -> nestedarchive.RemoteNestedArchive:
         logs_url = await self.get_presigned_cluster_logs_url(cluster_id)
-        log.info("Downloading logs from %s", logs_url)
+        log.info("Downloading logs for cluster %s", cluster_id)
         return nestedarchive.RemoteNestedArchive(
             cast(str, logs_url), init_download=True
         )
@@ -204,7 +204,7 @@ class InventoryClient:
             **kwargs: Additional parameters for the API call.
 
         Returns:
-            str: Raw event data as a json string.
+            str: Raw event data as a JSON string.
         """
         if categories is None:
             categories = ["user"]
@@ -226,7 +226,7 @@ class InventoryClient:
             **kwargs,
         )
         log.info("Successfully retrieved events")
-        return cast(Any, response).data
+        return cast(Any, response).data.decode("utf-8")
 
     @sanitize_exceptions
     async def get_infra_env(self, infra_env_id: str) -> models.InfraEnv:
