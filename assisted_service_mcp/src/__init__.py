@@ -1,1 +1,1 @@
-"""Source code for Assisted Service MCP Server."""
+"""Source code for the MCP server for Red Hat OpenShift assisted installer."""

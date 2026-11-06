@@ -1,4 +1,4 @@
-"""Settings for the Assisted Service MCP Server."""
+"""Settings for the MCP server for Red Hat OpenShift assisted installer."""
 
 from typing import Optional, ClassVar
 from typing import Literal
@@ -22,7 +22,7 @@ except Exception as e:
 
 
 class Settings(BaseSettings):
-    """Configuration settings for the Assisted Service MCP Server.
+    """Configuration settings for the MCP server for Red Hat OpenShift assisted installer.
 
     Uses Pydantic BaseSettings to load and validate configuration from environment variables.
     Provides default values for optional settings and validation for required ones.
@@ -50,11 +50,11 @@ class Settings(BaseSettings):
 
     # Transport Configuration
     TRANSPORT: Literal["sse", "streamable-http"] = Field(
-        default="sse",
+        default="streamable-http",
         json_schema_extra={
             "env": "TRANSPORT",
             "description": "Transport protocol for the MCP server",
-            "example": "sse",
+            "example": "streamable-http",
         },
     )
 
@@ -161,38 +161,7 @@ class Settings(BaseSettings):
     }
 
 
-def validate_config(cfg: Settings) -> None:
-    """Validate configuration settings.
-
-    Performs validation to ensure required settings are present and values
-    are within acceptable ranges.
-
-    Args:
-        cfg: Settings instance to validate.
-
-    Raises:
-        ValueError: If required configuration is missing or invalid.
-    """
-    # Validate port range
-    if not 1024 <= cfg.MCP_PORT <= 65535:
-        raise ValueError(f"MCP_PORT must be between 1024 and 65535, got {cfg.MCP_PORT}")
-
-    # Validate log level
-    valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    if cfg.LOGGING_LEVEL.upper() not in valid_log_levels:
-        raise ValueError(
-            f"LOGGING_LEVEL must be one of {valid_log_levels}, got {cfg.LOGGING_LEVEL}"
-        )
-
-    # Validate transport protocol
-    valid_transports = ["sse", "streamable-http"]
-    if cfg.TRANSPORT not in valid_transports:
-        raise ValueError(
-            f"TRANSPORT must be one of {valid_transports}, got {cfg.TRANSPORT}"
-        )
-
-
-# Create config instance without validation (validation happens in main.py if needed)
+# Create and validate the configuration from environment variables.
 settings = Settings()
 
 

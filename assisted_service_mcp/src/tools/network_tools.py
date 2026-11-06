@@ -1,4 +1,4 @@
-"""Network configuration tools for Assisted Service MCP Server."""
+"""Network configuration tools for the MCP server for Red Hat OpenShift assisted installer."""
 
 import json
 from typing import Annotated, Callable

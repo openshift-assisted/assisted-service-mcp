@@ -1,4 +1,4 @@
-"""Assisted Service MCP server implementation."""
+"""MCP server for Red Hat OpenShift assisted installer implementation."""
 
 import asyncio
 import inspect
@@ -6,6 +6,7 @@ from functools import wraps
 from typing import Any, Awaitable, Callable
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from assisted_service_mcp.src.logger import log
 
 # Import auth utilities
@@ -27,7 +28,7 @@ from assisted_service_mcp.src.tools import (
 
 
 class AssistedServiceMCPServer:
-    """Main Assisted Service MCP Server implementation.
+    """Main MCP server for Red Hat OpenShift assisted installer implementation.
 
     This server provides tools for managing OpenShift clusters through the
     Red Hat Assisted Installer API.
@@ -39,9 +40,14 @@ class AssistedServiceMCPServer:
             # Initialize FastMCP server
             self.mcp = FastMCP("AssistedService")
             self._register_mcp_tools()
-            log.info("Assisted Service MCP Server initialized successfully")
+            log.info(
+                "MCP server for Red Hat OpenShift assisted installer initialized successfully"
+            )
         except Exception as e:
-            log.exception("Failed to initialize Assisted Service MCP Server: %s", e)
+            log.exception(
+                "Failed to initialize MCP server for Red Hat OpenShift assisted installer: %s",
+                e,
+            )
             raise
 
     def _register_mcp_tools(self) -> None:
@@ -56,14 +62,36 @@ class AssistedServiceMCPServer:
         - Host management tools
         - Network configuration tools
         """
+        nonreadonly_non_destructive_annotations = ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+        )
+        nonreadonly_destructive_annotations = ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=True,
+        )
+
         # Register cluster management tools
         self.mcp.tool()(self._wrap_tool(cluster_tools.cluster_info))
         self.mcp.tool()(self._wrap_tool(cluster_tools.list_clusters))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.create_cluster))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_vips))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_platform))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.install_cluster))
-        self.mcp.tool()(self._wrap_tool(cluster_tools.set_cluster_ssh_key))
+
+        self.mcp.tool(annotations=nonreadonly_non_destructive_annotations)(
+            self._wrap_tool(cluster_tools.create_cluster)
+        )
+
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
+            self._wrap_tool(cluster_tools.set_cluster_vips)
+        )
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
+            self._wrap_tool(cluster_tools.set_cluster_platform)
+        )
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
+            self._wrap_tool(cluster_tools.install_cluster)
+        )
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
+            self._wrap_tool(cluster_tools.set_cluster_ssh_key)
+        )
+
         if settings.ENABLE_TROUBLESHOOTING_TOOLS:
             self.mcp.tool()(self._wrap_tool(cluster_tools.analyze_cluster_logs))
 
@@ -83,10 +111,14 @@ class AssistedServiceMCPServer:
 
         # Register operator bundle tools
         self.mcp.tool()(self._wrap_tool(operator_tools.list_operator_bundles))
-        self.mcp.tool()(self._wrap_tool(operator_tools.add_operator_bundle_to_cluster))
+        self.mcp.tool(annotations=nonreadonly_non_destructive_annotations)(
+            self._wrap_tool(operator_tools.add_operator_bundle_to_cluster)
+        )
 
         # Register host management tools
-        self.mcp.tool()(self._wrap_tool(host_tools.set_host_role))
+        self.mcp.tool(annotations=nonreadonly_non_destructive_annotations)(
+            self._wrap_tool(host_tools.set_host_role)
+        )
 
         # Register network configuration tools
         self.mcp.tool()(self._wrap_tool(network_tools.validate_nmstate_yaml))
@@ -102,7 +134,7 @@ class AssistedServiceMCPServer:
             Input param schema:
             {network_tools.NMStateTemplateParams.model_json_schema()}
         """)(self._wrap_tool(network_tools.generate_nmstate_yaml))
-        self.mcp.tool()(
+        self.mcp.tool(annotations=nonreadonly_destructive_annotations)(
             self._wrap_tool(network_tools.alter_static_network_config_nmstate_for_host)
         )
         self.mcp.tool()(self._wrap_tool(network_tools.list_static_network_config))

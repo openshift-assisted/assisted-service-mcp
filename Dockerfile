@@ -24,8 +24,8 @@ EXPOSE 8000
 
 LABEL com.redhat.component="assisted-service-mcp" \
       name="assisted-service-mcp" \
-      description="MCP server for OpenShift Assisted Installer Service" \
-      io.k8s.description="MCP server for OpenShift Assisted Installer Service" \
+      description="MCP server for Red Hat OpenShift assisted installer" \
+      io.k8s.description="MCP server for Red Hat OpenShift assisted installer" \
       distribution-scope="public" \
       release="main" \
       version="latest" \

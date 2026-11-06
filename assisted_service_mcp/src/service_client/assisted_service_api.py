@@ -179,7 +179,7 @@ class InventoryClient:
         self, cluster_id: str
     ) -> nestedarchive.RemoteNestedArchive:
         logs_url = await self.get_presigned_cluster_logs_url(cluster_id)
-        log.info("Downloading logs from %s", logs_url)
+        log.info("Downloading logs for cluster %s", cluster_id)
         return nestedarchive.RemoteNestedArchive(
             cast(str, logs_url), init_download=True
         )
