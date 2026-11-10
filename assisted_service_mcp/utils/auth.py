@@ -1,9 +1,10 @@
 """Authentication utilities for Assisted Service MCP Server."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import requests
 from fastmcp.server.dependencies import get_http_headers
+
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.settings import get_setting
 

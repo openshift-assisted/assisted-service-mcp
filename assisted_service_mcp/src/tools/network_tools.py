@@ -1,13 +1,17 @@
 """Network configuration tools for Assisted Service MCP Server."""
 
 import json
-from typing import Annotated, Callable
-from pydantic import Field
-from jinja2 import TemplateError
+from collections.abc import Callable
+from typing import Annotated
 
+import yaml
+from jinja2 import TemplateError
+from pydantic import Field
+
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-from assisted_service_mcp.src.logger import log
+from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
 from assisted_service_mcp.src.utils.static_net import (
     NMStateTemplateParams,
     add_or_replace_static_host_config_yaml,
@@ -15,7 +19,6 @@ from assisted_service_mcp.src.utils.static_net import (
     remove_static_host_config_by_index,
     validate_and_parse_nmstate,
 )
-from assisted_service_mcp.src.tools.shared_helpers import _get_cluster_infra_env_id
 
 
 @track_tool_usage()
@@ -74,10 +77,10 @@ async def generate_nmstate_yaml(
         return generated
     except TemplateError as e:
         log.error("Failed to render nmstate template", exc_info=e)
-        return f"ERROR: Failed to generate nmstate yaml: {str(e)}"
-    except Exception as e:
-        log.error("Exception generating nmstate yaml", exc_info=e)
-        return f"ERROR: Failed to generate nmstate yaml: {str(e)}"
+        return f"ERROR: Failed to generate nmstate yaml: {e!s}"
+    except yaml.YAMLError as e:
+        log.error("Failed to generate valid nmstate yaml", exc_info=e)
+        return f"ERROR: Failed to generate nmstate yaml: {e!s}"
 
 
 @track_tool_usage()

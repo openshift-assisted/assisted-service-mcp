@@ -1,6 +1,7 @@
 import importlib
 import sys
 from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -36,9 +37,7 @@ def ensure_metrics_route(app) -> None:  # type: ignore[no-untyped-def]
         metrics as metrics_endpoint,
     )  # pylint: disable=import-outside-toplevel
 
-    existing_paths = {
-        getattr(r, "path") for r in getattr(app, "routes", []) if hasattr(r, "path")
-    }
+    existing_paths = {r.path for r in getattr(app, "routes", []) if hasattr(r, "path")}
     if "/metrics" not in existing_paths:
         app.add_route("/metrics", metrics_endpoint)
 
@@ -68,4 +67,4 @@ def test_basic_liveness_returns_response(transport: str) -> None:
 
 def test_supported_transports_match_settings() -> None:
     api_mod = load_app_with_transport("sse")
-    assert getattr(api_mod, "_SUPPORTED_TRANSPORTS") == {"sse", "streamable-http"}
+    assert api_mod.SUPPORTED_TRANSPORTS == {"sse", "streamable-http"}

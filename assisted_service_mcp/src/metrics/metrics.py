@@ -4,8 +4,9 @@ Metrics for the MCP server.
 This module provides metrics for the MCP server.
 """
 
-from typing import Callable, Any
+from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,

@@ -6,6 +6,7 @@ Red Hat's Assisted Service API to manage OpenShift cluster installations.
 """
 
 from assisted_service_mcp.src.logger import log
+
 from .assisted_service_api import InventoryClient
 
 __all__ = ["InventoryClient", "log"]

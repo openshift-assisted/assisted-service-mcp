@@ -2,8 +2,8 @@
 Unit tests for SlowImageDownloadSignature.
 """
 
+from typing import Any
 from unittest.mock import MagicMock
-from typing import Dict, Any
 
 from assisted_service_mcp.src.utils.log_analyzer.signatures.slow_image_download_signature import (
     SlowImageDownloadSignature,
@@ -12,7 +12,7 @@ from assisted_service_mcp.src.utils.log_analyzer.signatures.slow_image_download_
 
 def create_image_download_event(
     hostname: str, image: str, download_rate: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a mock event with image download information."""
     return {
         "message": f"Host {hostname}: New image status {image}. result: success; download rate: {download_rate} MBps",

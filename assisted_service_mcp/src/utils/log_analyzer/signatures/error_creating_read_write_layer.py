@@ -47,7 +47,7 @@ class ErrorCreatingReadWriteLayer(ErrorSignature):
                         messages.append(
                             f"Pod {pod['metadata']['name']} in namespace {pod['metadata']['namespace']} has a container with an error creating the read-write layer, see BZ 1993243"
                         )
-            except Exception as e:
+            except (yaml.YAMLError, AttributeError, KeyError, TypeError) as e:
                 logger.debug("Skipping malformed pods YAML %s: %s", pods_yaml_path, e)
                 continue
 

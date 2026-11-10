@@ -5,10 +5,12 @@ This module provides custom exception classes and decorators for sanitizing
 exceptions from the Assisted Service API.
 """
 
-from typing import Callable, TypeVar, ParamSpec, Awaitable
+from collections.abc import Awaitable, Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from assisted_service_client.rest import ApiException
+
 from assisted_service_mcp.src.logger import log
 
 
@@ -21,7 +23,10 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def sanitize_exceptions(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+# Keep the existing ParamSpec/TypeVar form to preserve runtime type metadata.
+def sanitize_exceptions(  # noqa: UP047
+    func: Callable[P, Awaitable[T]],
+) -> Callable[P, Awaitable[T]]:
     """
     Decorate a function to sanitize exceptions from API calls.
 

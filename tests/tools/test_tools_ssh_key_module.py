@@ -7,8 +7,8 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_tool_set_cluster_ssh_key_partial_failure_module() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     class _Cluster:
         def __init__(self, cid: str) -> None:
@@ -43,8 +43,8 @@ async def test_tool_set_cluster_ssh_key_partial_failure_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_set_cluster_ssh_key_success_path() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
     from tests.test_utils import create_test_cluster
 
     cluster = create_test_cluster(cluster_id="cid")
@@ -74,8 +74,8 @@ async def test_tool_set_cluster_ssh_key_success_path() -> None:
 @pytest.mark.asyncio
 async def test_tool_set_cluster_ssh_key_strips_quotes() -> None:
     """Test that set_cluster_ssh_key strips quotes from input and stores unquoted value."""
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
     from tests.test_utils import create_test_cluster
 
     cluster = create_test_cluster(cluster_id="cid")
@@ -255,8 +255,8 @@ async def test_validate_ssh_key_normalizes_whitespace() -> None:
 @pytest.mark.asyncio
 async def test_set_cluster_ssh_key_validation_failure() -> None:
     """Test set_cluster_ssh_key returns error message when validation fails."""
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     AssistedServiceMCPServer()
 

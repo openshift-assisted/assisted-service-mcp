@@ -4,7 +4,8 @@ Core log analyzer for OpenShift Assisted Installer logs.
 
 import json
 import logging
-from typing import Dict, List, Any, cast, Iterator, Tuple
+from collections.abc import Iterator
+from typing import Any, cast
 
 import dateutil.parser
 import nestedarchive
@@ -32,7 +33,7 @@ class LogAnalyzer:
         self._cluster_events = None
 
     @property
-    def metadata(self) -> Dict[str, Any] | None:
+    def metadata(self) -> dict[str, Any] | None:
         """Get cluster metadata."""
         if self._metadata is None:
             try:
@@ -47,7 +48,7 @@ class LogAnalyzer:
         return self._metadata
 
     @staticmethod
-    def _clean_metadata_json(md: Dict[str, Any]) -> Dict[str, Any]:
+    def _clean_metadata_json(md: dict[str, Any]) -> dict[str, Any]:
         """Clean metadata JSON by separating deleted hosts."""
         installation_start_time = dateutil.parser.isoparse(md["install_started_at"])
 
@@ -66,20 +67,20 @@ class LogAnalyzer:
 
         return md
 
-    def get_last_install_cluster_events(self) -> List[Dict[str, Any]]:
+    def get_last_install_cluster_events(self) -> list[dict[str, Any]]:
         """Get the cluster installation events for the most recent attempt."""
         try:
             all_events = self.get_all_cluster_events()
 
             # Get the last partition (latest installation attempt)
             events = self.partition_cluster_events(all_events)[-1]
-        except Exception as e:
+        except (KeyError, TypeError) as e:
             logger.error("Failed to load cluster events: %s", e)
             return []
 
         return events
 
-    def get_all_cluster_events(self) -> List[Dict[str, Any]]:
+    def get_all_cluster_events(self) -> list[dict[str, Any]]:
         """Get all the cluster installation events."""
         if self._cluster_events is None:
             try:
@@ -88,7 +89,7 @@ class LogAnalyzer:
 
                 # Get the last partition (latest installation attempt)
                 self._cluster_events = self.partition_cluster_events(all_events)[-1]
-            except Exception as e:
+            except (EOFError, KeyError, OSError, TypeError, ValueError) as e:
                 logger.error("Failed to load cluster events: %s", e)
                 self._cluster_events = []
 
@@ -96,8 +97,8 @@ class LogAnalyzer:
 
     @staticmethod
     def partition_cluster_events(
-        events: List[Dict[str, Any]],
-    ) -> List[List[Dict[str, Any]]]:
+        events: list[dict[str, Any]],
+    ) -> list[list[dict[str, Any]]]:
         """Partition events by reset events to separate installation attempts."""
         partitions = []
         current_partition = []
@@ -189,12 +190,12 @@ class LogAnalyzer:
             return (
                 cluster is not None and cluster.get("high_availability_mode") == "None"
             )
-        except Exception:
+        except (AttributeError, EOFError, KeyError, OSError, TypeError, ValueError):
             return False
 
     def all_host_journal_logs(
         self,
-    ) -> Iterator[Tuple[Dict[str, Any], str]]:
+    ) -> Iterator[tuple[dict[str, Any], str]]:
         """
         Iterate over hosts and their journal logs, skipping hosts where journal.logs is not found.
 
@@ -203,7 +204,7 @@ class LogAnalyzer:
         """
         try:
             cluster = self.metadata
-        except Exception:
+        except (AttributeError, EOFError, KeyError, OSError, TypeError, ValueError):
             return
 
         if cluster is None:

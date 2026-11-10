@@ -8,7 +8,6 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from operator import itemgetter
-from typing import List
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -266,7 +265,8 @@ class ContainerCrashAnalysis(Signature):
                 return content
 
             return "    (Container logs not found)\n"
-        except Exception as e:
+        # Keep one unreadable container log from dropping the whole host report.
+        except Exception as e:  # noqa: BLE001
             logger.debug(
                 "Failed to get logs for %s on %s: %s", container_name, host_id, e
             )
@@ -337,7 +337,7 @@ class ContainerCrashAnalysis(Signature):
 
     def _get_container_logs(
         self, log_analyzer, host_ip: str, container_name: str, containers_dir_path: str
-    ) -> List[tuple]:
+    ) -> list[tuple]:
         """Get up to 5 non-empty lines (max 200 chars each) from each matching log file."""
         try:
             containers_dir = log_analyzer.logs_archive.get(containers_dir_path)
@@ -383,8 +383,8 @@ class ContainerCrashAnalysis(Signature):
         return container_log_files
 
     def _process_container_log_files(
-        self, log_analyzer, container_log_files: List[str], containers_dir_path: str
-    ) -> List[tuple]:
+        self, log_analyzer, container_log_files: list[str], containers_dir_path: str
+    ) -> list[tuple]:
         """Process each log file, extracting up to 5 non-empty lines (max 200 chars each)."""
         all_logs = []
 
@@ -410,7 +410,7 @@ class ContainerCrashAnalysis(Signature):
 
     def _extract_last_lines(
         self, log_content: str, max_lines: int = DEFAULT_MAX_LOG_LINES
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Extract the last N non-empty lines from log content.
 

@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
 """
 Main entry point for the OpenShift Assisted Installer Log Analyzer.
 """
 
 import logging
-from typing import List, Optional
 
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 
@@ -15,8 +13,8 @@ from .signatures import ALL_SIGNATURES, SignatureResult
 async def analyze_cluster(
     cluster_id: str,
     api_client: InventoryClient,
-    specific_signatures: Optional[List[str]] = None,
-) -> List[SignatureResult]:
+    specific_signatures: list[str] | None = None,
+) -> list[SignatureResult]:
     """
     Analyze a cluster's logs.
 
@@ -55,12 +53,13 @@ async def analyze_cluster(
         results = []
         for signature_class in signatures_to_run:
             logger.debug("Running signature: %s", signature_class.__name__)
+            # Isolate signature failures so one malformed log does not stop the rest.
             try:
                 signature = signature_class()
                 result = signature.analyze(log_analyzer)
                 if result:
                     results.append(result)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(
                     "Error running signature %s: %s", signature_class.__name__, e
                 )
