@@ -2,28 +2,30 @@
 
 import asyncio
 import inspect
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
-from assisted_service_mcp.src.logger import log
 
-# Import auth utilities
-from assisted_service_mcp.utils.auth import (
-    get_access_token,
-)
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.settings import settings
 
 # Import all tool modules
 from assisted_service_mcp.src.tools import (
     cluster_tools,
-    event_tools,
     download_tools,
-    version_tools,
-    operator_tools,
+    event_tools,
     host_tools,
     network_tools,
+    operator_tools,
+    version_tools,
+)
+
+# Import auth utilities
+from assisted_service_mcp.utils.auth import (
+    get_access_token,
 )
 
 

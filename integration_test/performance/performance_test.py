@@ -13,7 +13,7 @@ import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Dict, Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 import aiohttp
 
@@ -24,7 +24,7 @@ class TestScenario(TypedDict):
     name: str
     weight: float
     method: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
 
 
 class ToolStats(TypedDict):
@@ -32,7 +32,7 @@ class ToolStats(TypedDict):
 
     total: int
     success: int
-    avg_time: List[float]
+    avg_time: list[float]
 
 
 @dataclass
@@ -41,8 +41,8 @@ class TestResult:
 
     success: bool
     response_time: float
-    status_code: Optional[int]
-    error_message: Optional[str]
+    status_code: int | None
+    error_message: str | None
     tool_name: str
     user_id: int
 
@@ -79,10 +79,10 @@ class MCPPerformanceTester:
         self.base_url = base_url
         self.auth_token = auth_token
         self.auth_type = auth_type.lower()
-        self.results: List[TestResult] = []
+        self.results: list[TestResult] = []
 
         # Test scenarios with different tools and parameters
-        self.test_scenarios: List[TestScenario] = [
+        self.test_scenarios: list[TestScenario] = [
             {
                 "name": "list_clusters",
                 "weight": 0.5,  # 50% of requests
@@ -103,7 +103,7 @@ class MCPPerformanceTester:
             },
         ]
 
-    def get_auth_headers(self) -> Dict[str, str]:
+    def get_auth_headers(self) -> dict[str, str]:
         """Get authentication headers based on auth type."""
         headers = {
             "Content-Type": "application/json",
@@ -169,7 +169,7 @@ class MCPPerformanceTester:
                     user_id=user_id,
                 )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return TestResult(
                 success=False,
                 response_time=time.time() - start_time,
@@ -178,7 +178,8 @@ class MCPPerformanceTester:
                 tool_name=scenario["name"],
                 user_id=user_id,
             )
-        except Exception as e:
+        # Preserve earlier user results by recording request failures as results.
+        except Exception as e:  # noqa: BLE001
             return TestResult(
                 success=False,
                 response_time=time.time() - start_time,
@@ -194,7 +195,7 @@ class MCPPerformanceTester:
         user_id: int,
         requests_per_user: int,
         delay_between_requests: float,
-    ) -> List[TestResult]:
+    ) -> list[TestResult]:
         """Simulate a single user making multiple requests."""
         user_results = []
 
@@ -320,7 +321,7 @@ class MCPPerformanceTester:
         print()
 
         # Tool breakdown
-        tool_stats: Dict[str, ToolStats] = {}
+        tool_stats: dict[str, ToolStats] = {}
         for result in self.results:
             if result.tool_name not in tool_stats:
                 tool_stats[result.tool_name] = {
@@ -345,7 +346,7 @@ class MCPPerformanceTester:
         if summary.failed_requests > 0:
             print()
             print("ERROR ANALYSIS:")
-            error_counts: Dict[str, int] = {}
+            error_counts: dict[str, int] = {}
             for result in self.results:
                 if not result.success and result.error_message:
                     error_counts[result.error_message] = (
@@ -356,6 +357,12 @@ class MCPPerformanceTester:
                 error_counts.items(), key=lambda x: x[1], reverse=True
             ):
                 print(f"  {error:<40} {count:>6} occurrences")
+
+
+def _write_json_results(results_file: str, results: dict[str, Any]) -> None:
+    """Write performance results to a JSON file."""
+    with open(results_file, "w", encoding="utf-8") as file:
+        json.dump(results, file, indent=2)
 
 
 async def main() -> None:
@@ -409,37 +416,33 @@ async def main() -> None:
         # Save results to JSON for further analysis (only if requested)
         if args.save_results:
             results_file = f"performance_test_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(results_file, "w", encoding="utf-8") as f:
-                json.dump(
+            results = {
+                "summary": {
+                    "total_requests": summary.total_requests,
+                    "successful_requests": summary.successful_requests,
+                    "failed_requests": summary.failed_requests,
+                    "average_response_time": summary.response_times.average,
+                    "min_response_time": summary.response_times.min,
+                    "max_response_time": summary.response_times.max,
+                    "p95_response_time": summary.response_times.p95,
+                    "p99_response_time": summary.response_times.p99,
+                    "requests_per_second": summary.requests_per_second,
+                    "total_duration": summary.total_duration,
+                    "error_rate": summary.error_rate,
+                },
+                "raw_results": [
                     {
-                        "summary": {
-                            "total_requests": summary.total_requests,
-                            "successful_requests": summary.successful_requests,
-                            "failed_requests": summary.failed_requests,
-                            "average_response_time": summary.response_times.average,
-                            "min_response_time": summary.response_times.min,
-                            "max_response_time": summary.response_times.max,
-                            "p95_response_time": summary.response_times.p95,
-                            "p99_response_time": summary.response_times.p99,
-                            "requests_per_second": summary.requests_per_second,
-                            "total_duration": summary.total_duration,
-                            "error_rate": summary.error_rate,
-                        },
-                        "raw_results": [
-                            {
-                                "success": r.success,
-                                "response_time": r.response_time,
-                                "status_code": r.status_code,
-                                "error_message": r.error_message,
-                                "tool_name": r.tool_name,
-                                "user_id": r.user_id,
-                            }
-                            for r in tester.results
-                        ],
-                    },
-                    f,
-                    indent=2,
-                )
+                        "success": r.success,
+                        "response_time": r.response_time,
+                        "status_code": r.status_code,
+                        "error_message": r.error_message,
+                        "tool_name": r.tool_name,
+                        "user_id": r.user_id,
+                    }
+                    for r in tester.results
+                ],
+            }
+            await asyncio.to_thread(_write_json_results, results_file, results)
 
             print(f"\nDetailed results saved to: {results_file}")
         else:
@@ -447,7 +450,7 @@ async def main() -> None:
 
     except KeyboardInterrupt:
         print("\nTest interrupted by user")
-    except Exception as e:
+    except (aiohttp.ClientError, OSError, ValueError) as e:
         print(f"Test failed: {e}")
 
 

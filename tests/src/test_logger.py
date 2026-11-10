@@ -1,8 +1,8 @@
 import importlib
 import json
-import sys
 import logging
 import os
+import sys
 
 from assisted_service_mcp.src.logger import SensitiveFormatter
 

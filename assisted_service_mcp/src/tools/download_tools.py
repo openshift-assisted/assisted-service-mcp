@@ -1,17 +1,19 @@
 """Download URL tools for Assisted Service MCP Server."""
 
 import json
-from datetime import datetime, timezone
-from typing import Annotated, Callable, Any
-from pydantic import Field
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Annotated, Any
 
 from assisted_service_client import models
+from pydantic import Field
+
+from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
-from assisted_service_mcp.src.logger import log
 
 # Define a constant for zero datetime
-ZERO_DATETIME = datetime(1, 1, 1, tzinfo=timezone.utc)
+ZERO_DATETIME = datetime(1, 1, 1, tzinfo=UTC)
 
 
 def format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
@@ -71,9 +73,10 @@ async def cluster_iso_download_url(
         token = get_access_token_func()
         client = InventoryClient(token)
         infra_envs = await client.list_infra_envs(cluster_id)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
+        # Preserve the tool's user-facing error response for retrieval failures.
         log.error("Failed to retrieve infrastructure environments: %s", e)
-        return f"Error retrieving ISO URLs: {str(e)}"
+        return f"Error retrieving ISO URLs: {e!s}"
 
     if not infra_envs:
         log.info("No infrastructure environments found for cluster %s", cluster_id)
@@ -92,7 +95,8 @@ async def cluster_iso_download_url(
 
         try:
             presigned_url = await client.get_infra_env_download_url(infra_env_id)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
+            # Keep processing other InfraEnvs if one ISO URL retrieval fails.
             log.error(
                 "Failed to get download URL for infra env %s: %s", infra_env_id, e
             )
@@ -159,9 +163,10 @@ async def cluster_credentials_download_url(
         result = await client.get_presigned_for_cluster_credentials(
             cluster_id, file_name
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
+        # Preserve the JSON error response expected by callers.
         log.error("Failed to retrieve credentials URL: %s", e)
-        return json.dumps({"error": f"Failed to retrieve credentials URL: {str(e)}"})
+        return json.dumps({"error": f"Failed to retrieve credentials URL: {e!s}"})
 
     if not result:
         log.warning(
@@ -195,10 +200,11 @@ async def cluster_logs_download_url(
     try:
         client = InventoryClient(get_access_token_func())
         logs_url = await client.get_presigned_cluster_logs_url(cluster_id)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
+        # Preserve the JSON error response expected by callers.
         log.error("Failed to retrieve logs URL: %s", e)
         return json.dumps(
-            {"error": f"Failed to retrieve logs URL for cluster {cluster_id}: {str(e)}"}
+            {"error": f"Failed to retrieve logs URL for cluster {cluster_id}: {e!s}"}
         )
 
     if not logs_url:

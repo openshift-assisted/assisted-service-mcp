@@ -5,17 +5,17 @@ Unit tests for the assisted_service_api module.
 from unittest.mock import Mock, patch
 
 import pytest
-from requests.exceptions import RequestException
-from assisted_service_client.rest import ApiException
 from assisted_service_client import Configuration, models
+from assisted_service_client.rest import ApiException
+from requests.exceptions import RequestException
 
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from tests.test_utils import (
     create_test_cluster,
-    create_test_installing_cluster,
     create_test_host,
     create_test_infra_env,
+    create_test_installing_cluster,
     create_test_presigned_url,
 )
 
@@ -58,16 +58,18 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
     def test_init_with_environment_variables(self, mock_access_token: str) -> None:
         """Test client initialization with environment variables."""
         test_url = "https://custom-api.example.com/v2"
-        with patch(
-            "assisted_service_mcp.src.settings.settings.INVENTORY_URL", test_url
+        with (
+            patch("assisted_service_mcp.src.settings.settings.INVENTORY_URL", test_url),
+            patch("assisted_service_mcp.src.settings.settings.CLIENT_DEBUG", True),
+            patch.object(
+                InventoryClient,
+                "_get_pull_secret",
+                return_value="test-pull-secret",
+            ),
         ):
-            with patch("assisted_service_mcp.src.settings.settings.CLIENT_DEBUG", True):
-                with patch.object(
-                    InventoryClient, "_get_pull_secret", return_value="test-pull-secret"
-                ):
-                    client = InventoryClient(mock_access_token)
-                    assert client.inventory_url == test_url
-                    assert client.client_debug is True
+            client = InventoryClient(mock_access_token)
+            assert client.inventory_url == test_url
+            assert client.client_debug is True
 
     @patch("requests.post")
     def test_get_pull_secret_success(
@@ -616,32 +618,34 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
         mock_bundle.operators = ["operator1", "operator2"]
         cluster = create_test_cluster(cluster_id=cluster_id)
 
-        with patch.object(client, "_operators_api") as mock_operators_api:
-            with patch.object(client, "update_cluster") as mock_update_cluster:
-                mock_api = Mock()
-                mock_api.v2_get_bundle.return_value = mock_bundle
-                mock_operators_api.return_value = mock_api
-                mock_update_cluster.return_value = cluster
+        with (
+            patch.object(client, "_operators_api") as mock_operators_api,
+            patch.object(client, "update_cluster") as mock_update_cluster,
+        ):
+            mock_api = Mock()
+            mock_api.v2_get_bundle.return_value = mock_bundle
+            mock_operators_api.return_value = mock_api
+            mock_update_cluster.return_value = cluster
 
-                result = await client.add_operator_bundle_to_cluster(
-                    cluster_id, bundle_name
-                )
+            result = await client.add_operator_bundle_to_cluster(
+                cluster_id, bundle_name
+            )
 
-                assert result == cluster
-                mock_api.v2_get_bundle.assert_called_once_with(bundle_name)
+            assert result == cluster
+            mock_api.v2_get_bundle.assert_called_once_with(bundle_name)
 
-                # Verify update_cluster was called with correct operators
-                mock_update_cluster.assert_called_once()
-                _args, kwargs = mock_update_cluster.call_args
-                assert kwargs["cluster_id"] == cluster_id  # cluster_id is a keyword arg
+            # Verify update_cluster was called with correct operators
+            mock_update_cluster.assert_called_once()
+            _args, kwargs = mock_update_cluster.call_args
+            assert kwargs["cluster_id"] == cluster_id  # cluster_id is a keyword arg
 
-                # Verify the olm_operators parameter contains the correct operators
-                olm_operators = kwargs["olm_operators"]
-                assert len(olm_operators) == 2
+            # Verify the olm_operators parameter contains the correct operators
+            olm_operators = kwargs["olm_operators"]
+            assert len(olm_operators) == 2
 
-                # Check that each operator from the bundle was included
-                operator_names = [op.name for op in olm_operators]
-                assert set(operator_names) == {"operator1", "operator2"}
+            # Check that each operator from the bundle was included
+            operator_names = [op.name for op in olm_operators]
+            assert set(operator_names) == {"operator1", "operator2"}
 
     @pytest.mark.asyncio
     async def test_update_cluster_platform_success(

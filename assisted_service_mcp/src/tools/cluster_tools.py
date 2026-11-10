@@ -1,8 +1,8 @@
 """Cluster management tools for Assisted Service MCP Server."""
 
+import re
 from collections.abc import Callable
 from typing import Annotated
-import re
 
 from pydantic import Field
 
@@ -11,8 +11,8 @@ from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.service_client.helpers import Helpers
-from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
 from assisted_service_mcp.src.tools.shared_helpers import wrap_untrusted_data
+from assisted_service_mcp.src.utils.log_analyzer.main import analyze_cluster
 
 
 def _validate_ssh_key(ssh_public_key: str) -> str:
@@ -241,7 +241,7 @@ async def create_cluster(  # pylint: disable=too-many-arguments,too-many-positio
             ssh_public_key = _validate_ssh_key(ssh_public_key)
         except ValueError as e:
             log.error("SSH key validation failed: %s", str(e))
-            return f"SSH key validation failed: {str(e)}"
+            return f"SSH key validation failed: {e!s}"
 
     client = InventoryClient(get_access_token_func())
 
@@ -424,7 +424,7 @@ async def set_cluster_ssh_key(
         ssh_public_key = _validate_ssh_key(ssh_public_key)
     except ValueError as e:
         log.error("SSH key validation failed: %s", str(e))
-        return f"SSH key validation failed: {str(e)}"
+        return f"SSH key validation failed: {e!s}"
 
     client = InventoryClient(get_access_token_func())
 

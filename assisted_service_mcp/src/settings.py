@@ -1,8 +1,6 @@
 """Settings for the Assisted Service MCP Server."""
 
-from typing import Optional, ClassVar
-from typing import Literal
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 from dotenv import load_dotenv
 from pydantic import Field, field_validator
@@ -14,8 +12,8 @@ try:
 except FileNotFoundError:
     # Expected when .env doesn't exist
     pass
-except Exception as e:
-    # Log unexpected errors but don't fail
+except Exception as e:  # noqa: BLE001
+    # Loading .env is best-effort; continue with environment variables and defaults.
     import warnings
 
     warnings.warn(f"Failed to load .env file: {e}")
@@ -87,7 +85,7 @@ class Settings(BaseSettings):
     )
 
     # Authentication Configuration
-    OFFLINE_TOKEN: Optional[str] = Field(
+    OFFLINE_TOKEN: str | None = Field(
         default=None,
         json_schema_extra={
             "env": "OFFLINE_TOKEN",

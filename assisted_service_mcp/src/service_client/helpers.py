@@ -1,6 +1,7 @@
 """Helper functions for the service client."""
 
-from typing import Literal, Optional, cast, get_args
+from typing import Literal, cast, get_args
+
 from assisted_service_client import models
 
 
@@ -14,7 +15,7 @@ class Helpers:
     VALID_CPU_ARCHITECTURES = Literal["x86_64", "aarch64", "arm64", "ppc64le", "s390x"]
 
     @staticmethod
-    def get_platform_model(platform: Optional[str]) -> models.Platform:
+    def get_platform_model(platform: str | None) -> models.Platform:
         """
         Get the platform object from a platform type string.
 

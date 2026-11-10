@@ -4,7 +4,6 @@ ControllerFailedToStart signature for OpenShift Assisted Installer logs.
 
 import json
 import logging
-from typing import Optional
 
 from assisted_service_mcp.src.utils.log_analyzer.log_analyzer import (
     LOG_BUNDLE_PATH,
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 class ControllerFailedToStart(Signature):
     """Looks for controller readiness in pods.json when bootstrap is 'Waiting for controller'."""
 
-    def analyze(self, log_analyzer) -> Optional[SignatureResult]:
+    def analyze(self, log_analyzer) -> SignatureResult | None:
         cluster = log_analyzer.metadata
         bootstrap = [h for h in cluster.get("hosts", []) if h.get("bootstrap")] or []
         if not bootstrap:
@@ -32,20 +31,22 @@ class ControllerFailedToStart(Signature):
             return None
         try:
             pods = json.loads(pods_json)
-            controller_pod = [
+            # Keep eager evaluation so malformed later entries preserve existing behavior.
+            controller_pod = [  # noqa: RUF015
                 pod
                 for pod in pods.get("items", [])
                 if pod.get("metadata", {}).get("namespace") == "assisted-installer"
             ][0]
-        except Exception:
+        except (AttributeError, IndexError, TypeError, ValueError):
             return None
         try:
-            ready = [
+            # Keep eager evaluation so malformed later conditions preserve existing behavior.
+            ready = [  # noqa: RUF015
                 condition.get("status") == "True"
                 for condition in controller_pod.get("status", {}).get("conditions", {})
                 if condition.get("type") == "Ready"
             ][0]
-        except Exception:
+        except (AttributeError, IndexError, TypeError):
             ready = False
         conditions_tbl = self.generate_table(
             controller_pod.get("status", {}).get("conditions", [])

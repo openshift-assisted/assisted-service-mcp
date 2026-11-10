@@ -1,10 +1,10 @@
 import importlib
 import sys
-from typing import Iterator
-from unittest.mock import Mock, patch, MagicMock
-import requests
+from collections.abc import Iterator
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import requests
 
 # Don't import auth at module level - import it fresh in each test
 
@@ -61,9 +61,9 @@ def test_get_offline_token_raises_when_missing() -> None:
             "assisted_service_mcp.utils.auth.get_http_headers",
             return_value={},
         ),
+        pytest.raises(RuntimeError),
     ):
-        with pytest.raises(RuntimeError):
-            auth_mod.get_offline_token()
+        auth_mod.get_offline_token()
 
 
 def test_get_access_token_from_authorization_header() -> None:
@@ -137,6 +137,6 @@ def test_get_access_token_invalid_json_response() -> None:
             "assisted_service_mcp.src.settings.settings.SSO_URL",
             "https://sso.example.com",
         ),
+        pytest.raises(RuntimeError, match="Invalid SSO response"),
     ):
-        with pytest.raises(RuntimeError, match="Invalid SSO response"):
-            mod.get_access_token(offline_token_func=lambda: "offline")
+        mod.get_access_token(offline_token_func=lambda: "offline")

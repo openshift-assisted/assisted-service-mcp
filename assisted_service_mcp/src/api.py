@@ -15,12 +15,12 @@ configure_logging()
 server = AssistedServiceMCPServer()
 
 # Create ASGI app with configured transport
-_SUPPORTED_TRANSPORTS = {"sse", "streamable-http"}
-if settings.TRANSPORT and settings.TRANSPORT not in _SUPPORTED_TRANSPORTS:
+SUPPORTED_TRANSPORTS = {"sse", "streamable-http"}
+if settings.TRANSPORT and settings.TRANSPORT not in SUPPORTED_TRANSPORTS:
     log.warning(
         "Unsupported TRANSPORT=%r (supported: %s).",
         settings.TRANSPORT,
-        ", ".join(sorted(_SUPPORTED_TRANSPORTS)),
+        ", ".join(sorted(SUPPORTED_TRANSPORTS)),
     )
 stateless = settings.TRANSPORT == "streamable-http"
 app = server.mcp.http_app(

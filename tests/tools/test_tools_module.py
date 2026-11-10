@@ -1,22 +1,23 @@
 import asyncio
-import json
 import datetime as _dt
+import json
 from typing import cast
-from unittest.mock import patch, Mock, MagicMock, AsyncMock
-import pytest
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+import pytest
 from assisted_service_client import models
-from assisted_service_mcp.src.tools.version_tools import list_versions
+
 from assisted_service_mcp.src.tools.operator_tools import (
-    list_operator_bundles,
     add_operator_bundle_to_cluster,
+    list_operator_bundles,
 )
+from assisted_service_mcp.src.tools.version_tools import list_versions
 
 
 @pytest.mark.asyncio
 async def test_tool_set_cluster_platform_module() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     mock_client = Mock()
     mock_client.update_cluster = AsyncMock(
@@ -42,8 +43,8 @@ async def test_tool_set_cluster_platform_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_set_cluster_vips_module() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     mock_client = Mock()
     mock_client.update_cluster = AsyncMock(
@@ -69,8 +70,8 @@ async def test_tool_set_cluster_vips_module() -> None:
 
 @pytest.mark.asyncio
 async def test_create_cluster_invalid_platform_for_sno_returns_message() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     AssistedServiceMCPServer()
     resp = await cluster_tools.create_cluster(
@@ -88,8 +89,8 @@ async def test_create_cluster_invalid_platform_for_sno_returns_message() -> None
 
 @pytest.mark.asyncio
 async def test_tool_install_cluster_module() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     mock_client = Mock()
     mock_client.install_cluster = AsyncMock(
@@ -113,8 +114,8 @@ async def test_tool_install_cluster_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_cluster_events_module() -> None:
-    from assisted_service_mcp.src.tools import event_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import event_tools
 
     mock_client = Mock()
     mock_client.get_events = AsyncMock(return_value='{"events": ["e1", "e2"]}')
@@ -137,8 +138,8 @@ async def test_tool_cluster_events_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_host_events_module() -> None:
-    from assisted_service_mcp.src.tools import event_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import event_tools
 
     mock_client = Mock()
     mock_client.get_events = AsyncMock(return_value='{"events": ["h1"]}')
@@ -186,8 +187,8 @@ async def test_wrap_untrusted_data_escapes_delimiters() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_cluster_iso_download_url_module() -> None:
-    from assisted_service_mcp.src.tools import download_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
 
     class _Presigned:
         def __init__(self, url: str, expires_at: str | None = None) -> None:
@@ -225,8 +226,8 @@ async def test_tool_cluster_iso_download_url_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_cluster_credentials_download_url_module() -> None:
-    from assisted_service_mcp.src.tools import download_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
 
     class _Presigned:
         def __init__(self, url: str, expires_at: str | None = None) -> None:
@@ -258,8 +259,8 @@ async def test_tool_cluster_credentials_download_url_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_set_host_role_module() -> None:
-    from assisted_service_mcp.src.tools import host_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import host_tools
 
     mock_client = Mock()
     mock_client.update_host = AsyncMock(
@@ -289,8 +290,8 @@ async def test_tool_set_host_role_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_add_operator_bundle_module() -> None:
-    from assisted_service_mcp.src.tools import operator_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import operator_tools
 
     mock_client = Mock()
     mock_client.add_operator_bundle_to_cluster = AsyncMock(
@@ -316,8 +317,8 @@ async def test_tool_add_operator_bundle_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_list_operator_bundles_module() -> None:
-    from assisted_service_mcp.src.tools import operator_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import operator_tools
 
     bundles = [{"name": "virtualization"}]
     mock_client = Mock()
@@ -340,8 +341,8 @@ async def test_tool_list_operator_bundles_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_network_validate_nmstate_yaml_module() -> None:
-    from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import network_tools
 
     with patch(
         "assisted_service_mcp.src.tools.network_tools.validate_and_parse_nmstate"
@@ -355,8 +356,8 @@ async def test_tool_network_validate_nmstate_yaml_module() -> None:
 
 @pytest.mark.asyncio
 async def test_alter_static_network_remove_with_none_index_raises() -> None:
-    from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import network_tools
 
     AssistedServiceMCPServer()
     mock_client = Mock()
@@ -372,17 +373,17 @@ async def test_alter_static_network_remove_with_none_index_raises() -> None:
             "assisted_service_mcp.src.tools.network_tools._get_cluster_infra_env_id",
             new=AsyncMock(return_value="ie1"),
         ),
+        pytest.raises(ValueError, match="index cannot be null"),
     ):
-        with pytest.raises(ValueError, match="index cannot be null"):
-            await network_tools.alter_static_network_config_nmstate_for_host(
-                lambda: "t", "cid", None, None
-            )
+        await network_tools.alter_static_network_config_nmstate_for_host(
+            lambda: "t", "cid", None, None
+        )
 
 
 @pytest.mark.asyncio
 async def test_alter_static_network_remove_with_empty_existing_raises() -> None:
-    from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import network_tools
 
     AssistedServiceMCPServer()
     mock_client = Mock()
@@ -398,17 +399,17 @@ async def test_alter_static_network_remove_with_empty_existing_raises() -> None:
             "assisted_service_mcp.src.tools.network_tools._get_cluster_infra_env_id",
             new=AsyncMock(return_value="ie1"),
         ),
+        pytest.raises(ValueError, match="empty existing static network config"),
     ):
-        with pytest.raises(ValueError, match="empty existing static network config"):
-            await network_tools.alter_static_network_config_nmstate_for_host(
-                lambda: "t", "cid", 0, None
-            )
+        await network_tools.alter_static_network_config_nmstate_for_host(
+            lambda: "t", "cid", 0, None
+        )
 
 
 @pytest.mark.asyncio
 async def test_list_static_network_config_invalid_infraenv_count() -> None:
-    from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import network_tools
 
     AssistedServiceMCPServer()
     mock_client = Mock()
@@ -423,8 +424,8 @@ async def test_list_static_network_config_invalid_infraenv_count() -> None:
 
 @pytest.mark.asyncio
 async def test_list_versions_happy_path() -> None:
-    from assisted_service_mcp.src.tools import version_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import version_tools
 
     AssistedServiceMCPServer()
     mock_client = Mock()
@@ -444,12 +445,12 @@ async def test_list_versions_happy_path() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_network_generate_nmstate_yaml_module() -> None:
+    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
     from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.utils.static_net.template import (
-        NMStateTemplateParams,
         EthernetInterfaceParams,
+        NMStateTemplateParams,
     )
-    from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
 
     params = NMStateTemplateParams(
         routes=None,
@@ -472,8 +473,8 @@ async def test_tool_network_generate_nmstate_yaml_module() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_create_cluster_module() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     # Simulate returned API objects' to_str() and attributes
     class _Cluster:
@@ -519,8 +520,8 @@ async def test_tool_create_cluster_module() -> None:
 @pytest.mark.asyncio
 async def test_tool_create_cluster_with_none_cpu_architecture_module() -> None:
     """Test that cpu_architecture defaults to x86_64 when None is passed."""
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     # Simulate returned API objects' to_str() and attributes
     class _Cluster:
@@ -617,8 +618,8 @@ def test_add_operator_bundle_to_cluster_happy() -> None:  # type: ignore[no-unty
 
 @pytest.mark.asyncio
 async def test_tool_cluster_info_success() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
     from tests.test_utils import create_test_cluster
 
     cluster = create_test_cluster(cluster_id="cid-123")
@@ -639,8 +640,8 @@ async def test_tool_cluster_info_success() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_list_clusters_formats_fields_and_defaults_version() -> None:
-    from assisted_service_mcp.src.tools import cluster_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import cluster_tools
 
     # Two clusters with version, one without (defaults to "Unknown")
     c1 = {
@@ -672,8 +673,8 @@ async def test_tool_list_clusters_formats_fields_and_defaults_version() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_cluster_iso_download_url_multiple_and_zero_expiration() -> None:
-    from assisted_service_mcp.src.tools import download_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
 
     class _Presigned:
         def __init__(self, url: str, expires_at: _dt.datetime | None) -> None:
@@ -686,9 +687,7 @@ async def test_tool_cluster_iso_download_url_multiple_and_zero_expiration() -> N
         side_effect=[
             _Presigned(
                 "https://u/iso1",
-                _dt.datetime(
-                    1, 1, 1, tzinfo=_dt.timezone.utc
-                ),  # zero/default -> omitted
+                _dt.datetime(1, 1, 1, tzinfo=_dt.UTC),  # zero/default -> omitted
             ),
             _Presigned(
                 "https://u/iso2",
@@ -712,8 +711,8 @@ async def test_tool_cluster_iso_download_url_multiple_and_zero_expiration() -> N
 
 @pytest.mark.asyncio
 async def test_tool_cluster_iso_download_url_no_infraenvs_returns_message() -> None:
-    from assisted_service_mcp.src.tools import download_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
 
     mock_client = Mock()
     mock_client.list_infra_envs = AsyncMock(return_value=[])
@@ -729,8 +728,8 @@ async def test_tool_cluster_iso_download_url_no_infraenvs_returns_message() -> N
 
 @pytest.mark.asyncio
 async def test_tool_cluster_credentials_download_url_error_shaping() -> None:
-    from assisted_service_mcp.src.tools import download_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import download_tools
 
     mock_client = Mock()
     mock_client.get_presigned_for_cluster_credentials = AsyncMock(
@@ -752,8 +751,8 @@ async def test_tool_cluster_credentials_download_url_error_shaping() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_list_static_network_config_success() -> None:
-    from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import network_tools
 
     mock_client = Mock()
     mock_client.list_infra_envs = AsyncMock(
@@ -772,15 +771,15 @@ async def test_tool_list_static_network_config_success() -> None:
 
 @pytest.mark.asyncio
 async def test_tool_alter_static_network_add_or_replace_success() -> None:
-    from assisted_service_mcp.src.tools import network_tools
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
+    from assisted_service_mcp.src.tools import network_tools
 
     class _Infra:
         def __init__(self) -> None:
             self.static_network_config: list[str] = []
 
     class _Result:
-        def to_str(self) -> str:  # noqa: D401
+        def to_str(self) -> str:
             return "UPDATED-INFRA"
 
     mock_client = Mock()

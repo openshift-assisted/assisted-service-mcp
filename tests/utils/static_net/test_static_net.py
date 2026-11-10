@@ -10,19 +10,18 @@ import pytest
 import yaml
 
 from assisted_service_mcp.src.utils.static_net import (
-    remove_static_host_config_by_index,
-    add_or_replace_static_host_config_yaml,
-    validate_and_parse_nmstate,
-    generate_nmstate_from_template,
     NMStateTemplateParams,
+    add_or_replace_static_host_config_yaml,
+    generate_nmstate_from_template,
+    remove_static_host_config_by_index,
+    validate_and_parse_nmstate,
 )
-
 from assisted_service_mcp.src.utils.static_net.template import (
+    BondInterfaceParams,
+    DNSParams,
     EthernetInterfaceParams,
     IPV4AddressWithSubnet,
     RouteParams,
-    DNSParams,
-    BondInterfaceParams,
     VLANInterfaceParams,
 )
 

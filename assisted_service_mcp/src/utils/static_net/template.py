@@ -1,11 +1,11 @@
 """nmstate yaml templating logic"""
 
-from typing import Any, Literal
 from ipaddress import IPv4Address
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-from jinja2 import Template
 import yaml
+from jinja2 import Template
+from pydantic import BaseModel, Field
 
 
 class RouteParams(BaseModel):

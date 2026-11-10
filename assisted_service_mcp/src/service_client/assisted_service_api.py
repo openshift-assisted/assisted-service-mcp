@@ -7,17 +7,19 @@ environments, and host management.
 """
 
 import asyncio
-from typing import Any, Optional, cast, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 from urllib.parse import urlparse
 
 import nestedarchive
 import requests
-from requests.exceptions import RequestException
 from assisted_service_client import ApiClient, Configuration, PresignedUrl, api, models
+from requests.exceptions import RequestException
 
 from assisted_service_mcp.src.logger import log
 from assisted_service_mcp.src.metrics.metrics import API_CALL_LATENCY
 from assisted_service_mcp.src.settings import get_setting
+
 from .exceptions import sanitize_exceptions
 from .helpers import Helpers
 
@@ -39,7 +41,7 @@ class InventoryClient:
     def __init__(self, access_token: str):
         """Initialize the InventoryClient with an access token."""
         self.access_token = access_token
-        self._pull_secret: Optional[str] = None
+        self._pull_secret: str | None = None
         # Read configuration at construction time so tests can patch settings
         self.inventory_url: str = get_setting("INVENTORY_URL")
         self.client_debug: bool = bool(get_setting("CLIENT_DEBUG"))
@@ -187,10 +189,10 @@ class InventoryClient:
     @sanitize_exceptions
     async def get_events(
         self,
-        cluster_id: Optional[str] = "",
-        host_id: Optional[str] = "",
-        infra_env_id: Optional[str] = "",
-        categories: Optional[list[str]] = None,
+        cluster_id: str | None = "",
+        host_id: str | None = "",
+        infra_env_id: str | None = "",
+        categories: list[str] | None = None,
         **kwargs: Any,
     ) -> str:
         """
@@ -365,8 +367,8 @@ class InventoryClient:
     async def update_cluster(
         self,
         cluster_id: str,
-        api_vip: Optional[str] = "",
-        ingress_vip: Optional[str] = "",
+        api_vip: str | None = "",
+        ingress_vip: str | None = "",
         **update_params: Any,
     ) -> models.Cluster:
         """
