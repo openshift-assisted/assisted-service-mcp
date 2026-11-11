@@ -45,7 +45,7 @@ async def test_tool_set_cluster_ssh_key_partial_failure_module() -> None:
 async def test_tool_set_cluster_ssh_key_success_path() -> None:
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
     from assisted_service_mcp.src.tools import cluster_tools
-    from tests.test_utils import create_test_cluster
+    from tests.create_objects_helpers import create_test_cluster
 
     cluster = create_test_cluster(cluster_id="cid")
     mock_client = Mock()
@@ -76,7 +76,7 @@ async def test_tool_set_cluster_ssh_key_strips_quotes() -> None:
     """Test that set_cluster_ssh_key strips quotes from input and stores unquoted value."""
     from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
     from assisted_service_mcp.src.tools import cluster_tools
-    from tests.test_utils import create_test_cluster
+    from tests.create_objects_helpers import create_test_cluster
 
     cluster = create_test_cluster(cluster_id="cid")
     mock_client = Mock()

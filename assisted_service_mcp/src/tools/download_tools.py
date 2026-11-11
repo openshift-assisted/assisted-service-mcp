@@ -1,4 +1,4 @@
-"""Download URL tools for Assisted Service MCP Server."""
+"""Download URL tools for the MCP server for Red Hat OpenShift assisted installer."""
 
 import json
 from collections.abc import Callable
@@ -209,7 +209,7 @@ async def cluster_logs_download_url(
 
     if not logs_url:
         log.warning("No logs URL available for cluster %s", cluster_id)
-        return json.dumps({"error": "No logs URL available for cluster {cluster_id}"})
+        return json.dumps({"error": f"No logs URL available for cluster {cluster_id}"})
 
     log.info("Successfully retrieved logs URL for cluster %s", cluster_id)
     return json.dumps({"url": logs_url})

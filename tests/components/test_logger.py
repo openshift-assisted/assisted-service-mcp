@@ -1,27 +1,32 @@
 import importlib
 import json
 import logging
-import os
 import sys
+
+import pytest
 
 from assisted_service_mcp.src.logger import SensitiveFormatter
 
 
-def _reload_settings(env: dict[str, str]) -> None:  # type: ignore[no-untyped-def]
-    os.environ.update(env)
+def _reload_settings(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> None:
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+
     mod = "assisted_service_mcp.src.settings"
     if mod in sys.modules:
-        del sys.modules[mod]
-    importlib.import_module(mod)
+        importlib.reload(sys.modules[mod])
+    else:
+        importlib.import_module(mod)
 
 
-def test_configure_logging_stream_only() -> None:
+def test_configure_logging_stream_only(monkeypatch: pytest.MonkeyPatch) -> None:
     _reload_settings(
+        monkeypatch,
         {
             "LOGGER_NAME": "assisted-mcp-test",
             "LOGGING_LEVEL": "DEBUG",
             "LOG_TO_FILE": "false",
-        }
+        },
     )
 
     logger_mod = importlib.import_module("assisted_service_mcp.src.logger")
@@ -35,13 +40,14 @@ def test_configure_logging_stream_only() -> None:
     assert not any(isinstance(h, logging.FileHandler) for h in logger.handlers)
 
 
-def test_configure_logging_with_file() -> None:
+def test_configure_logging_with_file(monkeypatch: pytest.MonkeyPatch) -> None:
     _reload_settings(
+        monkeypatch,
         {
             "LOGGER_NAME": "assisted-mcp-test-file",
             "LOGGING_LEVEL": "INFO",
             "LOG_TO_FILE": "true",
-        }
+        },
     )
 
     logger_mod = importlib.import_module("assisted_service_mcp.src.logger")

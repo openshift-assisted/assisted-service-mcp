@@ -81,13 +81,13 @@ class LogAnalyzer:
         return events
 
     def get_all_cluster_events(self) -> list[dict[str, Any]]:
-        """Get all the cluster installation events."""
+        """Get cluster installation events from the latest attempt."""
         if self._cluster_events is None:
             try:
                 events_content = self.logs_archive.get("cluster_events.json")
                 all_events = json.loads(cast(str | bytes, events_content))
 
-                # Get the last partition (latest installation attempt)
+                # Keep only the latest installation attempt.
                 self._cluster_events = self.partition_cluster_events(all_events)[-1]
             except (EOFError, KeyError, OSError, TypeError, ValueError) as e:
                 logger.error("Failed to load cluster events: %s", e)
