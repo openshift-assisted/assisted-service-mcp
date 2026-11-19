@@ -1,6 +1,6 @@
 # MCP Server Performance Testing
 
-This directory contains performance testing tools for the Assisted Service MCP Server. These tools help evaluate the server's behavior under concurrent load from multiple users.
+This directory contains performance testing tools for the MCP server for Red Hat OpenShift assisted installer. These tools help evaluate the server's behavior under concurrent load from multiple users.
 
 ## Quick Start
 

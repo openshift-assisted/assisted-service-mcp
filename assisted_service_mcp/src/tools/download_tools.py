@@ -1,4 +1,4 @@
-"""Download URL tools for Assisted Service MCP Server."""
+"""Download URL tools for the MCP server for Red Hat OpenShift assisted installer."""
 
 import json
 from collections.abc import Callable
@@ -16,7 +16,7 @@ from assisted_service_mcp.src.service_client.assisted_service_api import Invento
 ZERO_DATETIME = datetime(1, 1, 1, tzinfo=UTC)
 
 
-def format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
+def _format_presigned_url(presigned_url: models.PresignedUrl) -> dict[str, Any]:
     r"""
     Format a presigned URL object into a readable string.
 
@@ -103,7 +103,7 @@ async def cluster_iso_download_url(
             continue
 
         if presigned_url and presigned_url.url:
-            iso_info.append(format_presigned_url(presigned_url))
+            iso_info.append(_format_presigned_url(presigned_url))
         else:
             log.warning(
                 "No ISO download URL found for infra env %s",
@@ -180,7 +180,7 @@ async def cluster_credentials_download_url(
         file_name,
     )
 
-    return json.dumps(format_presigned_url(result))
+    return json.dumps(_format_presigned_url(result))
 
 
 @track_tool_usage()
@@ -209,7 +209,7 @@ async def cluster_logs_download_url(
 
     if not logs_url:
         log.warning("No logs URL available for cluster %s", cluster_id)
-        return json.dumps({"error": "No logs URL available for cluster {cluster_id}"})
+        return json.dumps({"error": f"No logs URL available for cluster {cluster_id}"})
 
     log.info("Successfully retrieved logs URL for cluster %s", cluster_id)
     return json.dumps({"url": logs_url})

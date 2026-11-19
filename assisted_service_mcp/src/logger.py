@@ -109,7 +109,7 @@ class SensitiveFormatter(logging.Formatter):
         return self._filter(original)
 
 
-def get_logging_level() -> int:
+def _get_logging_level() -> int:
     """
     Get the logging level from settings.
 
@@ -194,7 +194,7 @@ def configure_logging() -> logging.Logger:
 
     # Set levels
     urllib3_logger.setLevel(logging.ERROR)
-    target_logger.setLevel(get_logging_level())
+    target_logger.setLevel(_get_logging_level())
 
     # Optional file logging
     if settings.LOG_TO_FILE:

@@ -3,54 +3,74 @@ import json
 import logging
 import os
 import sys
+from collections.abc import Generator
+from contextlib import contextmanager
 
 from assisted_service_mcp.src.logger import SensitiveFormatter
 
+_SETTINGS_MODULE = "assisted_service_mcp.src.settings"
 
-def _reload_settings(env: dict[str, str]) -> None:  # type: ignore[no-untyped-def]
-    os.environ.update(env)
-    mod = "assisted_service_mcp.src.settings"
-    if mod in sys.modules:
-        del sys.modules[mod]
-    importlib.import_module(mod)
+
+def _reload_settings() -> None:
+    if _SETTINGS_MODULE in sys.modules:
+        importlib.reload(sys.modules[_SETTINGS_MODULE])
+    else:
+        importlib.import_module(_SETTINGS_MODULE)
+
+
+@contextmanager
+def _temporary_settings(env: dict[str, str]) -> Generator[None]:
+    """Apply test settings, then restore the environment and settings module."""
+    settings_module = importlib.import_module(_SETTINGS_MODULE)
+    previous_settings = settings_module.settings
+    previous_values = {name: os.environ.get(name) for name in env}
+    try:
+        os.environ.update(env)
+        _reload_settings()
+        yield
+    finally:
+        for name, value in previous_values.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        settings_module.__dict__["settings"] = previous_settings
 
 
 def test_configure_logging_stream_only() -> None:
-    _reload_settings(
+    with _temporary_settings(
         {
             "LOGGER_NAME": "assisted-mcp-test",
             "LOGGING_LEVEL": "DEBUG",
             "LOG_TO_FILE": "false",
         }
-    )
+    ):
+        logger_mod = importlib.import_module("assisted_service_mcp.src.logger")
+        logger = logger_mod.configure_logging()
 
-    logger_mod = importlib.import_module("assisted_service_mcp.src.logger")
-    logger = logger_mod.configure_logging()
-
-    assert logger.name == "assisted-mcp-test"
-    assert logger.level == logging.DEBUG
-    # At least one StreamHandler present
-    assert any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
-    # No FileHandler when LOG_TO_FILE is false
-    assert not any(isinstance(h, logging.FileHandler) for h in logger.handlers)
+        assert logger.name == "assisted-mcp-test"
+        assert logger.level == logging.DEBUG
+        # At least one StreamHandler present
+        assert any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
+        # No FileHandler when LOG_TO_FILE is false
+        assert not any(isinstance(h, logging.FileHandler) for h in logger.handlers)
 
 
 def test_configure_logging_with_file() -> None:
-    _reload_settings(
+    with _temporary_settings(
         {
             "LOGGER_NAME": "assisted-mcp-test-file",
             "LOGGING_LEVEL": "INFO",
             "LOG_TO_FILE": "true",
         }
-    )
+    ):
+        logger_mod = importlib.import_module("assisted_service_mcp.src.logger")
+        logger = logger_mod.configure_logging()
 
-    logger_mod = importlib.import_module("assisted_service_mcp.src.logger")
-    logger = logger_mod.configure_logging()
-
-    assert logger.name == "assisted-mcp-test-file"
-    assert logger.level == logging.INFO
-    assert any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
-    assert any(isinstance(h, logging.FileHandler) for h in logger.handlers)
+        assert logger.name == "assisted-mcp-test-file"
+        assert logger.level == logging.INFO
+        assert any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
+        assert any(isinstance(h, logging.FileHandler) for h in logger.handlers)
 
 
 def filter_text(text: str) -> str:
