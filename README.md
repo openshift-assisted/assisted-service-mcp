@@ -1,65 +1,113 @@
-# Assisted Service MCP Server
+# MCP server for Red Hat OpenShift assisted installer
 
 MCP server for interacting with the OpenShift assisted installer API.
 
 Diagnose cluster failures and find out how to fix them.
 
-Try it out:
+## Getting Started
 
-1. Clone the repo:
-```
-git clone git@github.com:openshift-assisted/assisted-service-mcp.git
-```
+1. Clone the repository:
 
-2. Get your OpenShift API token from https://cloud.redhat.com/openshift/token
+   ```bash
+   git clone git@github.com:openshift-assisted/assisted-service-mcp.git
+   cd assisted-service-mcp
+   ```
 
-3. The server is started and configured differently depending on what transport you want to use
+2. Get a Red Hat offline token for the MCP server from <https://cloud.redhat.com/openshift/token>. Alternatively, send a valid Red Hat API access token in an `Authorization: Bearer <token>` request header (see step 4).
 
-For STDIO:
+3. Start and configure the server for the transport you want to use. The JSON blocks below are illustrative server-entry fragments; configuration syntax varies by MCP client, so adapt the relevant entry to your client configuration.
 
-In VSCode for example:
-```json
-   "mcp": {
-        "servers": {
-            "AssistedService": {
-                "command": "uv",
-                "args": [
-                    "--directory",
-                    "/path/to/assisted-service-mcp",
-                    "run",
-                    "mcp",
-                    "run",
-                    "/path/to/assisted-service-mcp/assisted_service_mcp/src/main.py"
-                ],
-                "env": {
-                    "OFFLINE_TOKEN": "<your token>"
-                }
-            }
-        }
+    **For Streamable HTTP (recommended and the default)**
+
+    Start the server in a terminal:
+
+    ```bash
+    MCP_HOST=127.0.0.1 OFFLINE_TOKEN='<your token>' uv run python -m assisted_service_mcp.src.main
+    ```
+
+    Alternatively, run the locally built image with Podman.
+
+    ```bash
+    export OFFLINE_TOKEN='<your token>'
+
+    podman run --rm --name assisted-service-mcp \
+      -p 127.0.0.1:8000:8000 \
+      -e LOG_TO_FILE=false \
+      -e TRANSPORT=streamable-http \
+      -e OFFLINE_TOKEN \
+      localhost/assisted-service-mcp:tag
+    ```
+
+    Configure the server in the client:
+
+    ```json
+    "assisted-http": {
+      "transport": "streamable-http",
+      "url": "http://localhost:8000/mcp"
     }
-```
+    ```
 
-For SSE (recommended):
+    Streamable HTTP is the default transport. It was introduced in MCP protocol version `2025-03-26` to replace the legacy HTTP+SSE transport from version `2024-11-05`.
 
-Start the server in a terminal:
+    See the MCP specification's [HTTP authorization guidance](https://modelcontextprotocol.io/specification/2026-07-28/basic).
 
-`OFFLINE_TOKEN='<your token>' uv run assisted_service_mcp.src.main`
+    It is also the default here because the [Red Hat Connectivity Link MCP Gateway](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.4/html/install_the_mcp_gateway/mcp-gateway-install) supports it and routes MCP traffic to `/mcp`. See the [MCP transport specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http) for details.
 
-Configure the server in the client:
+    **For SSE (legacy HTTP+SSE)**
 
-```json
+    Start the server in a terminal:
+
+    ```bash
+    MCP_HOST=127.0.0.1 TRANSPORT=sse OFFLINE_TOKEN='<your token>' uv run python -m assisted_service_mcp.src.main
+    ```
+
+    Alternatively, run the locally built image with Podman using the legacy SSE transport:
+
+    ```bash
+    export OFFLINE_TOKEN='<your token>'
+
+    podman run --rm --name assisted-service-mcp \
+      -p 127.0.0.1:8000:8000 \
+      -e LOG_TO_FILE=false \
+      -e TRANSPORT=sse \
+      -e OFFLINE_TOKEN \
+      localhost/assisted-service-mcp:tag
+    ```
+
+    The `TRANSPORT` environment variable defaults to `streamable-http`. Set `TRANSPORT=sse` to use the legacy HTTP+SSE transport.
+
+    Configure the server in the client:
+
+    ```json
     "assisted-sse": {
       "transport": "sse",
       "url": "http://localhost:8000/sse"
     }
-```
+    ```
 
-### Providing the Offline Token via Request Header
+4. Token handling
 
-If you do not set the `OFFLINE_TOKEN` environment variable, you can provide the token as a request header.
-When configuring your MCP client, add the `OCM-Offline-Token` header:
+    The examples above bind to localhost for local use. When `OFFLINE_TOKEN` is set on the server, a caller that can reach it can invoke tools without providing its own token since the server uses its configured token. For network deployments, leave `OFFLINE_TOKEN` unset and configure each client to send its own `OCM-Offline-Token` or `Authorization: Bearer` header.
 
-```json
+    If both a non-empty `OCM-Offline-Token` request header and `OFFLINE_TOKEN` are configured, the header takes precedence. If that header is absent or empty, the server uses `OFFLINE_TOKEN`. A valid `Authorization: Bearer <token>` header takes precedence over both and is used directly as the API access token.
+
+    To provide a token from the client, add a header to its MCP server configuration. Client configuration syntax may vary.
+
+    For Streamable HTTP:
+
+    ```json
+    "assisted-http": {
+      "transport": "streamable-http",
+      "url": "http://localhost:8000/mcp",
+      "headers": {
+        "OCM-Offline-Token": "<your token>"
+      }
+    }
+    ```
+
+    For SSE:
+
+    ```json
     "assisted-sse": {
       "transport": "sse",
       "url": "http://localhost:8000/sse",
@@ -67,38 +115,50 @@ When configuring your MCP client, add the `OCM-Offline-Token` header:
         "OCM-Offline-Token": "<your token>"
       }
     }
-```
+    ```
 
-4. Ask about your clusters:
-![Example prompt asking about a cluster](images/cluster-prompt-example.png)
+    Alternatively, use an `Authorization` header with `Bearer <your Red Hat API access token>`.
 
-## Available Tools
+5. Ask about your clusters
+
+    In an MCP-compatible AI client connected to this server, ask for example: “List my Assisted Installer clusters.” After getting a cluster ID, ask: “Show me details about cluster `<cluster-id-from-list_clusters>`.”
+
+    ![Copilot checking Assisted Installer cluster status with cluster_info](images/cluster-prompt-example.png)
+
+## Available MCP Tools
 
 The MCP server provides the following tools for interacting with the OpenShift Assisted Installer:
 
-### Cluster Management
+There are 20 tools by default. Enabling the optional `analyze_cluster_logs` tool brings the total to 21.
+
+### &emsp;&nbsp;&nbsp;Cluster Management
 
 * **list_clusters** - Lists all current user assisted installer clusters. Returns minimal cluster information.
 
 * **cluster_info** - Get detailed information about the assisted installer cluster with the given ID
   * `cluster_id`: Cluster ID (string, required)
 
-* **create_cluster** - Create a new assisted installer cluster and infraenv. Set single_node to true only for single node clusters or when high availability is not needed. Returns cluster ID and infraenv ID as JSON.
+* **create_cluster** - Create a new assisted installer cluster and InfraEnv. Set single_node to true only for single-node clusters or when high availability is not needed. Returns the cluster UUID as text; the InfraEnv ID is not returned.
   * `name`: Cluster name (string, required)
   * `version`: OpenShift version (string, required)
   * `base_domain`: Base domain for the cluster (string, required)
   * `single_node`: Whether to create a single node cluster (boolean, required)
   * `ssh_public_key`: SSH public key for accessing cluster nodes (string, optional)
+  * `cpu_architecture`: CPU architecture (`x86_64`, `aarch64`, `arm64`, `ppc64le`, or `s390x`; optional, defaults to `x86_64`)
+  * `platform`: Infrastructure platform (`baremetal`, `vsphere`, `oci`, `nutanix`, or `none`; optional, defaults to `baremetal` for multi-node clusters and `none` for single-node clusters)
 
 * **install_cluster** - Trigger installation for the assisted installer cluster with the given ID
   * `cluster_id`: Cluster ID (string, required)
 
-* **set_cluster_vips** - Set the API and ingress virtual IP addresses (VIPs) for the cluster
+* **cluster_credentials_download_url** - Get a time-limited download URL for cluster credentials after installation completes. Returns JSON with a `url` and optional `expires_at` timestamp.
   * `cluster_id`: Cluster ID (string, required)
-  * `api_vip`: API virtual IP address (string, required)
-  * `ingress_vip`: Ingress virtual IP address (string, required)
+  * `file_name`: Credential file (`kubeconfig`, `kubeconfig-noingress`, or `kubeadmin-password`; string, required)
 
-### Events and Monitoring
+* **set_cluster_platform** - Set or update the infrastructure platform for an existing cluster. Single-node clusters require `none`; changing the platform may require updating network settings.
+  * `cluster_id`: Cluster ID (string, required)
+  * `platform`: Platform (`baremetal`, `vsphere`, `oci`, `nutanix`, or `none`; string, required)
+
+### &emsp;&nbsp;&nbsp;Events and Monitoring
 
 * **cluster_events** - Get the events related to a cluster with the given ID
   * `cluster_id`: Cluster ID (string, required)
@@ -107,59 +167,129 @@ The MCP server provides the following tools for interacting with the OpenShift A
   * `cluster_id`: Cluster ID (string, required)
   * `host_id`: Host ID (string, required)
 
-### ISO Download URL
-
-* **cluster_iso_download_url** - Get ISO download URL(s) for a cluster. A formatted string containing ISO download URLs and optional expiration times. Each ISO's information is formatted as:
-  - URL: <download-url>
-  - Expires at: <expiration-timestamp> (if available)
-  Multiple ISOs are separated by blank lines.
+* **cluster_logs_download_url** - Get a presigned URL to download the cluster log bundle. Returns a JSON object with a `url` field, or an error.
   * `cluster_id`: Cluster ID (string, required)
 
-### Host Management
+* **analyze_cluster_logs** - Analyze available Assisted Installer logs for a cluster and summarize detected issues. Set the `ENABLE_TROUBLESHOOTING_TOOLS` environment variable to `1` in the MCP server environment to enable this tool; it defaults to `0`. For a hosted server, ask the service operator to enable it. Clients cannot enable it themselves.
+  * `cluster_id`: Cluster ID (string, required)
 
-* **set_host_role** - Update a host to a specific role. Role options are: 'auto-assign', 'master', 'arbiter', 'worker'
+### &emsp;&nbsp;&nbsp;ISO Download URL(s)
+
+* **cluster_iso_download_url** - Get ISO download URL(s) for a cluster. Returns a JSON array of objects with a `url` and optional `expires_at` timestamp for each ISO. If no ISO URLs are found, returns a message.
+  * `cluster_id`: Cluster ID (string, required)
+
+### &emsp;&nbsp;&nbsp;Host Management
+
+* **set_host_role** - Assign a role to a discovered host. Valid roles are `auto-assign`, `master`, and `worker`. If the cluster has multiple InfraEnvs, the tool uses the first one; if the target host belongs to another InfraEnv, the role update can fail with a 404 Not Found error.
   * `host_id`: Host ID (string, required)
-  * `infraenv_id`: Infrastructure environment ID (string, required)
-  * `role`: Host role (string, required)
+  * `cluster_id`: Cluster ID containing the host (string, required)
+  * `role`: Host role (`auto-assign`, `master`, or `worker`; string, required)
 
-### SSH Key Management
+### &emsp;&nbsp;&nbsp;Network Configuration
 
-* **set_cluster_ssh_key** - Set or update the SSH public key for a cluster. This allows SSH access to cluster nodes during and after installation.
+* **set_cluster_vips** - Set the API and ingress virtual IP addresses (VIPs) for the cluster
+  * `cluster_id`: Cluster ID (string, required)
+  * `api_vip`: API virtual IP address (string, required)
+  * `ingress_vip`: Ingress virtual IP address (string, required)
+
+* **validate_nmstate_yaml** - Validate NMState YAML syntax before applying it to hosts.
+  * `nmstate_yaml`: NMState YAML document (string, required)
+
+* **generate_nmstate_yaml** - Generate NMState YAML from structured network parameters. `ethernet_ifaces` must contain at least one interface.
+  * `params`: Network configuration object (required). Supports `dns`, `routes`, `bond_ifaces`, `vlan_ifaces`, and `ethernet_ifaces`.
+
+* **alter_static_network_config_nmstate_for_host** - Add, replace, or remove a host static network configuration for a cluster. The tool changes only the first InfraEnv returned for the cluster; manage other InfraEnvs separately. `index` selects a configuration within that InfraEnv, not an InfraEnv.
+  * `cluster_id`: Cluster ID (string, required)
+  * `index`: Position in the first InfraEnv’s static network configuration list to replace or remove, or `null` to append (integer or null, required)
+  * `new_nmstate_yaml`: Validated NMState YAML to add or replace a configuration, or `null` to remove one (string or null, required)
+
+* **list_static_network_config** - Returns the cluster static network configurations as a JSON array encoded string. Requires the cluster to have exactly one InfraEnv.
+  * `cluster_id`: Cluster ID (string, required)
+
+### &emsp;&nbsp;&nbsp;SSH Key Management
+
+* **set_cluster_ssh_key** - Set or update the SSH public key for a cluster. This enables SSH access to cluster nodes during and after installation. Only ISOs downloaded after the update include the new key; hosts that have already booted must boot from a new ISO to receive it. If the cluster has multiple InfraEnvs, the tool updates only the first one; ISOs from other InfraEnvs may not include the new key.
   * `cluster_id`: Cluster ID (string, required)
   * `ssh_public_key`: SSH public key in OpenSSH format (string, required)
 
-### OpenShift Versions and Operators
+### &emsp;&nbsp;&nbsp;OpenShift Versions and Operators
 
-* **list_versions** - Lists the available OpenShift versions for installation with the assisted installer
+* **list_versions** - Lists the available OpenShift versions for installation with the assisted installer. Takes no parameters.
 
-* **list_operator_bundles** - Lists the operator bundles that can be optionally added to a cluster during installation
+* **list_operator_bundles** - Lists operator bundles available to add to a cluster before installation. Takes no parameters.
 
-* **add_operator_bundle_to_cluster** - Update the cluster's operator configuration so the selected bundle is installed during deployment. This may remove previously configured operators that are not included in the selected bundle. Use before starting installation.
+* **add_operator_bundle_to_cluster** - Update the cluster's operator configuration so the selected operator bundle will be installed with the cluster. This may remove previously configured operators that are not included in the selected bundle. Use before starting cluster installation.
+
   * `cluster_id`: Cluster ID (string, required)
   * `bundle_name`: Operator bundle name (string, required)
 
-### Usage Examples
+## Example Prompts for MCP Clients
+
+These are example requests to enter in an MCP-compatible AI client configured to connect to this server; the agent uses each request to call the corresponding tool.
 
 * **List all clusters**: "Show me all my clusters"
 * **Get cluster details**: "Give me detailed information about cluster abc123"
-* **Create a cluster**: "Create a new cluster named 'my-cluster' with OpenShift 4.14 and base domain 'example.com'"
+* **Create a cluster**: "Create a multi-node cluster named my-cluster using a currently available OpenShift version and base domain example.com."
 * **Check cluster events**: "What events happened on cluster abc123?"
 * **Install a cluster**: "Start the installation for cluster abc123"
-* **Get cluster credentials**: "Get the kubeconfig download link for cluster abc123"
-* **Update SSH key**: "Set the SSH key for cluster abc123 so I can access the nodes"
+* **Get cluster credentials**: "After cluster abc123 is installed, get the kubeconfig download link."
+* **Update SSH key**: "Set the SSH public key for cluster abc123 to `<ssh-public-key>` so I can access the nodes." Hosts that have already booted must boot from a new ISO to receive the updated key.
+
+## MCP Tool Effect Annotations
+
+**Read-only**  
+Retrieves or validates information without changing cluster state. All tools outside the two annotated groups are read-only and have no effect annotations.
+
+**State-changing**  
+Changes cluster state without being marked destructive.
+
+**Destructive**  
+May alter configuration or start installation, with effects that can be hard to reverse.
+
+The annotations are advisory and do not enforce access control.
+
+<dl>
+  <dd>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Annotation values</th>
+          <th>Meaning</th>
+          <th>Tools</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>State-changing</td>
+          <td><code>readOnlyHint=False</code>, <code>destructiveHint=False</code></td>
+          <td>Changes state but is not marked destructive.</td>
+          <td><code>create_cluster</code></td>
+        </tr>
+        <tr>
+          <td>Destructive</td>
+          <td><code>readOnlyHint=False</code>, <code>destructiveHint=True</code></td>
+          <td>May alter cluster, host, operator, or network configuration, or start installation; effects may be hard to reverse.</td>
+          <td><code>set_cluster_vips</code>, <code>set_cluster_platform</code>, <code>install_cluster</code>, <code>set_cluster_ssh_key</code>, <code>alter_static_network_config_nmstate_for_host</code>, <code>add_operator_bundle_to_cluster</code>, <code>set_host_role</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </dd>
+</dl>
 
 ## Prometheus Metrics
 
-The MCP server exposes Prometheus metrics to monitor tool usage and performance. The metrics are available at `http://localhost:8000/metrics` when the server is running.
+The server exposes Prometheus metrics for tool usage and performance at `/metrics`. When running locally with the default `MCP_PORT=8000`, access them at `http://localhost:8000/metrics`. For other deployments, use the server's reachable address and configured port.
 
 ### Available Metrics
 
-* **assisted_service_mcp_tool_request_count** - Number of tool requests.
+* **assisted_service_mcp_tool_request_count_total** - Number of tool requests.
 * **assisted_service_mcp_tool_request_duration_sum** - Total time to run the tool, in seconds.
 * **assisted_service_mcp_tool_request_duration_count** - Total number of tool requests measured.
-* **assisted_service_mcp_tool_request_duration_bucket** - Number of tool requests organized in buckets.
+* **assisted_service_mcp_tool_request_duration_bucket** - Cumulative number of tool requests up to each latency bucket.
 
 ### Metric Labels
 
-All metrics include the following label:
-* **tool** - The name of the tool, for example `cluster_info`, `list_clusters`, etc.
+All tool request metrics include the following label:
+
+**tool** - The name of the MCP tool whose request is measured, for example `cluster_info` or `list_clusters`. This lets you distinguish request counts and durations for each tool.

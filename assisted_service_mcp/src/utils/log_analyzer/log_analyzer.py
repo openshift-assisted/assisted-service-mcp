@@ -68,27 +68,14 @@ class LogAnalyzer:
         return md
 
     def get_last_install_cluster_events(self) -> list[dict[str, Any]]:
-        """Get the cluster installation events for the most recent attempt."""
-        try:
-            all_events = self.get_all_cluster_events()
-
-            # Get the last partition (latest installation attempt)
-            events = self.partition_cluster_events(all_events)[-1]
-        except (KeyError, TypeError) as e:
-            logger.error("Failed to load cluster events: %s", e)
-            return []
-
-        return events
-
-    def get_all_cluster_events(self) -> list[dict[str, Any]]:
-        """Get all the cluster installation events."""
+        """Return cluster events from the latest installation attempt."""
         if self._cluster_events is None:
             try:
                 events_content = self.logs_archive.get("cluster_events.json")
                 all_events = json.loads(cast(str | bytes, events_content))
 
-                # Get the last partition (latest installation attempt)
-                self._cluster_events = self.partition_cluster_events(all_events)[-1]
+                # Keep only the latest installation attempt.
+                self._cluster_events = self._partition_cluster_events(all_events)[-1]
             except (EOFError, KeyError, OSError, TypeError, ValueError) as e:
                 logger.error("Failed to load cluster events: %s", e)
                 self._cluster_events = []
@@ -96,7 +83,7 @@ class LogAnalyzer:
         return self._cluster_events
 
     @staticmethod
-    def partition_cluster_events(
+    def _partition_cluster_events(
         events: list[dict[str, Any]],
     ) -> list[list[dict[str, Any]]]:
         """Partition events by reset events to separate installation attempts."""

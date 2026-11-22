@@ -1,52 +1,4 @@
 ---
-parameters:
-- name: IMAGE
-  value: "quay.io/redhat-services-prod/assisted-installer-tenant/saas/assisted-service-mcp"
-  description: "Container image for the assisted service Model Context Protocol (MCP) server"
-- name: IMAGE_TAG
-  value: ""
-  required: true
-  description: "Tag of the container image to deploy"
-- name: INVENTORY_URL
-  value: "https://api.openshift.com/api/assisted-install/v2"
-  description: "URL for the assisted installer inventory API endpoint"
-- name: SSO_URL
-  value: "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
-  description: "URL for Red Hat Single Sign-On (SSO) OpenID Connect token endpoint"
-- name: PULL_SECRET_URL
-  value: "https://api.openshift.com/api/accounts_mgmt/v1/access_token"
-  description: "URL for accessing pull secrets via the accounts management API"
-- name: REPLICAS_COUNT
-  value: "1"
-  description: "Number of pod replicas to deploy for high availability"
-- name: CLIENT_DEBUG
-  value: "false"
-  description: "Whether to enable debug logging for the MCP client (True/False)"
-- name: LOGGING_LEVEL
-  value: "debug"
-  description: "Log level for the MCP server"
-- name: SERVICE_PORT
-  value: "8000"
-  description: "Port number on which the MCP service listens"
-- name: MEMORY_LIMIT
-  value: "512Mi"
-  description: "Maximum memory allocation for the container"
-- name: CPU_LIMIT
-  value: "1000m"
-  description: "Maximum CPU allocation for the container (in millicores)"
-- name: MEMORY_REQUEST
-  value: "128Mi"
-  description: "Initial memory request for the container"
-- name: CPU_REQUEST
-  value: "100m"
-  description: "Initial CPU request for the container (in millicores)"
-- name: TRANSPORT
-  value: "streamable-http"
-  description: "MCP Server transport type, can be sse or streamable-http"
-- name: ENABLE_TROUBLESHOOTING_TOOLS
-  value: "0"
-  description: "Whether the troubleshooting tool call(s) should be enabled"
-
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -120,3 +72,50 @@ objects:
         name: assisted-service-mcp
         port: ${{SERVICE_PORT}}
         targetPort: ${{SERVICE_PORT}}
+parameters:
+- name: IMAGE
+  value: "quay.io/redhat-services-prod/assisted-installer-tenant/saas/assisted-service-mcp"
+  description: "Container image for the assisted service Model Context Protocol (MCP) server"
+- name: IMAGE_TAG
+  value: ""
+  required: true
+  description: "Tag of the container image to deploy"
+- name: INVENTORY_URL
+  value: "https://api.openshift.com/api/assisted-install/v2"
+  description: "URL for the assisted installer inventory API endpoint"
+- name: SSO_URL
+  value: "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
+  description: "URL for Red Hat Single Sign-On (SSO) OpenID Connect token endpoint"
+- name: PULL_SECRET_URL
+  value: "https://api.openshift.com/api/accounts_mgmt/v1/access_token"
+  description: "URL for accessing pull secrets via the accounts management API"
+- name: REPLICAS_COUNT
+  value: "1"
+  description: "Number of pod replicas to deploy for high availability"
+- name: CLIENT_DEBUG
+  value: "false"
+  description: "Whether to enable debug logging for the MCP client (True/False)"
+- name: LOGGING_LEVEL
+  value: "debug"
+  description: "Log level for the MCP server"
+- name: SERVICE_PORT
+  value: "8000"
+  description: "Port number on which the MCP service listens"
+- name: MEMORY_LIMIT
+  value: "512Mi"
+  description: "Maximum memory allocation for the container"
+- name: CPU_LIMIT
+  value: "1000m"
+  description: "Maximum CPU allocation for the container (in millicores)"
+- name: MEMORY_REQUEST
+  value: "128Mi"
+  description: "Initial memory request for the container"
+- name: CPU_REQUEST
+  value: "100m"
+  description: "Initial CPU request for the container (in millicores)"
+- name: TRANSPORT
+  value: "streamable-http"
+  description: "MCP Server transport type, can be sse or streamable-http"
+- name: ENABLE_TROUBLESHOOTING_TOOLS
+  value: "0"
+  description: "Whether the troubleshooting tool call(s) should be enabled"

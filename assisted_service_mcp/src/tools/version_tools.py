@@ -1,4 +1,4 @@
-"""Version and operator management tools for Assisted Service MCP Server."""
+"""Version and operator management tools for the MCP server for Red Hat OpenShift assisted installer."""
 
 from collections.abc import Callable
 
@@ -9,7 +9,7 @@ from assisted_service_mcp.src.metrics import track_tool_usage
 from assisted_service_mcp.src.service_client.assisted_service_api import InventoryClient
 
 
-def format_version_list(versions_data: models.OpenshiftVersions) -> str:
+def _format_version_list(versions_data: models.OpenshiftVersions) -> str:
     """Format OpenShift versions data as a markdown table.
 
     Args:
@@ -94,7 +94,7 @@ async def list_versions(get_access_token_func: Callable[[], str]) -> str:
     try:
         result = await client.get_openshift_versions(True)
         log.info("Successfully retrieved OpenShift versions")
-        return format_version_list(result)
+        return _format_version_list(result)
     except Exception as e:
         log.error("Failed to retrieve OpenShift versions: %s", str(e))
         raise

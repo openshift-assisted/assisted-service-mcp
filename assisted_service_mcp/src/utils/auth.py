@@ -1,4 +1,4 @@
-"""Authentication utilities for Assisted Service MCP Server."""
+"""Authentication utilities for the MCP server for Red Hat OpenShift assisted installer."""
 
 from collections.abc import Callable
 
@@ -111,8 +111,12 @@ def get_access_token(offline_token_func: Callable[[], str] | None = None) -> str
 
     try:
         response_data = response.json()
-        access_token = response_data["access_token"]
-    except (KeyError, ValueError) as e:
+        if not isinstance(response_data, dict):
+            raise TypeError("expected a JSON object")
+        access_token = response_data.get("access_token")
+        if not isinstance(access_token, str) or not access_token.strip():
+            raise ValueError("access_token must be a non-empty string")
+    except (TypeError, ValueError) as e:
         log.error("Invalid SSO response format: %s", e)
         raise RuntimeError(
             "Invalid SSO response: missing or malformed access_token"
