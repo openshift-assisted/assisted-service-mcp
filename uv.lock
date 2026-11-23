@@ -198,7 +198,7 @@ wheels = [
 
 [[package]]
 name = "assisted-service-client"
-version = "2.56.0.post140"
+version = "2.56.0.post142"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -206,9 +206,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/01/b2caaba69d463f759128a7710d0cea4207884441e1ede37ffb32d0bbb8ba/assisted_service_client-2.56.0.post140.tar.gz", hash = "sha256:42bfae757193b0368fb80ff7fd570e8a6d9ff8f399d629b7861812d6584bdbe3", size = 173028, upload-time = "2026-11-14T23:36:28.682Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/28/23cd71022b38ca42a160400abe581fc31fbe0670db3c0436a90b181968cd/assisted_service_client-2.56.0.post142.tar.gz", hash = "sha256:59258eacdeecffc80b9fd904d694340655143fd309df63cd4c5a951873670fe0", size = 173076, upload-time = "2026-11-22T09:13:01.566Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/e7/b386d5323db8f4badf307eebe6010ca00a53a039ba45171e58e90fa90569/assisted_service_client-2.56.0.post140-py3-none-any.whl", hash = "sha256:11d9514c2509100f921fd4cc0f4ddd0bbdb33c37f413b8571abce253b1db3a5b", size = 472887, upload-time = "2026-11-14T23:36:25.672Z" },
+    { url = "https://files.pythonhosted.org/packages/99/62/b3ffc139f9f8faa093db4ec2b28609254edd14738d4a5e8d3abf1a7914e5/assisted_service_client-2.56.0.post142-py3-none-any.whl", hash = "sha256:faf93ef0ab2d4968ef0ee408952a054b6fc02b3b3961e20c5a42aa0a438b8f3d", size = 472889, upload-time = "2026-11-22T09:12:59.719Z" },
 ]
 
 [[package]]
@@ -860,11 +860,11 @@ wheels = [
 
 [[package]]
 name = "decorator"
-version = "5.3.1"
+version = "5.3.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/60/8b/32f9823da46cde7df2087faa08cd98d01b908f8dcab982cdba9c84e85355/decorator-5.3.1.tar.gz", hash = "sha256:4cbcdd55a6efadb9dbea26b858f4fb3264567b52d69ca0d25b721b553f60ea82", size = 58084, upload-time = "2026-05-18T06:03:28.057Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/a2/dc08c667e7e51cb035ffab38ae98d7d0f249092591130db4f67dc26b0021/decorator-5.3.2.tar.gz", hash = "sha256:d9883f1b8259e3bfc42565d0bc6fdc760012008552aa449f75efd2d48319b82b", size = 62733, upload-time = "2026-11-21T05:12:51.05Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl", hash = "sha256:f47fe6fdbd2edd623ecfe36875d37aba411624e2670dd395dddae1358689bb3c", size = 10365, upload-time = "2026-05-18T06:03:26.517Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/bb/03ad4489fe19a410fe0065bbfb5424d28455eac9115e9cee7a56b6b1ec37/decorator-5.3.2-py3-none-any.whl", hash = "sha256:d3fb2a434ac31e231d14175ecbda823d83f26b7e45270cd7cd4d0350264b79e2", size = 11830, upload-time = "2026-11-21T05:12:50.003Z" },
 ]
 
 [[package]]
@@ -2616,15 +2616,15 @@ wheels = [
 
 [[package]]
 name = "sse-starlette"
-version = "3.7.0"
+version = "3.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/43/a232e3cd804293bd4f6d01e8895bc0f6f83ea148d712baf9d783c7d93d23/sse_starlette-3.7.0.tar.gz", hash = "sha256:326416da2ab52e9a41b3f409d3ff897eda45aa68c9f3b7b17d0913aab8d219c3", size = 43869, upload-time = "2026-11-07T11:15:49.389Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/c0/eb8c9eec5c0e29ce2a1c4d4654ddfb06c77b52b4db63ab40226198456be6/sse_starlette-3.7.1.tar.gz", hash = "sha256:9a8256e3e80a0fdc8d1dec14f2bb0b3f304c99f23a6d4d26c61ff50145761597", size = 45764, upload-time = "2026-11-22T19:19:59.535Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/11/25cabac0a24fa76f58637d8671b549c90d818d69d26beecf0c59a3b186e0/sse_starlette-3.7.0-py3-none-any.whl", hash = "sha256:f1d3136caa12d129284fca3d2ded79bc9af943320b6472712955fea52a6d3eea", size = 18432, upload-time = "2026-11-07T11:15:47.86Z" },
+    { url = "https://files.pythonhosted.org/packages/78/4d/6b0380b7dbb965b84c3368c0bfd85aa6ba1b9b825e9b8f42b8643efbab11/sse_starlette-3.7.1-py3-none-any.whl", hash = "sha256:c1bb3af0508c6c24cd4ab6257047654bbec01456a424bed36b36e8020cd7a37f", size = 18969, upload-time = "2026-11-22T19:19:58.344Z" },
 ]
 
 [[package]]
@@ -2668,11 +2668,11 @@ wheels = [
 
 [[package]]
 name = "types-pyyaml"
-version = "6.0.12.20261113"
+version = "6.0.12.20261122"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4d/8b/ba599d956693dbc98e170f32097128bdea0a17f9d42b0b490fa749c12b1a/types_pyyaml-6.0.12.20261113.tar.gz", hash = "sha256:0828be2580fd94151182364f4d0158e4de62fdbeeb8d4296f7f7d2b6c22bb640", size = 19017, upload-time = "2026-11-13T08:51:21.488Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3d/fe/e4d32b089d06f3b5d2f3f1909b1cb450ce2e18ea6e2c1863d2b29ad0090e/types_pyyaml-6.0.12.20261122.tar.gz", hash = "sha256:7fa577c893a1db255cbb02320884ffcb97b7a219fe515bec6c5f15d5d3af41ed", size = 19093, upload-time = "2026-11-22T08:57:28.481Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/2e/36fc0941a40ef066dbc8abac41bbbefb41389f547c779aef832aea6b873d/types_pyyaml-6.0.12.20261113-py3-none-any.whl", hash = "sha256:3600749e613748afdc4327f0b17c3296cf880cdbc7335f320007abd9dd815f67", size = 21321, upload-time = "2026-11-13T08:51:20.417Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/71/8dc5553ca25c3a4799ce789f8300d2c3933d427585222c431c77450ed60d/types_pyyaml-6.0.12.20261122-py3-none-any.whl", hash = "sha256:689fbbe883b60471166dede9dba6ac0dbdbcf0ea98062d7ec195430f5bbdb009", size = 21356, upload-time = "2026-11-22T08:57:27.509Z" },
 ]
 
 [[package]]
