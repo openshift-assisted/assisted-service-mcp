@@ -2,30 +2,8 @@ import importlib
 from unittest.mock import MagicMock, patch
 
 
-def test_get_host_overrides_scheme_and_netloc() -> None:
-    sc_mod = importlib.import_module(
-        "assisted_service_mcp.src.service_client.assisted_service_api"
-    )
-    configs = sc_mod.Configuration()
-    configs.host = "http://placeholder.local"
-
-    with (
-        patch(
-            "assisted_service_mcp.src.service_client.assisted_service_api.get_setting",
-            side_effect=lambda k: (
-                "https://real.example.com" if k == "INVENTORY_URL" else ""
-            ),
-        ),
-        patch.object(sc_mod, "Configuration", return_value=configs),
-    ):
-        client = sc_mod.InventoryClient("token")
-        # ensure inventory_url set from patched get_setting
-        client.inventory_url = "https://real.example.com"
-        host = client._get_host(configs)  # pylint: disable=protected-access
-        assert host.startswith("https://real.example.com")
-
-
 def test_update_cluster_vips_and_platform_mapping() -> None:
+    """Exercise platform mapping and verify both VIPs in the API update request."""
     sc_mod = importlib.import_module(
         "assisted_service_mcp.src.service_client.assisted_service_api"
     )

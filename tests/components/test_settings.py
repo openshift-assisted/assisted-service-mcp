@@ -23,7 +23,7 @@ def test_settings_defaults() -> None:
     assert settings.MCP_HOST == "0.0.0.0"
     assert settings.MCP_PORT == 8000
     assert settings.TRANSPORT in {"sse", "streamable-http"}
-    assert settings.INVENTORY_URL.endswith("/api/assisted-install/v2")
+    assert settings.INVENTORY_URL == "https://api.openshift.com/"
     assert settings.PULL_SECRET_URL.endswith("/api/accounts_mgmt/v1/access_token")
     assert settings.CLIENT_DEBUG is False
     assert settings.SSO_URL.startswith("https://")
@@ -35,14 +35,14 @@ def test_settings_env_overrides() -> None:
             "MCP_HOST": "127.0.0.1",
             "MCP_PORT": "9000",
             "TRANSPORT": "streamable-http",
-            "INVENTORY_URL": "https://custom.example.com/v2",
+            "INVENTORY_URL": "https://custom.example.com",
             "CLIENT_DEBUG": "true",
         }
     )
     assert settings.MCP_HOST == "127.0.0.1"
     assert settings.MCP_PORT == 9000
     assert settings.TRANSPORT == "streamable-http"
-    assert settings.INVENTORY_URL == "https://custom.example.com/v2"
+    assert settings.INVENTORY_URL == "https://custom.example.com"
     assert settings.CLIENT_DEBUG is True
 
 

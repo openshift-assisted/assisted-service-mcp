@@ -63,6 +63,19 @@ class InventoryClient:
             result = await asyncio.to_thread(func, *args, **kwargs)
         return result
 
+    def _build_assisted_service_api_url(self, configs: Configuration) -> str:
+        """
+        Build the Assisted Service API URL from INVENTORY_URL and the SDK's API base path.
+        This method combines the scheme and host from INVENTORY_URL with the API path from the SDK’s configured default host
+        """
+
+        parsed_host = urlparse(configs.host)
+        parsed_inventory_url = urlparse(self.inventory_url)
+        return parsed_host._replace(
+            netloc=parsed_inventory_url.netloc,
+            scheme=parsed_inventory_url.scheme,
+        ).geturl()
+
     @property
     def pull_secret(self) -> str:
         """Lazy-load the pull secret when first accessed."""
@@ -86,7 +99,7 @@ class InventoryClient:
 
     def _get_client(self) -> ApiClient:
         configs = Configuration()
-        configs.host = self._get_host(configs)
+        configs.host = self._build_assisted_service_api_url(configs)
         configs.debug = self.client_debug
         configs.api_key_prefix["Authorization"] = "Bearer"
         configs.api_key["Authorization"] = self.access_token
@@ -107,13 +120,6 @@ class InventoryClient:
     def _versions_api(self) -> api.VersionsApi:
         api_client = self._get_client()
         return api.VersionsApi(api_client=api_client)
-
-    def _get_host(self, configs: Configuration) -> str:
-        parsed_host = urlparse(configs.host)
-        parsed_inventory_url = urlparse(self.inventory_url)
-        return parsed_host._replace(
-            netloc=parsed_inventory_url.netloc, scheme=parsed_inventory_url.scheme
-        ).geturl()
 
     @sanitize_exceptions
     async def get_presigned_cluster_logs_url(self, cluster_id: str) -> str:
@@ -175,16 +181,6 @@ class InventoryClient:
         result = await self._api_call(self._installer_api().v2_list_clusters)
         log.info("Successfully listed clusters")
         return cast(list, result)
-
-    @sanitize_exceptions
-    async def get_cluster_logs(
-        self, cluster_id: str
-    ) -> nestedarchive.RemoteNestedArchive:
-        logs_url = await self.get_presigned_cluster_logs_url(cluster_id)
-        log.info("Downloading logs for cluster %s", cluster_id)
-        return nestedarchive.RemoteNestedArchive(
-            cast(str, logs_url), init_download=True
-        )
 
     @sanitize_exceptions
     async def get_events(
@@ -575,3 +571,13 @@ class InventoryClient:
             infra_env_id,
         )
         return cast(models.PresignedUrl, result)
+
+    @sanitize_exceptions
+    async def get_cluster_logs(
+        self, cluster_id: str
+    ) -> nestedarchive.RemoteNestedArchive:
+        logs_url = await self.get_presigned_cluster_logs_url(cluster_id)
+        log.info("Downloading logs for cluster %s", cluster_id)
+        return nestedarchive.RemoteNestedArchive(
+            cast(str, logs_url), init_download=True
+        )

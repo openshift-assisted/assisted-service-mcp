@@ -2,7 +2,9 @@
 
 MCP server for interacting with the OpenShift assisted installer API.
 
-Diagnose cluster failures and find out how to fix them.
+## Scope
+
+This MCP handles self-managed OpenShift clusters (OCP and SNO) through the Assisted Installer API. It does not handle OCM-managed services such as ROSA, ARO, or OSD; those require a separate MCP server using the OCM API.
 
 ## Getting Started
 
@@ -13,23 +15,32 @@ Diagnose cluster failures and find out how to fix them.
    cd assisted-service-mcp
    ```
 
-2. Get a Red Hat offline token for the MCP server from <https://cloud.redhat.com/openshift/token>. Alternatively, send a valid Red Hat API access token in an `Authorization: Bearer <token>` request header (see step 4).
+2. Get a Red Hat offline token from <https://cloud.redhat.com/openshift/token>. For trusted local deployments, you can set the token as the server's `OFFLINE_TOKEN` in step 3. For network-accessible deployments, have each MCP client send its own token in step 4.
 
-3. Start and configure the server for the transport you want to use. The JSON blocks below are illustrative server-entry fragments; configuration syntax varies by MCP client, so adapt the relevant entry to your client configuration.
+3. Configure and start the server.
+
+    **Server environment variables**
+
+    | Variable | Purpose | Default |
+    | --- | --- | --- |
+    | `TRANSPORT` | `streamable-http` (recommended) or `sse` (legacy HTTP+SSE). | `streamable-http` |
+    | `INVENTORY_URL` | Assisted Service API base URL (scheme, hostname and optional port), in `<scheme>://<hostname>[:port]` format. <br>Set this env var to use a different endpoint than the default. <br>The MCP server uses this base URL, while the assisted service client library will add the relevant URL path for each tool. | `https://api.openshift.com` (Red Hat hosted service) |
+    | `OFFLINE_TOKEN` | Optional server-side OCM offline token. <br>Set it to the token from step 2 as a fallback; if a client does not provide its own token, the server uses it for API calls. <br>**Note:** Use this only for local deployments where every caller is trusted, because anyone who can reach the server could use this credential. For network-accessible deployments, leave it unset and have each client send its own token. | Unset |
+
+    To override `INVENTORY_URL`, prefix the `uv` command with `INVENTORY_URL="https://<hostname>[:port]"` or add `-e INVENTORY_URL="https://<hostname>[:port]"` to `podman run`.
 
     **For Streamable HTTP (recommended and the default)**
 
     Start the server in a terminal:
 
     ```bash
-    MCP_HOST=127.0.0.1 OFFLINE_TOKEN='<your token>' uv run python -m assisted_service_mcp.src.main
+    MCP_HOST=127.0.0.1 OFFLINE_TOKEN='<your token>'  uv run python -m assisted_service_mcp.src.main
     ```
 
-    Alternatively, run the locally built image with Podman.
+    Alternatively, run the locally built image with Podman:
 
     ```bash
     export OFFLINE_TOKEN='<your token>'
-
     podman run --rm --name assisted-service-mcp \
       -p 127.0.0.1:8000:8000 \
       -e LOG_TO_FILE=false \
@@ -38,16 +49,7 @@ Diagnose cluster failures and find out how to fix them.
       localhost/assisted-service-mcp:tag
     ```
 
-    Configure the server in the client:
-
-    ```json
-    "assisted-http": {
-      "transport": "streamable-http",
-      "url": "http://localhost:8000/mcp"
-    }
-    ```
-
-    Streamable HTTP is the default transport. It was introduced in MCP protocol version `2025-03-26` to replace the legacy HTTP+SSE transport from version `2024-11-05`.
+    Streamable HTTP was introduced in MCP protocol version `2025-03-26` to replace the legacy HTTP+SSE transport from version `2024-11-05`.
 
     See the MCP specification's [HTTP authorization guidance](https://modelcontextprotocol.io/specification/2026-07-28/basic).
 
@@ -65,7 +67,6 @@ Diagnose cluster failures and find out how to fix them.
 
     ```bash
     export OFFLINE_TOKEN='<your token>'
-
     podman run --rm --name assisted-service-mcp \
       -p 127.0.0.1:8000:8000 \
       -e LOG_TO_FILE=false \
@@ -74,33 +75,18 @@ Diagnose cluster failures and find out how to fix them.
       localhost/assisted-service-mcp:tag
     ```
 
-    The `TRANSPORT` environment variable defaults to `streamable-http`. Set `TRANSPORT=sse` to use the legacy HTTP+SSE transport.
 
-    Configure the server in the client:
+4. Configure the MCP client and token handling.
 
-    ```json
-    "assisted-sse": {
-      "transport": "sse",
-      "url": "http://localhost:8000/sse"
-    }
-    ```
-
-4. Token handling
-
-    The examples above bind to localhost for local use. When `OFFLINE_TOKEN` is set on the server, a caller that can reach it can invoke tools without providing its own token since the server uses its configured token. For network deployments, leave `OFFLINE_TOKEN` unset and configure each client to send its own `OCM-Offline-Token` or `Authorization: Bearer` header.
-
-    If both a non-empty `OCM-Offline-Token` request header and `OFFLINE_TOKEN` are configured, the header takes precedence. If that header is absent or empty, the server uses `OFFLINE_TOKEN`. A valid `Authorization: Bearer <token>` header takes precedence over both and is used directly as the API access token.
-
-    To provide a token from the client, add a header to its MCP server configuration. Client configuration syntax may vary.
+    Add the server to the client's MCP configuration. Client configuration syntax may vary.
 
     For Streamable HTTP:
 
     ```json
-    "assisted-http": {
-      "transport": "streamable-http",
-      "url": "http://localhost:8000/mcp",
-      "headers": {
-        "OCM-Offline-Token": "<your token>"
+    {
+      "assisted-http": {
+        "transport": "streamable-http",
+        "url": "http://localhost:8000/mcp"
       }
     }
     ```
@@ -108,20 +94,51 @@ Diagnose cluster failures and find out how to fix them.
     For SSE:
 
     ```json
-    "assisted-sse": {
-      "transport": "sse",
-      "url": "http://localhost:8000/sse",
-      "headers": {
-        "OCM-Offline-Token": "<your token>"
+    {
+      "assisted-sse": {
+        "transport": "sse",
+        "url": "http://localhost:8000/sse"
       }
     }
     ```
 
-    Alternatively, use an `Authorization` header with `Bearer <your Red Hat API access token>`.
+    For network-accessible deployments, leave the server-side `OFFLINE_TOKEN` unset and add the `OCM-Offline-Token` header to each client configuration:
+
+    For Streamable HTTP:
+
+    ```json
+    {
+      "assisted-http": {
+        "transport": "streamable-http",
+        "url": "https://mcp.example.com/mcp",
+        "headers": {
+          "OCM-Offline-Token": "<your token>"
+        }
+      }
+    }
+    ```
+
+    For SSE:
+
+    ```json
+    {
+      "assisted-sse": {
+        "transport": "sse",
+        "url": "https://mcp.example.com/sse",
+        "headers": {
+          "OCM-Offline-Token": "<your token>"
+        }
+      }
+    }
+    ```
+
+    Alternatively, use a Red Hat API access token (not an offline token) by sending it in the `Authorization: Bearer <token>` header.
+
+    **Note:** If both a non-empty `OCM-Offline-Token` request header from the client and `OFFLINE_TOKEN` on the server are configured, the header takes precedence. If that header is absent or empty, the server uses `OFFLINE_TOKEN`. A well-formed `Authorization: Bearer <token>` header takes precedence over both, and its token is used directly as the API access token.
 
 5. Ask about your clusters
 
-    In an MCP-compatible AI client connected to this server, ask for example: “List my Assisted Installer clusters.” After getting a cluster ID, ask: “Show me details about cluster `<cluster-id-from-list_clusters>`.”
+    In an MCP-compatible AI client connected to this server, try asking, for example: “List my Assisted Installer clusters.” After getting a cluster ID, ask: “Show me details about cluster `<cluster-id-from-list_clusters>`.”
 
     ![Copilot checking Assisted Installer cluster status with cluster_info](images/cluster-prompt-example.png)
 
