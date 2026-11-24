@@ -6,7 +6,7 @@ directly and do not start the MCP server.
 
 import json
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
 
@@ -84,6 +84,10 @@ async def test_cluster_iso_download_url_omits_zero_expiration() -> None:
     assert data[0] == {"url": "https://u/iso1"}
     assert data[1]["url"] == "https://u/iso2"
     assert data[1]["expires_at"].startswith("2025-01-15T12:00:00")
+    assert client.get_infra_env_download_url.await_args_list == [
+        call("ie1"),
+        call("ie2"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -120,6 +124,10 @@ async def test_cluster_iso_download_url_skips_failed_infra_env() -> None:
     result, _inventory_client = await _invoke(client)
 
     assert json.loads(result) == [{"url": "https://u/iso2"}]
+    assert client.get_infra_env_download_url.await_args_list == [
+        call("ie1"),
+        call("ie2"),
+    ]
 
 
 @pytest.mark.asyncio

@@ -47,6 +47,9 @@ async def _invoke(
         result = await download_tools.cluster_credentials_download_url(
             _token, cluster_id, file_name
         )
+    client.get_presigned_for_cluster_credentials.assert_awaited_once_with(
+        cluster_id, file_name
+    )
     return result, inventory_client
 
 
@@ -60,9 +63,6 @@ async def test_cluster_credentials_download_url_returns_url_without_expiration()
 
     assert json.loads(result) == {"url": "https://u/kubeconfig"}
     inventory_client.assert_called_once_with(TOKEN)
-    client.get_presigned_for_cluster_credentials.assert_awaited_once_with(
-        CLUSTER_ID, FILE_NAME
-    )
 
 
 @pytest.mark.asyncio

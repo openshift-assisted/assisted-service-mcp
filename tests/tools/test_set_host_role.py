@@ -36,7 +36,7 @@ async def _invoke(
     *,
     infra_env_id: str | None = INFRA_ENV_ID,
     infra_env_error: Exception | None = None,
-) -> tuple[str, Mock]:
+) -> tuple[str, Mock, AsyncMock]:
     lookup = AsyncMock(return_value=infra_env_id)
     if infra_env_error is not None:
         lookup = AsyncMock(side_effect=infra_env_error)
@@ -51,17 +51,18 @@ async def _invoke(
         ) as inventory_client,
     ):
         result = await host_tools.set_host_role(_token, HOST_ID, CLUSTER_ID, ROLE)
-    return result, inventory_client
+    return result, inventory_client, lookup
 
 
 @pytest.mark.asyncio
 async def test_set_host_role_returns_updated_host_text() -> None:
     client = _client()
 
-    result, inventory_client = await _invoke(client)
+    result, inventory_client, infra_env_lookup = await _invoke(client)
 
     assert result == "HOST-UPDATED"
     inventory_client.assert_called_once_with(TOKEN)
+    infra_env_lookup.assert_awaited_once_with(client, CLUSTER_ID)
     client.update_host.assert_awaited_once_with(HOST_ID, INFRA_ENV_ID, host_role=ROLE)
 
 

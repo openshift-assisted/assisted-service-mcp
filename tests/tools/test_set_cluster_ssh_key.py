@@ -38,7 +38,7 @@ async def _invoke(
     *,
     infra_env_id: str | None = "ie1",
     infra_env_error: Exception | None = None,
-) -> tuple[str, Mock]:
+) -> tuple[str, Mock, AsyncMock]:
     infra_env_lookup = AsyncMock(return_value=infra_env_id)
     if infra_env_error is not None:
         infra_env_lookup = AsyncMock(side_effect=infra_env_error)
@@ -55,7 +55,7 @@ async def _invoke(
         result = await cluster_tools.set_cluster_ssh_key(
             _token, CLUSTER_ID, ssh_public_key
         )
-    return result, inventory_client
+    return result, inventory_client, infra_env_lookup
 
 
 @pytest.mark.asyncio
@@ -63,10 +63,11 @@ async def test_set_cluster_ssh_key_updates_cluster_and_infra_env() -> None:
     client = _client()
     cluster = client.update_cluster.return_value
 
-    result, inventory_client = await _invoke(client, VALID_SSH_KEY)
+    result, inventory_client, infra_env_lookup = await _invoke(client, VALID_SSH_KEY)
 
     assert result == cluster.to_str()
     inventory_client.assert_called_once_with(TOKEN)
+    infra_env_lookup.assert_awaited_once_with(client, CLUSTER_ID)
     client.update_cluster.assert_awaited_once_with(
         CLUSTER_ID, ssh_public_key=VALID_SSH_KEY
     )
@@ -111,7 +112,7 @@ async def test_set_cluster_ssh_key_missing_infra_env_returns_partial_update() ->
     client = _client()
     cluster = client.update_cluster.return_value
 
-    result, _inventory_client = await _invoke(
+    result, _inventory_client, _infra_env_lookup = await _invoke(
         client,
         SHORT_VALID_SSH_KEY,
         infra_env_error=ValueError("No InfraEnv found for cluster cid"),
@@ -133,7 +134,9 @@ async def test_set_cluster_ssh_key_infra_env_update_failure_returns_partial_upda
     client.update_infra_env.side_effect = AssistedServiceAPIError("Update failed")
     cluster = client.update_cluster.return_value
 
-    result, _inventory_client = await _invoke(client, SHORT_VALID_SSH_KEY)
+    result, _inventory_client, _infra_env_lookup = await _invoke(
+        client, SHORT_VALID_SSH_KEY
+    )
 
     assert result == (
         "Cluster key updated, but boot image key update failed. "
