@@ -1,0 +1,72 @@
+"""Unit tests for the add_operator_bundle_to_cluster tool.
+
+The Assisted Service client is mocked. These tests call the tool function
+directly and do not start the MCP server.
+"""
+
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
+from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
+from assisted_service_mcp.src.tools import operator_tools
+
+TOKEN = "test-access-token"
+CLUSTER_ID = "cid"
+BUNDLE_NAME = "virtualization"
+
+
+def _token() -> str:
+    return TOKEN
+
+
+def _client(text: str = "OP-ADDED") -> Mock:
+    updated = Mock()
+    updated.to_str.return_value = text
+    client = Mock()
+    client.add_operator_bundle_to_cluster = AsyncMock(return_value=updated)
+    return client
+
+
+async def _invoke(
+    client: Mock,
+    *,
+    cluster_id: str = CLUSTER_ID,
+    bundle_name: str = BUNDLE_NAME,
+) -> tuple[str, Mock]:
+    with patch(
+        "assisted_service_mcp.src.tools.operator_tools.InventoryClient",
+        return_value=client,
+    ) as inventory_client:
+        result = await operator_tools.add_operator_bundle_to_cluster(
+            _token, cluster_id, bundle_name
+        )
+    return result, inventory_client
+
+
+@pytest.mark.asyncio
+async def test_add_operator_bundle_to_cluster_returns_updated_cluster_text() -> None:
+    client = _client()
+
+    result, inventory_client = await _invoke(client)
+
+    assert result == "OP-ADDED"
+    inventory_client.assert_called_once_with(TOKEN)
+    client.add_operator_bundle_to_cluster.assert_awaited_once_with(
+        CLUSTER_ID, BUNDLE_NAME
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_operator_bundle_to_cluster_api_error_propagates() -> None:
+    client = _client()
+    client.add_operator_bundle_to_cluster.side_effect = AssistedServiceAPIError(
+        "bundle failed"
+    )
+
+    with pytest.raises(AssistedServiceAPIError, match="bundle failed"):
+        await _invoke(client)
+
+    client.add_operator_bundle_to_cluster.assert_awaited_once_with(
+        CLUSTER_ID, BUNDLE_NAME
+    )

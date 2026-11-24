@@ -23,3 +23,7 @@ assisted-service-mcp.log
 .env
 # Visual Studio Code
 .vscode/
+
+# Local editor and agent config (may contain tokens)
+.cursor/
+.codex/
