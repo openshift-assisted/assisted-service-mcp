@@ -12,6 +12,9 @@ def test_token() -> str:
     return TEST_TOKEN
 
 
+test_token.__test__ = False
+
+
 @contextmanager
 def patch_inventory_client(import_path: str, client: Mock) -> Iterator[Mock]:
     """Patch InventoryClient where a tool module imports it."""
