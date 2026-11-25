@@ -1,4 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "schedule": ["on Saturday"]
+  "schedule": [
+    "on Saturday"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "extends": [
+      "schedule:monthly"
+    ]
+  }
 }
