@@ -12,8 +12,7 @@ def test_token() -> str:
     return TEST_TOKEN
 
 
-# Assigned dynamically so pytest skips this helper without a typed attribute.
-setattr(test_token, "__test__", False)
+test_token.__test__ = False  # pyright: ignore[reportFunctionMemberAccess]
 
 
 @contextmanager
