@@ -12,7 +12,8 @@ def test_token() -> str:
     return TEST_TOKEN
 
 
-test_token.__test__ = False
+# Assigned dynamically so pytest skips this helper without a typed attribute.
+setattr(test_token, "__test__", False)
 
 
 @contextmanager
