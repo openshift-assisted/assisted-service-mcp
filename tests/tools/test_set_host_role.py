@@ -11,16 +11,13 @@ import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import host_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, patch_inventory_client, test_token
 
-TOKEN = "test-access-token"
+HOST_TOOLS_CLIENT = "assisted_service_mcp.src.tools.host_tools.InventoryClient"
 HOST_ID = "hid"
 CLUSTER_ID = "cid"
 INFRA_ENV_ID = "ie1"
 ROLE: Literal["auto-assign", "master", "worker"] = "worker"
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(text: str = "HOST-UPDATED") -> Mock:
@@ -45,12 +42,9 @@ async def _invoke(
             "assisted_service_mcp.src.tools.host_tools._get_cluster_infra_env_id",
             new=lookup,
         ),
-        patch(
-            "assisted_service_mcp.src.tools.host_tools.InventoryClient",
-            return_value=client,
-        ) as inventory_client,
+        patch_inventory_client(HOST_TOOLS_CLIENT, client) as inventory_client,
     ):
-        result = await host_tools.set_host_role(_token, HOST_ID, CLUSTER_ID, ROLE)
+        result = await host_tools.set_host_role(test_token, HOST_ID, CLUSTER_ID, ROLE)
     return result, inventory_client, lookup
 
 
@@ -61,7 +55,7 @@ async def test_set_host_role_returns_updated_host_text() -> None:
     result, inventory_client, infra_env_lookup = await _invoke(client)
 
     assert result == "HOST-UPDATED"
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     infra_env_lookup.assert_awaited_once_with(client, CLUSTER_ID)
     client.update_host.assert_awaited_once_with(HOST_ID, INFRA_ENV_ID, host_role=ROLE)
 

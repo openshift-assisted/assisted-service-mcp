@@ -59,11 +59,6 @@ ignore-paths = [
     "integration_test",
 ]
 
-[tool.pylint.similarities]
-# Each tool test keeps its own mocked-client setup. Those helpers are
-# similar for about 20 lines, then the patch path and assertions differ.
-min-similarity-lines = 30
-
 [tool.pylint.messages_control]
 disable = [
     "missing-module-docstring",  # We'll add these selectively

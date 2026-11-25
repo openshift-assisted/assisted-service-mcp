@@ -6,14 +6,19 @@ directly and do not start the MCP server.
 
 import json
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import download_tools
+from tests.tools.tool_test_helpers import (
+    TEST_TOKEN,
+    patch_inventory_client,
+    test_token,
+)
 
-TOKEN = "test-access-token"
+DOWNLOAD_TOOLS_CLIENT = "assisted_service_mcp.src.tools.download_tools.InventoryClient"
 CLUSTER_ID = "cid"
 FILE_NAME = "kubeconfig"
 
@@ -22,10 +27,6 @@ class _PresignedUrl:
     def __init__(self, url: str, expires_at: datetime | None) -> None:
         self.url = url
         self.expires_at = expires_at
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(result: object) -> Mock:
@@ -40,12 +41,9 @@ async def _invoke(
     cluster_id: str = CLUSTER_ID,
     file_name: str = FILE_NAME,
 ) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.download_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
+    with patch_inventory_client(DOWNLOAD_TOOLS_CLIENT, client) as inventory_client:
         result = await download_tools.cluster_credentials_download_url(
-            _token, cluster_id, file_name
+            test_token, cluster_id, file_name
         )
     client.get_presigned_for_cluster_credentials.assert_awaited_once_with(
         cluster_id, file_name
@@ -62,7 +60,7 @@ async def test_cluster_credentials_download_url_returns_url_without_expiration()
     result, inventory_client = await _invoke(client)
 
     assert json.loads(result) == {"url": "https://u/kubeconfig"}
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
 
 
 @pytest.mark.asyncio

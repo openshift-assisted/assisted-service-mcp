@@ -15,12 +15,7 @@ from assisted_service_mcp.src.utils.static_network.template import (
     EthernetInterfaceParams,
     NMStateTemplateParams,
 )
-
-TOKEN = "test-access-token"
-
-
-def _token() -> str:
-    return TOKEN
+from tests.tools.tool_test_helpers import test_token
 
 
 def _params() -> NMStateTemplateParams:
@@ -41,7 +36,7 @@ async def test_generate_nmstate_yaml_returns_generated_yaml() -> None:
         "assisted_service_mcp.src.tools.network_tools.generate_nmstate_from_template",
         return_value="yaml",
     ) as generate:
-        result = await network_tools.generate_nmstate_yaml(_token, params)
+        result = await network_tools.generate_nmstate_yaml(test_token, params)
 
     assert result == "yaml"
     generate.assert_called_once_with(params)
@@ -53,7 +48,7 @@ async def test_generate_nmstate_yaml_template_error_returns_message() -> None:
         "assisted_service_mcp.src.tools.network_tools.generate_nmstate_from_template",
         side_effect=TemplateError("bad template"),
     ):
-        result = await network_tools.generate_nmstate_yaml(_token, _params())
+        result = await network_tools.generate_nmstate_yaml(test_token, _params())
 
     assert result == "ERROR: Failed to generate nmstate yaml: bad template"
 
@@ -64,6 +59,6 @@ async def test_generate_nmstate_yaml_invalid_yaml_returns_message() -> None:
         "assisted_service_mcp.src.tools.network_tools.generate_nmstate_from_template",
         side_effect=yaml.YAMLError("bad yaml"),
     ):
-        result = await network_tools.generate_nmstate_yaml(_token, _params())
+        result = await network_tools.generate_nmstate_yaml(test_token, _params())
 
     assert result == "ERROR: Failed to generate nmstate yaml: bad yaml"

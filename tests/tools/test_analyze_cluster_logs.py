@@ -11,27 +11,21 @@ import pytest
 from assisted_service_mcp.src.mcp import AssistedServiceMCPServer
 from assisted_service_mcp.src.settings import settings
 from assisted_service_mcp.src.tools import cluster_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, patch_inventory_client, test_token
 
-TOKEN = "test-access-token"
+CLUSTER_TOOLS_CLIENT = "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
 CLUSTER_ID = "cid"
-
-
-def _token() -> str:
-    return TOKEN
 
 
 async def _invoke(client: Mock, analyze: AsyncMock) -> tuple[str, Mock]:
     with (
-        patch(
-            "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
-            return_value=client,
-        ) as inventory_client,
+        patch_inventory_client(CLUSTER_TOOLS_CLIENT, client) as inventory_client,
         patch(
             "assisted_service_mcp.src.tools.cluster_tools.runner.analyze_cluster",
             new=analyze,
         ),
     ):
-        result = await cluster_tools.analyze_cluster_logs(_token, CLUSTER_ID)
+        result = await cluster_tools.analyze_cluster_logs(test_token, CLUSTER_ID)
     return result, inventory_client
 
 
@@ -43,7 +37,7 @@ async def test_analyze_cluster_logs_joins_findings() -> None:
     result, inventory_client = await _invoke(client, analyze)
 
     assert result == "first finding\n\nsecond finding"
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     analyze.assert_awaited_once_with(cluster_id=CLUSTER_ID, api_client=client)
 
 

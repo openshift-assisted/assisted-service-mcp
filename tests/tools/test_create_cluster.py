@@ -5,15 +5,16 @@ directly and do not start the MCP server.
 """
 
 from typing import cast
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from assisted_service_mcp.src.service_client.helpers import Helpers
 from assisted_service_mcp.src.tools import cluster_tools
 from tests.create_objects_helpers import create_test_cluster, create_test_infra_env
+from tests.tools.tool_test_helpers import TEST_TOKEN, invoke_with_client, test_token
 
-TOKEN = "test-access-token"
+CLUSTER_TOOLS_CLIENT = "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
 NAME = "test-cluster"
 VERSION = "4.18.2"
 BASE_DOMAIN = "example.com"
@@ -26,10 +27,6 @@ class _UnsetClusterId:
 
     id = None
     openshift_version = VERSION
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(cluster_id: str = "cid-1", openshift_version: str = VERSION) -> Mock:
@@ -62,12 +59,11 @@ async def _invoke(  # pylint: disable=too-many-arguments,too-many-positional-arg
     cpu_architecture: Helpers.VALID_CPU_ARCHITECTURES | None = "x86_64",
     platform: Helpers.VALID_PLATFORMS | None = "baremetal",
 ) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
-        result = await cluster_tools.create_cluster(
-            _token,
+    return await invoke_with_client(
+        CLUSTER_TOOLS_CLIENT,
+        client,
+        cluster_tools.create_cluster(
+            test_token,
             name=name,
             version=version,
             base_domain=base_domain,
@@ -75,8 +71,8 @@ async def _invoke(  # pylint: disable=too-many-arguments,too-many-positional-arg
             ssh_public_key=ssh_public_key,
             cpu_architecture=cpu_architecture,
             platform=platform,
-        )
-    return result, inventory_client
+        ),
+    )
 
 
 def _assert_api_calls(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -138,7 +134,7 @@ async def test_create_cluster_multi_node_baremetal_returns_id_and_forwards_param
     result, inventory_client = await _invoke(client)
 
     assert result == "cid-1"
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     _assert_api_calls(
         client,
         name=NAME,
@@ -168,7 +164,7 @@ async def test_create_cluster_omitted_platform_defaults(
     )
 
     assert result == "cid-1"
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     _assert_api_calls(
         client,
         name=NAME,
@@ -343,7 +339,7 @@ async def test_create_cluster_unset_id_returns_message_without_infra_env() -> No
     result, inventory_client = await _invoke(client, name="edge")
 
     assert result == "Failed to create cluster edge: cluster ID is unset"
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.create_infra_env.assert_not_called()
 
 

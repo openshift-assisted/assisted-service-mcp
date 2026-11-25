@@ -10,8 +10,9 @@ import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import network_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, patch_inventory_client, test_token
 
-TOKEN = "test-access-token"
+NETWORK_TOOLS_CLIENT = "assisted_service_mcp.src.tools.network_tools.InventoryClient"
 CLUSTER_ID = "cid"
 INFRA_ENV_ID = "ie1"
 NMSTATE_YAML = "interfaces: []\n"
@@ -29,10 +30,6 @@ NEW_HOST_CONFIGS = [
     }
 ]
 AFTER_REMOVE_CONFIGS: list[dict[str, object]] = []
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(static_network_config: object) -> Mock:
@@ -59,17 +56,14 @@ async def test_alter_static_network_adds_or_replaces_host_config() -> None:
             "assisted_service_mcp.src.tools.network_tools.add_or_replace_static_host_config_yaml",
             return_value=NEW_HOST_CONFIGS,
         ) as add_or_replace,
-        patch(
-            "assisted_service_mcp.src.tools.network_tools.InventoryClient",
-            return_value=client,
-        ) as inventory_client,
+        patch_inventory_client(NETWORK_TOOLS_CLIENT, client) as inventory_client,
     ):
         result = await network_tools.alter_static_network_config_nmstate_for_host(
-            _token, CLUSTER_ID, None, NMSTATE_YAML
+            test_token, CLUSTER_ID, None, NMSTATE_YAML
         )
 
     assert result == "UPDATED-INFRA"
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     infra_env_lookup.assert_awaited_once_with(client, CLUSTER_ID)
     client.get_infra_env.assert_awaited_once_with(INFRA_ENV_ID)
     add_or_replace.assert_called_once_with(
@@ -95,13 +89,10 @@ async def test_alter_static_network_removes_host_config() -> None:
             "assisted_service_mcp.src.tools.network_tools.remove_static_host_config_by_index",
             return_value=AFTER_REMOVE_CONFIGS,
         ) as remove_config,
-        patch(
-            "assisted_service_mcp.src.tools.network_tools.InventoryClient",
-            return_value=client,
-        ),
+        patch_inventory_client(NETWORK_TOOLS_CLIENT, client),
     ):
         result = await network_tools.alter_static_network_config_nmstate_for_host(
-            _token, CLUSTER_ID, 0, None
+            test_token, CLUSTER_ID, 0, None
         )
 
     assert result == "UPDATED-INFRA"
@@ -122,14 +113,11 @@ async def test_alter_static_network_remove_with_none_index_raises() -> None:
             "assisted_service_mcp.src.tools.network_tools._get_cluster_infra_env_id",
             new=AsyncMock(return_value=INFRA_ENV_ID),
         ),
-        patch(
-            "assisted_service_mcp.src.tools.network_tools.InventoryClient",
-            return_value=client,
-        ),
+        patch_inventory_client(NETWORK_TOOLS_CLIENT, client),
         pytest.raises(ValueError, match="index cannot be null"),
     ):
         await network_tools.alter_static_network_config_nmstate_for_host(
-            _token, CLUSTER_ID, None, None
+            test_token, CLUSTER_ID, None, None
         )
 
     client.update_infra_env.assert_not_called()
@@ -143,14 +131,11 @@ async def test_alter_static_network_remove_with_empty_existing_raises() -> None:
             "assisted_service_mcp.src.tools.network_tools._get_cluster_infra_env_id",
             new=AsyncMock(return_value=INFRA_ENV_ID),
         ),
-        patch(
-            "assisted_service_mcp.src.tools.network_tools.InventoryClient",
-            return_value=client,
-        ),
+        patch_inventory_client(NETWORK_TOOLS_CLIENT, client),
         pytest.raises(ValueError, match="empty existing static network config"),
     ):
         await network_tools.alter_static_network_config_nmstate_for_host(
-            _token, CLUSTER_ID, 0, None
+            test_token, CLUSTER_ID, 0, None
         )
 
     client.update_infra_env.assert_not_called()
@@ -169,12 +154,9 @@ async def test_alter_static_network_update_error_propagates() -> None:
             "assisted_service_mcp.src.tools.network_tools.add_or_replace_static_host_config_yaml",
             return_value=NEW_HOST_CONFIGS,
         ),
-        patch(
-            "assisted_service_mcp.src.tools.network_tools.InventoryClient",
-            return_value=client,
-        ),
+        patch_inventory_client(NETWORK_TOOLS_CLIENT, client),
         pytest.raises(AssistedServiceAPIError, match="update failed"),
     ):
         await network_tools.alter_static_network_config_nmstate_for_host(
-            _token, CLUSTER_ID, None, NMSTATE_YAML
+            test_token, CLUSTER_ID, None, NMSTATE_YAML
         )

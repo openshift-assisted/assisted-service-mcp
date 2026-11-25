@@ -56,9 +56,10 @@ async def _get_cluster_infra_env_id(client: InventoryClient, cluster_id: str) ->
             cluster_id,
         )
 
-    infra_env_id = infra_envs[0].get("id")
-    if not infra_env_id:
-        raise ValueError(f"No InfraEnv with valid ID found for cluster {cluster_id}")
+    for infra_env in infra_envs:
+        infra_env_id = infra_env.get("id")
+        if infra_env_id:
+            log.info("Using InfraEnv %s for cluster %s", infra_env_id, cluster_id)
+            return infra_env_id
 
-    log.info("Using InfraEnv %s for cluster %s", infra_env_id, cluster_id)
-    return infra_env_id
+    raise ValueError(f"No InfraEnv with valid ID found for cluster {cluster_id}")

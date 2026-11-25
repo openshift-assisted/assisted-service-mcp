@@ -12,15 +12,12 @@ from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAP
 from assisted_service_mcp.src.tools import cluster_tools
 from assisted_service_mcp.src.tools.cluster_tools import _validate_ssh_key
 from tests.create_objects_helpers import create_test_cluster
+from tests.tools.tool_test_helpers import TEST_TOKEN, patch_inventory_client, test_token
 
-TOKEN = "test-access-token"
+CLUSTER_TOOLS_CLIENT = "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
 CLUSTER_ID = "cid"
 VALID_SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtest user@example.com"
 SHORT_VALID_SSH_KEY = "ssh-rsa AAAA"
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client() -> Mock:
@@ -47,13 +44,10 @@ async def _invoke(
             "assisted_service_mcp.src.tools.shared_helpers._get_cluster_infra_env_id",
             new=infra_env_lookup,
         ),
-        patch(
-            "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
-            return_value=client,
-        ) as inventory_client,
+        patch_inventory_client(CLUSTER_TOOLS_CLIENT, client) as inventory_client,
     ):
         result = await cluster_tools.set_cluster_ssh_key(
-            _token, CLUSTER_ID, ssh_public_key
+            test_token, CLUSTER_ID, ssh_public_key
         )
     return result, inventory_client, infra_env_lookup
 
@@ -66,7 +60,7 @@ async def test_set_cluster_ssh_key_updates_cluster_and_infra_env() -> None:
     result, inventory_client, infra_env_lookup = await _invoke(client, VALID_SSH_KEY)
 
     assert result == cluster.to_str()
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     infra_env_lookup.assert_awaited_once_with(client, CLUSTER_ID)
     client.update_cluster.assert_awaited_once_with(
         CLUSTER_ID, ssh_public_key=VALID_SSH_KEY
@@ -95,11 +89,9 @@ async def test_set_cluster_ssh_key_strips_quotes() -> None:
 
 @pytest.mark.asyncio
 async def test_set_cluster_ssh_key_validation_failure_skips_api() -> None:
-    with patch(
-        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
-    ) as inventory_client:
+    with patch(CLUSTER_TOOLS_CLIENT) as inventory_client:
         result = await cluster_tools.set_cluster_ssh_key(
-            _token, CLUSTER_ID, "invalid-key"
+            test_token, CLUSTER_ID, "invalid-key"
         )
 
     inventory_client.assert_not_called()

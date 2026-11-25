@@ -1,3 +1,9 @@
+"""Unit tests for shared tool helpers.
+
+Covers `_get_cluster_infra_env_id` and `wrap_untrusted_data` from
+`assisted_service_mcp.src.tools.shared_helpers`.
+"""
+
 from unittest.mock import AsyncMock
 
 import pytest
@@ -30,6 +36,14 @@ async def test_get_cluster_infra_env_id_missing_id() -> None:
     client.list_infra_envs.return_value = [{}]
     with pytest.raises(ValueError):
         await _get_cluster_infra_env_id(client, "cid")
+
+
+@pytest.mark.asyncio
+async def test_get_cluster_infra_env_id_skips_entries_without_id() -> None:
+    client = AsyncMock()
+    client.list_infra_envs.return_value = [{}, {"id": None}, {"id": "ie-2"}]
+    res = await _get_cluster_infra_env_id(client, "cid")
+    assert res == "ie-2"
 
 
 @pytest.mark.asyncio

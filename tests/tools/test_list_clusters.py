@@ -4,18 +4,15 @@ The Assisted Service client is mocked. These tests call the tool function
 directly and do not start the MCP server.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import cluster_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, invoke_with_client, test_token
 
-TOKEN = "test-access-token"
-
-
-def _token() -> str:
-    return TOKEN
+CLUSTER_TOOLS_CLIENT = "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
 
 
 def _client(clusters: list[dict[str, str]]) -> Mock:
@@ -25,12 +22,11 @@ def _client(clusters: list[dict[str, str]]) -> Mock:
 
 
 async def _invoke(client: Mock) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
-        result = await cluster_tools.list_clusters(_token)
-    return result, inventory_client
+    return await invoke_with_client(
+        CLUSTER_TOOLS_CLIENT,
+        client,
+        cluster_tools.list_clusters(test_token),
+    )
 
 
 @pytest.mark.asyncio
@@ -72,7 +68,7 @@ async def test_list_clusters_formats_fields_and_defaults_missing_version() -> No
         "- Status: installing\n"
         "\n"
     )
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.list_clusters.assert_awaited_once_with()
 
 
@@ -83,7 +79,7 @@ async def test_list_clusters_empty_returns_message() -> None:
     result, inventory_client = await _invoke(client)
 
     assert result == "No clusters found."
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.list_clusters.assert_awaited_once_with()
 
 

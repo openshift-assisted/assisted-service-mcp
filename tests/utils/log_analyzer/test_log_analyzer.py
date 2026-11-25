@@ -1,21 +1,10 @@
+"""Unit tests for LogAnalyzer metadata/events helpers and the analyze runner."""
+
 import asyncio
-from collections.abc import Mapping
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-
-def make_archive(get_map: Mapping[str, object]) -> Any:
-    """Create a fake archive with a .get(path) API from a mapping."""
-
-    class _A:
-        def get(
-            self, path: str, **kwargs: Any  # pylint: disable=unused-argument
-        ) -> object:
-            if path in get_map:
-                return get_map[path]
-            raise FileNotFoundError(path)
-
-    return _A()
+from tests.utils.log_analyzer.archive_helpers import make_archive
 
 
 def test_log_analyzer_metadata_and_events_partitioning() -> None:

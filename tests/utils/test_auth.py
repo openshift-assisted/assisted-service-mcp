@@ -1,3 +1,5 @@
+"""Unit tests for offline-token and access-token authentication helpers."""
+
 import importlib
 import sys
 from collections.abc import Iterator
@@ -74,6 +76,53 @@ def test_get_access_token_from_authorization_header() -> None:
         return_value={"authorization": "Bearer abc"},
     ):
         assert auth_mod.get_access_token() == "abc"
+
+
+@pytest.mark.parametrize(
+    "authorization",
+    [None, "Basic abc", "Bearer", "Bearer abc extra"],
+)
+def test_extract_bearer_token_rejects_missing_and_malformed(
+    authorization: str | None,
+) -> None:
+    from assisted_service_mcp.src.utils import auth as auth_mod
+
+    assert auth_mod.extract_bearer_token(authorization) is None
+
+
+@pytest.mark.parametrize(
+    "authorization",
+    [None, "Basic abc", "Bearer", "Bearer abc extra"],
+)
+@patch("requests.post")
+def test_get_access_token_falls_back_for_missing_and_malformed_authorization(
+    mock_post: Mock,
+    authorization: str | None,
+) -> None:
+    from assisted_service_mcp.src.utils import auth as auth_mod
+
+    headers = {} if authorization is None else {"authorization": authorization}
+    mock_resp = Mock()
+    mock_resp.json.return_value = {"access_token": "offline-flow-token"}
+    mock_post.return_value = mock_resp
+
+    with (
+        patch(
+            "assisted_service_mcp.src.settings.settings.OFFLINE_TOKEN",
+            "offline",
+        ),
+        patch(
+            "assisted_service_mcp.src.settings.settings.SSO_URL",
+            "https://sso/token",
+        ),
+        patch(
+            "assisted_service_mcp.src.utils.auth.get_http_headers",
+            return_value=headers,
+        ),
+    ):
+        assert auth_mod.get_access_token() == "offline-flow-token"
+
+    mock_post.assert_called_once()
 
 
 @patch("requests.post")

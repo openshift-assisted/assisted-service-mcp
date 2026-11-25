@@ -4,20 +4,17 @@ The Assisted Service client is mocked. These tests call the tool function
 directly and do not start the MCP server.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import cluster_tools
 from tests.create_objects_helpers import create_test_cluster
+from tests.tools.tool_test_helpers import TEST_TOKEN, invoke_with_client, test_token
 
-TOKEN = "test-access-token"
+CLUSTER_TOOLS_CLIENT = "assisted_service_mcp.src.tools.cluster_tools.InventoryClient"
 CLUSTER_ID = "cid-123"
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(cluster: object) -> Mock:
@@ -27,12 +24,11 @@ def _client(cluster: object) -> Mock:
 
 
 async def _invoke(client: Mock, cluster_id: str = CLUSTER_ID) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.cluster_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
-        result = await cluster_tools.cluster_info(_token, cluster_id)
-    return result, inventory_client
+    return await invoke_with_client(
+        CLUSTER_TOOLS_CLIENT,
+        client,
+        cluster_tools.cluster_info(test_token, cluster_id),
+    )
 
 
 @pytest.mark.asyncio
@@ -45,7 +41,7 @@ async def test_cluster_info_wraps_cluster_text() -> None:
     assert result == (
         f"«untrusted-cluster-data»\n{cluster.to_str()}\n«/untrusted-cluster-data»"
     )
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.get_cluster.assert_awaited_once_with(cluster_id=CLUSTER_ID)
 
 

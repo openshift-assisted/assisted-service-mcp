@@ -6,14 +6,15 @@ directly and do not start the MCP server.
 
 import json
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import AsyncMock, Mock, call
 
 import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import download_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, invoke_with_client, test_token
 
-TOKEN = "test-access-token"
+DOWNLOAD_TOOLS_CLIENT = "assisted_service_mcp.src.tools.download_tools.InventoryClient"
 CLUSTER_ID = "cid"
 NO_URLS = "No ISO download URLs found for this cluster."
 
@@ -22,10 +23,6 @@ class _PresignedUrl:
     def __init__(self, url: str | None, expires_at: datetime | None) -> None:
         self.url = url
         self.expires_at = expires_at
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(
@@ -39,12 +36,11 @@ def _client(
 
 
 async def _invoke(client: Mock) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.download_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
-        result = await download_tools.cluster_iso_download_url(_token, CLUSTER_ID)
-    return result, inventory_client
+    return await invoke_with_client(
+        DOWNLOAD_TOOLS_CLIENT,
+        client,
+        download_tools.cluster_iso_download_url(test_token, CLUSTER_ID),
+    )
 
 
 @pytest.mark.asyncio
@@ -60,7 +56,7 @@ async def test_cluster_iso_download_url_includes_expiration() -> None:
     assert json.loads(result) == [
         {"url": "https://u/iso", "expires_at": "2025-01-01T00:00:00Z"}
     ]
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.list_infra_envs.assert_awaited_once_with(CLUSTER_ID)
     client.get_infra_env_download_url.assert_awaited_once_with("ie1")
 

@@ -2,7 +2,6 @@
 Unit tests for ContainerCrashAnalysis signature.
 """
 
-from collections.abc import Mapping
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -14,18 +13,7 @@ from assisted_service_mcp.src.utils.log_analyzer.signatures.base import Signatur
 from assisted_service_mcp.src.utils.log_analyzer.signatures.container_crash_analysis import (
     ContainerCrashAnalysis,
 )
-
-
-def make_archive(get_map: Mapping[str, object]) -> object:
-    """Create a fake archive with a .get(path) API from a mapping."""
-
-    class _Archive:
-        def get(self, path: str, **_kwargs: str) -> object:
-            if path in get_map:
-                return get_map[path]
-            raise FileNotFoundError(path)
-
-    return _Archive()
+from tests.utils.log_analyzer.archive_helpers import make_archive
 
 
 def _assert_log_file_lines(

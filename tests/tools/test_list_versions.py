@@ -5,19 +5,16 @@ directly and do not start the MCP server.
 """
 
 from typing import cast
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from assisted_service_client import models
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import version_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, invoke_with_client, test_token
 
-TOKEN = "test-access-token"
-
-
-def _token() -> str:
-    return TOKEN
+VERSION_TOOLS_CLIENT = "assisted_service_mcp.src.tools.version_tools.InventoryClient"
 
 
 def _client(versions: object) -> Mock:
@@ -27,12 +24,11 @@ def _client(versions: object) -> Mock:
 
 
 async def _invoke(client: Mock) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.version_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
-        result = await version_tools.list_versions(_token)
-    return result, inventory_client
+    return await invoke_with_client(
+        VERSION_TOOLS_CLIENT,
+        client,
+        version_tools.list_versions(test_token),
+    )
 
 
 @pytest.mark.asyncio
@@ -67,7 +63,7 @@ async def test_list_versions_formats_support_levels_architectures_and_sorts() ->
         "| 4.18.1 | Full Support | x86_64, arm64 |\n"
         "| 4.19.0 | Release Candidate | x86_64 |\n"
     )
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.get_openshift_versions.assert_awaited_once_with(True)
 
 

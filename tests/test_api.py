@@ -1,3 +1,5 @@
+"""Unit tests for the MCP ASGI app transport, routes, and metrics endpoint."""
+
 import importlib
 import sys
 from typing import Any
@@ -55,14 +57,20 @@ def test_metrics_endpoint_present_and_exposes_prometheus(transport: str) -> None
         assert "HELP" in resp.text or "# HELP" in resp.text
 
 
-@pytest.mark.parametrize("transport", ["sse", "streamable-http"])
-def test_basic_liveness_returns_response(transport: str) -> None:
+@pytest.mark.parametrize(
+    ("transport", "expected_paths"),
+    [
+        ("sse", {"/sse", "/messages"}),
+        ("streamable-http", {"/mcp"}),
+    ],
+)
+def test_transport_routes_are_mounted(transport: str, expected_paths: set[str]) -> None:
+    """The app mounts MCP transport routes; there is no dedicated / liveness route."""
     api_mod = load_app_with_transport(transport)
-    app = api_mod.app
-
-    with TestClient(app) as client:
-        resp = client.get("/")
-        assert resp.status_code in (200, 404, 405)
+    mounted_paths = {
+        route.path for route in api_mod.app.routes if hasattr(route, "path")
+    }
+    assert expected_paths.issubset(mounted_paths)
 
 
 def test_supported_transports_match_settings() -> None:

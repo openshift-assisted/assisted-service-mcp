@@ -5,23 +5,20 @@ directly and do not start the MCP server.
 """
 
 import json
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from assisted_service_mcp.src.service_client.exceptions import AssistedServiceAPIError
 from assisted_service_mcp.src.tools import network_tools
+from tests.tools.tool_test_helpers import TEST_TOKEN, invoke_with_client, test_token
 
-TOKEN = "test-access-token"
+NETWORK_TOOLS_CLIENT = "assisted_service_mcp.src.tools.network_tools.InventoryClient"
 CLUSTER_ID = "cid"
 INFRA_ENV_ERROR = (
     "ERROR: this cluster doesn't have exactly 1 infra env, "
     "cannot manage static network config"
 )
-
-
-def _token() -> str:
-    return TOKEN
 
 
 def _client(infra_envs: list[dict[str, object]]) -> Mock:
@@ -31,12 +28,11 @@ def _client(infra_envs: list[dict[str, object]]) -> Mock:
 
 
 async def _invoke(client: Mock) -> tuple[str, Mock]:
-    with patch(
-        "assisted_service_mcp.src.tools.network_tools.InventoryClient",
-        return_value=client,
-    ) as inventory_client:
-        result = await network_tools.list_static_network_config(_token, CLUSTER_ID)
-    return result, inventory_client
+    return await invoke_with_client(
+        NETWORK_TOOLS_CLIENT,
+        client,
+        network_tools.list_static_network_config(test_token, CLUSTER_ID),
+    )
 
 
 @pytest.mark.asyncio
@@ -46,7 +42,7 @@ async def test_list_static_network_config_returns_configs() -> None:
     result, inventory_client = await _invoke(client)
 
     assert json.loads(result) == ["cfg1", "cfg2"]
-    inventory_client.assert_called_once_with(TOKEN)
+    inventory_client.assert_called_once_with(TEST_TOKEN)
     client.list_infra_envs.assert_awaited_once_with(CLUSTER_ID)
 
 
