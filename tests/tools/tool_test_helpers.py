@@ -2,12 +2,9 @@
 
 from collections.abc import Awaitable, Iterator
 from contextlib import contextmanager
-from typing import TypeVar
 from unittest.mock import AsyncMock, Mock, patch
 
 TEST_TOKEN = "test-access-token"
-
-T = TypeVar("T")
 
 
 def test_token() -> str:
@@ -22,7 +19,7 @@ def patch_inventory_client(import_path: str, client: Mock) -> Iterator[Mock]:
         yield inventory_client
 
 
-async def invoke_with_client(
+async def invoke_with_client[T](
     import_path: str,
     client: Mock,
     tool_call: Awaitable[T],
