@@ -277,6 +277,38 @@ The annotations are advisory and do not enforce access control.
   </dd>
 </dl>
 
+## Tests
+
+The tests under `tests/` are unit tests. They mock the Assisted Installer API and do not start the MCP server or call a live service. Pull requests run the same command in `.github/workflows/unit_tests.yaml`.
+
+```bash
+uv run --group test pytest
+```
+
+`pyproject.toml` sets the coverage target to `assisted_service_mcp` and prints missing lines. To run one file:
+
+```bash
+uv run --group test pytest tests/tools/test_create_cluster.py
+```
+
+| Path | What it tests |
+|---|---|
+| `tests/tools/test_<tool>.py` | One MCP tool. Each file calls the tool function directly and checks a success path plus a failure or empty result. |
+| `tests/tools/test_shared_helpers.py` | Infra-env lookup and wrapping of untrusted cluster text. |
+| `tests/test_api.py` | HTTP app routes for SSE and streamable HTTP, plus the metrics endpoint. |
+| `tests/test_mcp.py` | The tools registered when troubleshooting is off. |
+| `tests/test_settings.py` | Settings defaults, environment overrides, and rejected values. |
+| `tests/test_logger.py` | Console and file logging, and redaction of secrets. |
+| `tests/service_client/` | The Assisted Installer API client. |
+| `tests/metrics/` | Prometheus counters and request timing for tool calls. |
+| `tests/utils/test_auth.py` | Offline-token and access-token handling. |
+| `tests/utils/static_network/` | NMState parsing, templates, and static host configuration. |
+| `tests/utils/log_analyzer/` | Log-archive analysis. Most individual log signatures are not covered here. |
+
+`analyze_cluster_logs` is optional. Its tests live in `tests/tools/test_analyze_cluster_logs.py` and check that the tool is registered only when `ENABLE_TROUBLESHOOTING_TOOLS` is enabled.
+
+Performance tests under `integration_test/performance/` are separate. They need a running server and the mock Assisted Installer API. See `integration_test/performance/README.md`.
+
 ## Prometheus Metrics
 
 The server exposes Prometheus metrics for tool usage and performance at `/metrics`. When running locally with the default `MCP_PORT=8000`, access them at `http://localhost:8000/metrics`. For other deployments, use the server's reachable address and configured port.
