@@ -17,4 +17,4 @@ jobs:
         with:
           python-version: '3.13'
       - name: Run unit tests
-        run: uv run --group test pytest --cov=service_client --cov=server --cov-report term-missing
+        run: uv run --group test pytest
