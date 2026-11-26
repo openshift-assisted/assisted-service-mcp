@@ -49,17 +49,17 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             client = InventoryClient(mock_access_token)
             assert client.access_token == mock_access_token
             assert client.pull_secret == "test-pull-secret"
-            assert (
-                client.inventory_url
-                == "https://api.openshift.com/api/assisted-install/v2"
-            )
+            assert client.inventory_url == "https://api.openshift.com/"
             assert client.client_debug is False
 
     def test_init_with_environment_variables(self, mock_access_token: str) -> None:
         """Test client initialization with environment variables."""
-        test_url = "https://custom-api.example.com/v2"
+        test_host_url = "https://custom-api.example.com/"
         with (
-            patch("assisted_service_mcp.src.settings.settings.INVENTORY_URL", test_url),
+            patch(
+                "assisted_service_mcp.src.settings.settings.INVENTORY_URL",
+                test_host_url,
+            ),
             patch("assisted_service_mcp.src.settings.settings.CLIENT_DEBUG", True),
             patch.object(
                 InventoryClient,
@@ -68,7 +68,7 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
             ),
         ):
             client = InventoryClient(mock_access_token)
-            assert client.inventory_url == test_url
+            assert client.inventory_url == test_host_url
             assert client.client_debug is True
 
     @patch("requests.post")
@@ -129,13 +129,19 @@ class TestInventoryClient:  # pylint: disable=too-many-public-methods
                 timeout=30,
             )
 
-    def test_get_host_url_parsing(self, client: InventoryClient) -> None:
-        """Test URL parsing and host replacement."""
+    def test_build_assisted_service_api_url_preserves_sdk_path(
+        self, client: InventoryClient
+    ) -> None:
+        """Use INVENTORY_URL for the origin while preserving the SDK API path."""
         configs = Configuration()
         configs.host = "https://original.example.com/api/v1"
-        client.inventory_url = "https://custom.example.com/api/assisted-install/v2"
+        client.inventory_url = "https://custom.example.com/"
 
-        result = client._get_host(configs)  # pylint: disable=protected-access
+        result = (
+            client._build_assisted_service_api_url(  # pylint: disable=protected-access
+                configs
+            )
+        )
 
         # The method replaces the netloc and scheme but keeps the original path
         assert result == "https://custom.example.com/api/v1"

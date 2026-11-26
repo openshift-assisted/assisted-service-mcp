@@ -18,8 +18,11 @@ This directory contains performance testing tools for the MCP server for Red Hat
    ```
 
 3. **Running MCP Server**:
+
+   `INVENTORY_URL` supplies the Assisted Service API base URL in `<scheme>://<hostname>[:port]` format, for example `https://api.openshift.com/`.
+
    ```bash
-   TRANSPORT=streamable-http INVENTORY_URL="http://localhost:8080/api/assisted-install/v2" uv run python -m assisted_service_mcp.src.main
+   TRANSPORT=streamable-http INVENTORY_URL="http://localhost:8080/" uv run python -m assisted_service_mcp.src.main
    ```
 
 ### Running Tests

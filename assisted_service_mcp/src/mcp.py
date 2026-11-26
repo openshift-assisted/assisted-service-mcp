@@ -40,7 +40,15 @@ class AssistedServiceMCPServer:
         """Initialize the MCP server with assisted service tools."""
         try:
             # Initialize FastMCP server
-            self.mcp = FastMCP("AssistedService")
+            self.mcp = FastMCP(
+                "AssistedService",
+                instructions=(
+                    "This server handles self-managed OpenShift clusters (OCP and SNO) "
+                    "through the Assisted Installer API. It does not handle OCM-managed "
+                    "services such as ROSA, ARO, or OSD. Use a separate MCP server that "
+                    "integrates with the OCM API for those clusters."
+                ),
+            )
             self._register_mcp_tools()
             log.info(
                 "MCP server for Red Hat OpenShift assisted installer initialized successfully"

@@ -58,11 +58,14 @@ class Settings(BaseSettings):
 
     # Assisted Service API Configuration
     INVENTORY_URL: str = Field(
-        default="https://api.openshift.com/api/assisted-install/v2",
+        default="https://api.openshift.com/",
         json_schema_extra={
             "env": "INVENTORY_URL",
-            "description": "Assisted Service API base URL",
-            "example": "https://api.openshift.com/api/assisted-install/v2",
+            "description": (
+                "Assisted Service API base URL, format: <scheme>://<hostname>[:port]"
+                " (the URL API path will be appended automatically by the assisted service client SDK)"
+            ),
+            "example": "https://api.openshift.com/",
         },
     )
 

@@ -81,8 +81,8 @@ parameters:
   required: true
   description: "Tag of the container image to deploy"
 - name: INVENTORY_URL
-  value: "https://api.openshift.com/api/assisted-install/v2"
-  description: "URL for the assisted installer inventory API endpoint"
+  value: "https://api.openshift.com/"
+  description: "Assisted Service API base URL, in <scheme>://<hostname>[:port] format. e.g., https://api.openshift.com/"
 - name: SSO_URL
   value: "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
   description: "URL for Red Hat Single Sign-On (SSO) OpenID Connect token endpoint"
